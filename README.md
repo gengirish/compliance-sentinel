@@ -15,7 +15,7 @@ Each day it checks two sources for new or amended rules. When something changed,
 | EUR-Lex Playwright source | Verified against the live site (GDPR: 99 articles, plus its corrigendum) |
 | Full run on live sources, then a second run that correctly skips | Verified locally |
 | Audit with Claude (`claude-sonnet-5-5`, `claude-haiku-5-5`) and Voyage `voyage-law-2` | Implemented, **not yet run**: needs API keys |
-| PDF rendering with WeasyPrint | Implemented; runs in the Docker image and in CI, not on the Windows dev machine |
+| Docker image and PDF rendering with WeasyPrint | Verified in CI on every push (image builds, demo report renders to a 17-page PDF) |
 | BullMQ worker and cron | Implemented and typechecked; **not yet run against Redis** |
 | Fly.io deployment | `Dockerfile` and `fly.toml` written; **not yet deployed** |
 | Loom demo | Not recorded yet |
@@ -24,7 +24,7 @@ Without API keys the pipeline still runs end to end using two labelled stand-ins
 
 ## Sample report
 
-[samples/report-example.html](samples/report-example.html) is the report for the demo rules audited against [demo-target-app](demo-target-app), produced by the offline analyst. The PDF version of the same report is built on every push by the `image` job in CI and attached to the run as the `demo-report` artifact.
+[samples/report-example.pdf](samples/report-example.pdf) is the report for the demo rules audited against [demo-target-app](demo-target-app), produced by the offline analyst and rendered by WeasyPrint inside the production image. The `image` job in CI rebuilds it on every push and attaches it to the run as the `demo-report` artifact. [samples/report-example.html](samples/report-example.html) is the HTML it is rendered from.
 
 ## Architecture
 
@@ -192,5 +192,5 @@ src/
 demo-target-app/   seeded Express app with planted violations
 fixtures/rules/    abridged GDPR and FTC Safeguards Rule excerpts for demo runs
 tests/             diff, chunker, citation checks, golden audit, scrapers, outputs
-samples/           report-example.html
+samples/           report-example.pdf, report-example.html
 ```

@@ -18,7 +18,7 @@ export function createConnection(): ConnectionOptions {
   // The cast bridges the ioredis copy bundled inside bullmq and the one installed here.
   return new Redis(config.REDIS_URL, {
     maxRetriesPerRequest: null,
-    family: config.REDIS_URL.includes(".internal") ? 6 : 0, // Fly private networking is IPv6-only
+    family: 0, // resolve both A and AAAA: Fly private networking is IPv6-only
   }) as unknown as ConnectionOptions;
 }
 
