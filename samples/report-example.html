@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Compliance Sentinel audit report, run 1</title>
+<style>
+  @page {
+    size: A4;
+    margin: 22mm 18mm 20mm 18mm;
+    @top-left { content: "Compliance Sentinel"; font: 8pt "DejaVu Sans", Arial, sans-serif; color: #6b7280; }
+    @top-right { content: "Audit run 1 · 2026-10-10"; font: 8pt "DejaVu Sans", Arial, sans-serif; color: #6b7280; }
+    @bottom-center { content: "Page " counter(page) " of " counter(pages); font: 8pt "DejaVu Sans", Arial, sans-serif; color: #6b7280; }
+    @bottom-left { content: "Decision support, not legal advice"; font: 8pt "DejaVu Sans", Arial, sans-serif; color: #6b7280; }
+  }
+  @page cover { margin: 0; @top-left { content: none; } @top-right { content: none; } @bottom-center { content: none; } @bottom-left { content: none; } }
+
+  * { box-sizing: border-box; }
+  body { font: 10pt/1.45 "DejaVu Sans", Arial, Helvetica, sans-serif; color: #111827; margin: 0; }
+  h1 { font-size: 20pt; margin: 0 0 6mm; }
+  h2 { font-size: 14pt; margin: 0 0 4mm; padding-bottom: 2mm; border-bottom: 1px solid #d1d5db; }
+  h3 { font-size: 11pt; margin: 0 0 2mm; }
+  p { margin: 0 0 3mm; }
+  a { color: #1d4ed8; text-decoration: none; }
+  section { page-break-before: always; }
+  .muted { color: #6b7280; }
+  .small { font-size: 8.5pt; }
+
+  .cover { page: cover; page-break-before: avoid; height: 297mm; padding: 60mm 24mm 24mm; background: #0f172a; color: #f8fafc; }
+  .cover .kicker { font-size: 10pt; letter-spacing: 0.12em; text-transform: uppercase; color: #94a3b8; }
+  .cover h1 { font-size: 30pt; margin: 6mm 0 10mm; }
+  .cover table { width: 100%; border-collapse: collapse; margin-top: 16mm; }
+  .cover td { padding: 2.5mm 0; border-bottom: 1px solid #334155; font-size: 10pt; vertical-align: top; }
+  .cover td:first-child { width: 42mm; color: #94a3b8; }
+  .cover .verdict { margin-top: 14mm; padding: 5mm 6mm; border-left: 4px solid #f87171; background: #1e293b; font-size: 11pt; }
+  .cover .verdict.ok { border-left-color: #4ade80; }
+
+  table.grid { width: 100%; border-collapse: collapse; margin: 0 0 5mm; }
+  table.grid th, table.grid td { border: 1px solid #e5e7eb; padding: 2mm 2.5mm; text-align: left; vertical-align: top; }
+  table.grid th { background: #f3f4f6; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.04em; }
+  td.num { text-align: right; width: 22mm; }
+
+  .badge { display: inline-block; padding: 0.4mm 2.2mm; border-radius: 2mm; font-size: 8pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.04em; color: #fff; }
+  .badge.critical { background: #b91c1c; }
+  .badge.high { background: #c2410c; }
+  .badge.medium { background: #a16207; }
+  .badge.low { background: #4b5563; }
+  .badge.compliant { background: #15803d; }
+  .badge.needs_review { background: #6d28d9; }
+  .badge.violation { background: #b91c1c; }
+
+  .finding { border: 1px solid #e5e7eb; border-left-width: 4px; border-radius: 1.5mm; padding: 4mm 5mm; margin: 0 0 5mm; page-break-inside: avoid; }
+  .finding.critical { border-left-color: #b91c1c; }
+  .finding.high { border-left-color: #c2410c; }
+  .finding.medium { border-left-color: #a16207; }
+  .finding.low { border-left-color: #4b5563; }
+  .finding.compliant { border-left-color: #15803d; }
+  .finding.needs_review { border-left-color: #6d28d9; }
+  .finding .id { float: right; }
+  .label { font-size: 8pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin: 3mm 0 1mm; }
+  blockquote { margin: 0 0 2mm; padding: 2mm 3mm; background: #f9fafb; border-left: 2px solid #9ca3af; font-size: 9pt; }
+  pre { margin: 0 0 2mm; padding: 2.5mm 3mm; background: #111827; color: #e5e7eb; font: 8pt/1.4 "DejaVu Sans Mono", Consolas, monospace; white-space: pre-wrap; word-break: break-all; border-radius: 1mm; }
+  code { font: 8.5pt "DejaVu Sans Mono", Consolas, monospace; }
+  .loc { font: bold 8.5pt "DejaVu Sans Mono", Consolas, monospace; margin: 0 0 1mm; }
+  ul { margin: 0 0 3mm; padding-left: 5mm; }
+  .note { font-size: 8.5pt; color: #92400e; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="kicker">Compliance Sentinel · Audit report</div>
+  <h1>Regulatory audit of demo-target-app</h1>
+  <div>Run 1 · 2026-10-10 · triggered by manual</div>
+  <div class="verdict ">
+      6 critical violations found. Action is needed.
+  </div>
+  <table>
+    <tr><td>Target repository</td><td>demo-target-app</td></tr>
+    <tr><td>Audited snapshot</td><td>content-dce38f2929e75c3947d078e5fd29e117b52a7560</td></tr>
+    <tr><td>Rules in scope</td><td>2</td></tr>
+    <tr><td>Obligations assessed</td><td>12</td></tr>
+    <tr><td>Findings</td><td>12</td></tr>
+    <tr><td>Analyst</td><td>offline-keyword-baseline</td></tr>
+    <tr><td>Model cost</td><td>$0.0000</td></tr>
+  </table>
+</div>
+
+<section>
+  <h2>Executive summary</h2>
+  <p>
+    This run audited <strong>demo-target-app</strong> against 2 new or amended
+    rules. It assessed 12 obligations, which
+    consolidated into 12 findings:
+    9 violations,
+    0 needing human review and
+    3 compliant.
+  </p>
+
+  <table class="grid">
+    <tr><th>Violations by severity</th><th>Count</th></tr>
+    <tr><td><span class="badge critical">Critical</span></td><td class="num">6</td></tr>
+    <tr><td><span class="badge high">High</span></td><td class="num">3</td></tr>
+    <tr><td><span class="badge medium">Medium</span></td><td class="num">0</td></tr>
+    <tr><td><span class="badge low">Low</span></td><td class="num">0</td></tr>
+  </table>
+
+  <table class="grid">
+    <tr><th>#</th><th>Status</th><th>Obligation</th><th>Rule</th><th>Primary location</th></tr>
+    <tr>
+      <td>1</td>
+      <td><span class="badge critical">Critical</span></td>
+      <td>Personal data must not be exposed in application logs; logging must be limited to what is necessary and protected against unauthorised access.</td>
+      <td class="small">Standards for Safeguarding Customer Information (FTC Safeguards Rule,…</td>
+      <td class="small"><code>src/routes/patients.js:12</code></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td><span class="badge critical">Critical</span></td>
+      <td>Credentials and secrets must not be stored in plaintext in source code, and passwords must be hashed before storage.</td>
+      <td class="small">Standards for Safeguarding Customer Information (FTC Safeguards Rule,…</td>
+      <td class="small"><code>src/config.js:7</code></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td><span class="badge critical">Critical</span></td>
+      <td>Security incidents affecting personal data must trigger notification of the regulator within the mandated deadline; the incident workflow must include a notification step.</td>
+      <td class="small">Standards for Safeguarding Customer Information (FTC Safeguards Rule,…</td>
+      <td class="small"><code>src/routes/incidents.js:15</code></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td><span class="badge critical">Critical</span></td>
+      <td>Personal data must not be exposed in application logs; logging must be limited to what is necessary and protected against unauthorised access.</td>
+      <td class="small">Regulation (EU) 2016/679 (General Data Protection Regulation) - abrid…</td>
+      <td class="small"><code>src/routes/patients.js:12</code></td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td><span class="badge critical">Critical</span></td>
+      <td>Credentials and secrets must not be stored in plaintext in source code, and passwords must be hashed before storage.</td>
+      <td class="small">Regulation (EU) 2016/679 (General Data Protection Regulation) - abrid…</td>
+      <td class="small"><code>src/config.js:7</code></td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td><span class="badge critical">Critical</span></td>
+      <td>Security incidents affecting personal data must trigger notification of the regulator within the mandated deadline; the incident workflow must include a notification step.</td>
+      <td class="small">Regulation (EU) 2016/679 (General Data Protection Regulation) - abrid…</td>
+      <td class="small"><code>src/routes/incidents.js:15</code></td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td><span class="badge high">High</span></td>
+      <td>Personal data must be deleted or anonymised once it is no longer needed; a retention schedule must be enforced by an automated disposal process.</td>
+      <td class="small">Standards for Safeguarding Customer Information (FTC Safeguards Rule,…</td>
+      <td class="small"><code>src/jobs/index.js:6</code></td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td><span class="badge high">High</span></td>
+      <td>Personal data must be deleted or anonymised once it is no longer needed; a retention schedule must be enforced by an automated disposal process.</td>
+      <td class="small">Regulation (EU) 2016/679 (General Data Protection Regulation) - abrid…</td>
+      <td class="small"><code>src/jobs/index.js:6</code></td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td><span class="badge high">High</span></td>
+      <td>Where processing relies on consent, the system must capture an explicit opt-in and keep a record that demonstrates it; consent must not be assumed by default.</td>
+      <td class="small">Regulation (EU) 2016/679 (General Data Protection Regulation) - abrid…</td>
+      <td class="small"><code>schema.sql:10</code></td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td><span class="badge compliant">Compliant</span></td>
+      <td>Personal data must be encrypted in transit over external networks.</td>
+      <td class="small">Standards for Safeguarding Customer Information (FTC Safeguards Rule,…</td>
+      <td class="small"><code>src/lib/db.js:9</code></td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td><span class="badge compliant">Compliant</span></td>
+      <td>Access to personal data must be restricted to authenticated, authorised users under least privilege.</td>
+      <td class="small">Standards for Safeguarding Customer Information (FTC Safeguards Rule,…</td>
+      <td class="small"><code>src/middleware/auth.js:12</code></td>
+    </tr>
+    <tr>
+      <td>12</td>
+      <td><span class="badge compliant">Compliant</span></td>
+      <td>Personal data must be encrypted in transit over external networks.</td>
+      <td class="small">Regulation (EU) 2016/679 (General Data Protection Regulation) - abrid…</td>
+      <td class="small"><code>src/lib/db.js:9</code></td>
+    </tr>
+  </table>
+</section>
+
+<section>
+  <h2>Critical violations (6)</h2>
+  
+  <div class="finding critical">
+    <div class="id muted small">Finding 1</div>
+    <span class="badge critical">Critical</span>
+    <h3 style="margin-top:2mm">Personal data must not be exposed in application logs; logging must be limited to what is necessary and protected against unauthorised access.</h3>
+    <p>Code matching a known anti-pattern for &quot;pii-logging&quot; was found at the cited lines, which conflicts with the obligation.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>Standards for Safeguarding Customer Information (FTC Safeguards Rule, 16 CFR Part 314) - abridged demo excerpt</strong><br>
+      Effective 2024-05-13 · <a href="https://www.ecfr.gov/current/title-16/chapter-I/subchapter-C/part-314">https://www.ecfr.gov/current/title-16/chapter-I/subchapter-C/part-314</a>
+    </p>
+    <blockquote><strong>§ 314.4</strong> <span class="muted">(chunk 1)</span><br>Abridged excerpt of 16 CFR Part 314 prepared for demonstration. Consult the official text in the Code of Federal Regulations before relying on it. § 314.4 Elements In order to develop, implement, and maintain your information security program, you shall: (c) Design and implement safeguards to control the risks you identify through risk assessment, including by: (1) Implementing and periodically reviewing access controls, including technical and, as appropriate, physical controls to authenticate and permit access only to authorized users to protect against the unauthorized acquisition of customer information, and to limit authorized users&#x27; access only to customer information that they need to perform their duties and functions; (3) Protect by encryption all customer information held or transmitted by you both in transit over external networks and at rest; (6)(i) Develop, implement, and m…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">src/routes/patients.js:12</div>
+    <pre>  console.log(&#x60;Fetched patient ${patient.id}: ${patient.full_name}, SSN ${patient.ssn}, diagnosis ${patient.diagnosis}&#x60;);</pre>
+    <div class="loc">src/routes/signup.js:10</div>
+    <pre>  console.log(&quot;New signup&quot;, { email, fullName, dateOfBirth, ssn, phone });</pre>
+    
+
+  </div>
+  <div class="finding critical">
+    <div class="id muted small">Finding 2</div>
+    <span class="badge critical">Critical</span>
+    <h3 style="margin-top:2mm">Credentials and secrets must not be stored in plaintext in source code, and passwords must be hashed before storage.</h3>
+    <p>Code matching a known anti-pattern for &quot;secrets-management&quot; was found at the cited lines, which conflicts with the obligation.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>Standards for Safeguarding Customer Information (FTC Safeguards Rule, 16 CFR Part 314) - abridged demo excerpt</strong><br>
+      Effective 2024-05-13 · <a href="https://www.ecfr.gov/current/title-16/chapter-I/subchapter-C/part-314">https://www.ecfr.gov/current/title-16/chapter-I/subchapter-C/part-314</a>
+    </p>
+    <blockquote><strong>§ 314.4</strong> <span class="muted">(chunk 1)</span><br>Abridged excerpt of 16 CFR Part 314 prepared for demonstration. Consult the official text in the Code of Federal Regulations before relying on it. § 314.4 Elements In order to develop, implement, and maintain your information security program, you shall: (c) Design and implement safeguards to control the risks you identify through risk assessment, including by: (1) Implementing and periodically reviewing access controls, including technical and, as appropriate, physical controls to authenticate and permit access only to authorized users to protect against the unauthorized acquisition of customer information, and to limit authorized users&#x27; access only to customer information that they need to perform their duties and functions; (3) Protect by encryption all customer information held or transmitted by you both in transit over external networks and at rest; (6)(i) Develop, implement, and m…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">src/config.js:7</div>
+    <pre>    password: &quot;Winter2024!portal&quot;,</pre>
+    <div class="loc">src/config.js:10</div>
+    <pre>  jwtSecret: &quot;acme-portal-jwt-signing-secret&quot;,</pre>
+    <div class="loc">src/config.js:12</div>
+    <pre>    apiKey: &quot;mailer-live-key-9f2c41d07a&quot;,</pre>
+    
+
+  </div>
+  <div class="finding critical">
+    <div class="id muted small">Finding 3</div>
+    <span class="badge critical">Critical</span>
+    <h3 style="margin-top:2mm">Security incidents affecting personal data must trigger notification of the regulator within the mandated deadline; the incident workflow must include a notification step.</h3>
+    <p>Code matching a known anti-pattern for &quot;breach-notification&quot; was found at the cited lines, which conflicts with the obligation.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>Standards for Safeguarding Customer Information (FTC Safeguards Rule, 16 CFR Part 314) - abridged demo excerpt</strong><br>
+      Effective 2024-05-13 · <a href="https://www.ecfr.gov/current/title-16/chapter-I/subchapter-C/part-314">https://www.ecfr.gov/current/title-16/chapter-I/subchapter-C/part-314</a>
+    </p>
+    <blockquote><strong>§ 314.4(j)</strong> <span class="muted">(chunk 2)</span><br>§ 314.4(j) Notification events (j) Notify the Federal Trade Commission about notification events. Upon discovery of a notification event involving the information of at least 500 consumers, you must notify the Federal Trade Commission as soon as possible, and no later than 30 days after discovery of the event.</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">src/routes/incidents.js:15</div>
+    <pre>  // TODO: tell someone about this</pre>
+    
+
+  </div>
+  <div class="finding critical">
+    <div class="id muted small">Finding 4</div>
+    <span class="badge critical">Critical</span>
+    <h3 style="margin-top:2mm">Personal data must not be exposed in application logs; logging must be limited to what is necessary and protected against unauthorised access.</h3>
+    <p>Code matching a known anti-pattern for &quot;pii-logging&quot; was found at the cited lines, which conflicts with the obligation.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>Regulation (EU) 2016/679 (General Data Protection Regulation) - abridged demo excerpt</strong><br>
+      Effective 2018-05-25 · <a href="https://eur-lex.europa.eu/eli/reg/2016/679/oj">https://eur-lex.europa.eu/eli/reg/2016/679/oj</a>
+    </p>
+    <blockquote><strong>Article 5</strong> <span class="muted">(chunk 3)</span><br>Abridged excerpt of Regulation (EU) 2016/679 prepared for demonstration. Consult the official text on EUR-Lex before relying on it. Article 5 Principles relating to processing of personal data 1. Personal data shall be: (c) adequate, relevant and limited to what is necessary in relation to the purposes for which they are processed (&#x27;data minimisation&#x27;); (e) kept in a form which permits identification of data subjects for no longer than is necessary for the purposes for which the personal data are processed (&#x27;storage limitation&#x27;); (f) processed in a manner that ensures appropriate security of the personal data, including protection against unauthorised or unlawful processing and against accidental loss, destruction or damage, using appropriate technical or organisational measures (&#x27;integrity and confidentiality&#x27;). 2. The controller shall be responsible for, and be able to demonstrate com…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">src/routes/patients.js:12</div>
+    <pre>  console.log(&#x60;Fetched patient ${patient.id}: ${patient.full_name}, SSN ${patient.ssn}, diagnosis ${patient.diagnosis}&#x60;);</pre>
+    <div class="loc">src/routes/signup.js:10</div>
+    <pre>  console.log(&quot;New signup&quot;, { email, fullName, dateOfBirth, ssn, phone });</pre>
+    
+
+  </div>
+  <div class="finding critical">
+    <div class="id muted small">Finding 5</div>
+    <span class="badge critical">Critical</span>
+    <h3 style="margin-top:2mm">Credentials and secrets must not be stored in plaintext in source code, and passwords must be hashed before storage.</h3>
+    <p>Code matching a known anti-pattern for &quot;secrets-management&quot; was found at the cited lines, which conflicts with the obligation.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>Regulation (EU) 2016/679 (General Data Protection Regulation) - abridged demo excerpt</strong><br>
+      Effective 2018-05-25 · <a href="https://eur-lex.europa.eu/eli/reg/2016/679/oj">https://eur-lex.europa.eu/eli/reg/2016/679/oj</a>
+    </p>
+    <blockquote><strong>Article 32</strong> <span class="muted">(chunk 5)</span><br>Article 32 Security of processing 1. Taking into account the state of the art, the costs of implementation and the nature, scope, context and purposes of processing as well as the risk for the rights and freedoms of natural persons, the controller and the processor shall implement appropriate technical and organisational measures to ensure a level of security appropriate to the risk, including inter alia as appropriate: (a) the pseudonymisation and encryption of personal data; (b) the ability to ensure the ongoing confidentiality, integrity, availability and resilience of processing systems and services.</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">src/config.js:7</div>
+    <pre>    password: &quot;Winter2024!portal&quot;,</pre>
+    <div class="loc">src/config.js:10</div>
+    <pre>  jwtSecret: &quot;acme-portal-jwt-signing-secret&quot;,</pre>
+    <div class="loc">src/config.js:12</div>
+    <pre>    apiKey: &quot;mailer-live-key-9f2c41d07a&quot;,</pre>
+    
+
+  </div>
+  <div class="finding critical">
+    <div class="id muted small">Finding 6</div>
+    <span class="badge critical">Critical</span>
+    <h3 style="margin-top:2mm">Security incidents affecting personal data must trigger notification of the regulator within the mandated deadline; the incident workflow must include a notification step.</h3>
+    <p>Code matching a known anti-pattern for &quot;breach-notification&quot; was found at the cited lines, which conflicts with the obligation.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>Regulation (EU) 2016/679 (General Data Protection Regulation) - abridged demo excerpt</strong><br>
+      Effective 2018-05-25 · <a href="https://eur-lex.europa.eu/eli/reg/2016/679/oj">https://eur-lex.europa.eu/eli/reg/2016/679/oj</a>
+    </p>
+    <blockquote><strong>Article 33</strong> <span class="muted">(chunk 6)</span><br>Article 33 Notification of a personal data breach to the supervisory authority 1. In the case of a personal data breach, the controller shall without undue delay and, where feasible, not later than 72 hours after having become aware of it, notify the personal data breach to the supervisory authority competent in accordance with Article 55, unless the personal data breach is unlikely to result in a risk to the rights and freedoms of natural persons. 5. The controller shall document any personal data breaches, comprising the facts relating to the personal data breach, its effects and the remedial action taken.</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">src/routes/incidents.js:15</div>
+    <pre>  // TODO: tell someone about this</pre>
+    
+
+  </div>
+</section>
+<section>
+  <h2>High severity violations (3)</h2>
+  
+  <div class="finding high">
+    <div class="id muted small">Finding 7</div>
+    <span class="badge high">High</span>
+    <h3 style="margin-top:2mm">Personal data must be deleted or anonymised once it is no longer needed; a retention schedule must be enforced by an automated disposal process.</h3>
+    <p>No implementation of the &quot;data-retention&quot; control was found anywhere in the repository. The cited location is where it would normally be wired in.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>Standards for Safeguarding Customer Information (FTC Safeguards Rule, 16 CFR Part 314) - abridged demo excerpt</strong><br>
+      Effective 2024-05-13 · <a href="https://www.ecfr.gov/current/title-16/chapter-I/subchapter-C/part-314">https://www.ecfr.gov/current/title-16/chapter-I/subchapter-C/part-314</a>
+    </p>
+    <blockquote><strong>§ 314.4</strong> <span class="muted">(chunk 1)</span><br>Abridged excerpt of 16 CFR Part 314 prepared for demonstration. Consult the official text in the Code of Federal Regulations before relying on it. § 314.4 Elements In order to develop, implement, and maintain your information security program, you shall: (c) Design and implement safeguards to control the risks you identify through risk assessment, including by: (1) Implementing and periodically reviewing access controls, including technical and, as appropriate, physical controls to authenticate and permit access only to authorized users to protect against the unauthorized acquisition of customer information, and to limit authorized users&#x27; access only to customer information that they need to perform their duties and functions; (3) Protect by encryption all customer information held or transmitted by you both in transit over external networks and at rest; (6)(i) Develop, implement, and m…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">src/jobs/index.js:6</div>
+    <pre>function registerJobs() {</pre>
+    
+
+  </div>
+  <div class="finding high">
+    <div class="id muted small">Finding 8</div>
+    <span class="badge high">High</span>
+    <h3 style="margin-top:2mm">Personal data must be deleted or anonymised once it is no longer needed; a retention schedule must be enforced by an automated disposal process.</h3>
+    <p>No implementation of the &quot;data-retention&quot; control was found anywhere in the repository. The cited location is where it would normally be wired in.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>Regulation (EU) 2016/679 (General Data Protection Regulation) - abridged demo excerpt</strong><br>
+      Effective 2018-05-25 · <a href="https://eur-lex.europa.eu/eli/reg/2016/679/oj">https://eur-lex.europa.eu/eli/reg/2016/679/oj</a>
+    </p>
+    <blockquote><strong>Article 5</strong> <span class="muted">(chunk 3)</span><br>Abridged excerpt of Regulation (EU) 2016/679 prepared for demonstration. Consult the official text on EUR-Lex before relying on it. Article 5 Principles relating to processing of personal data 1. Personal data shall be: (c) adequate, relevant and limited to what is necessary in relation to the purposes for which they are processed (&#x27;data minimisation&#x27;); (e) kept in a form which permits identification of data subjects for no longer than is necessary for the purposes for which the personal data are processed (&#x27;storage limitation&#x27;); (f) processed in a manner that ensures appropriate security of the personal data, including protection against unauthorised or unlawful processing and against accidental loss, destruction or damage, using appropriate technical or organisational measures (&#x27;integrity and confidentiality&#x27;). 2. The controller shall be responsible for, and be able to demonstrate com…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">src/jobs/index.js:6</div>
+    <pre>function registerJobs() {</pre>
+    
+
+  </div>
+  <div class="finding high">
+    <div class="id muted small">Finding 9</div>
+    <span class="badge high">High</span>
+    <h3 style="margin-top:2mm">Where processing relies on consent, the system must capture an explicit opt-in and keep a record that demonstrates it; consent must not be assumed by default.</h3>
+    <p>Code matching a known anti-pattern for &quot;consent-capture&quot; was found at the cited lines, which conflicts with the obligation.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>Regulation (EU) 2016/679 (General Data Protection Regulation) - abridged demo excerpt</strong><br>
+      Effective 2018-05-25 · <a href="https://eur-lex.europa.eu/eli/reg/2016/679/oj">https://eur-lex.europa.eu/eli/reg/2016/679/oj</a>
+    </p>
+    <blockquote><strong>Article 7</strong> <span class="muted">(chunk 4)</span><br>Article 7 Conditions for consent 1. Where processing is based on consent, the controller shall be able to demonstrate that the data subject has consented to processing of his or her personal data. 3. The data subject shall have the right to withdraw his or her consent at any time. It shall be as easy to withdraw as to give consent.</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">schema.sql:10</div>
+    <pre>  marketing_emails boolean NOT NULL DEFAULT true,</pre>
+    <div class="loc">src/routes/signup.js:14</div>
+    <pre>     VALUES ($1, $2, $3, $4, $5, $6, true)</pre>
+    <div class="loc">src/routes/signup.js:22</div>
+    <pre>    body: &quot;Thanks for joining. You are now subscribed to our partner offers newsletter.&quot;,</pre>
+    
+
+  </div>
+</section>
+<section>
+  <h2>Compliant (3)</h2>
+  <p class="muted">Supporting code was found for these obligations.</p>
+  <div class="finding compliant">
+    <div class="id muted small">Finding 10</div>
+    <span class="badge compliant">Compliant</span>
+    <h3 style="margin-top:2mm">Personal data must be encrypted in transit over external networks.</h3>
+    <p>The cited lines implement the &quot;encryption-in-transit&quot; control and no conflicting code was found.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>Standards for Safeguarding Customer Information (FTC Safeguards Rule, 16 CFR Part 314) - abridged demo excerpt</strong><br>
+      Effective 2024-05-13 · <a href="https://www.ecfr.gov/current/title-16/chapter-I/subchapter-C/part-314">https://www.ecfr.gov/current/title-16/chapter-I/subchapter-C/part-314</a>
+    </p>
+    <blockquote><strong>§ 314.4</strong> <span class="muted">(chunk 1)</span><br>Abridged excerpt of 16 CFR Part 314 prepared for demonstration. Consult the official text in the Code of Federal Regulations before relying on it. § 314.4 Elements In order to develop, implement, and maintain your information security program, you shall: (c) Design and implement safeguards to control the risks you identify through risk assessment, including by: (1) Implementing and periodically reviewing access controls, including technical and, as appropriate, physical controls to authenticate and permit access only to authorized users to protect against the unauthorized acquisition of customer information, and to limit authorized users&#x27; access only to customer information that they need to perform their duties and functions; (3) Protect by encryption all customer information held or transmitted by you both in transit over external networks and at rest; (6)(i) Develop, implement, and m…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">src/lib/db.js:9</div>
+    <pre>  ssl: { rejectUnauthorized: true },</pre>
+    <div class="loc">src/middleware/https.js:3</div>
+    <pre>  if (req.secure || req.headers[&quot;x-forwarded-proto&quot;] &#x3D;&#x3D;&#x3D; &quot;https&quot;) {</pre>
+    <div class="loc">src/server.js:14</div>
+    <pre>    hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },</pre>
+    
+
+  </div>
+  <div class="finding compliant">
+    <div class="id muted small">Finding 11</div>
+    <span class="badge compliant">Compliant</span>
+    <h3 style="margin-top:2mm">Access to personal data must be restricted to authenticated, authorised users under least privilege.</h3>
+    <p>The cited lines implement the &quot;access-control&quot; control and no conflicting code was found.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>Standards for Safeguarding Customer Information (FTC Safeguards Rule, 16 CFR Part 314) - abridged demo excerpt</strong><br>
+      Effective 2024-05-13 · <a href="https://www.ecfr.gov/current/title-16/chapter-I/subchapter-C/part-314">https://www.ecfr.gov/current/title-16/chapter-I/subchapter-C/part-314</a>
+    </p>
+    <blockquote><strong>§ 314.4</strong> <span class="muted">(chunk 1)</span><br>Abridged excerpt of 16 CFR Part 314 prepared for demonstration. Consult the official text in the Code of Federal Regulations before relying on it. § 314.4 Elements In order to develop, implement, and maintain your information security program, you shall: (c) Design and implement safeguards to control the risks you identify through risk assessment, including by: (1) Implementing and periodically reviewing access controls, including technical and, as appropriate, physical controls to authenticate and permit access only to authorized users to protect against the unauthorized acquisition of customer information, and to limit authorized users&#x27; access only to customer information that they need to perform their duties and functions; (3) Protect by encryption all customer information held or transmitted by you both in transit over external networks and at rest; (6)(i) Develop, implement, and m…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">src/middleware/auth.js:12</div>
+    <pre>    req.user &#x3D; jwt.verify(token, config.jwtSecret, { algorithms: [&quot;HS256&quot;] });</pre>
+    <div class="loc">src/middleware/auth.js:20</div>
+    <pre>function requireRole(...allowedRoles) {</pre>
+    <div class="loc">src/middleware/auth.js:23</div>
+    <pre>      return res.status(403).json({ error: &quot;forbidden&quot; });</pre>
+    <div class="loc">src/routes/admin.js:6</div>
+    <pre>// Staff directory. Mounted behind requireAuth + requireRole(&quot;admin&quot;) in server.js.</pre>
+    <div class="loc">src/server.js:21-22</div>
+    <pre>app.use(&quot;/admin&quot;, requireAuth, requireRole(&quot;admin&quot;), require(&quot;./routes/admin&quot;));
+app.use(&quot;/incidents&quot;, requireAuth, requireRole(&quot;admin&quot;), require(&quot;./routes/incidents&quot;));</pre>
+    
+
+  </div>
+  <div class="finding compliant">
+    <div class="id muted small">Finding 12</div>
+    <span class="badge compliant">Compliant</span>
+    <h3 style="margin-top:2mm">Personal data must be encrypted in transit over external networks.</h3>
+    <p>The cited lines implement the &quot;encryption-in-transit&quot; control and no conflicting code was found.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>Regulation (EU) 2016/679 (General Data Protection Regulation) - abridged demo excerpt</strong><br>
+      Effective 2018-05-25 · <a href="https://eur-lex.europa.eu/eli/reg/2016/679/oj">https://eur-lex.europa.eu/eli/reg/2016/679/oj</a>
+    </p>
+    <blockquote><strong>Article 32</strong> <span class="muted">(chunk 5)</span><br>Article 32 Security of processing 1. Taking into account the state of the art, the costs of implementation and the nature, scope, context and purposes of processing as well as the risk for the rights and freedoms of natural persons, the controller and the processor shall implement appropriate technical and organisational measures to ensure a level of security appropriate to the risk, including inter alia as appropriate: (a) the pseudonymisation and encryption of personal data; (b) the ability to ensure the ongoing confidentiality, integrity, availability and resilience of processing systems and services.</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">src/lib/db.js:9</div>
+    <pre>  ssl: { rejectUnauthorized: true },</pre>
+    <div class="loc">src/middleware/https.js:3</div>
+    <pre>  if (req.secure || req.headers[&quot;x-forwarded-proto&quot;] &#x3D;&#x3D;&#x3D; &quot;https&quot;) {</pre>
+    <div class="loc">src/server.js:14</div>
+    <pre>    hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },</pre>
+    
+
+  </div>
+</section>
+
+<section>
+  <h2>Appendix A: Rules in scope</h2>
+  <table class="grid">
+    <tr><th>Rule</th><th>Source</th><th>Effective</th><th>Identifier</th></tr>
+    <tr>
+      <td>Standards for Safeguarding Customer Information (FTC Safeguards Rule, 16 CFR Part 314) - abridged demo excerpt<br><a class="small" href="https://www.ecfr.gov/current/title-16/chapter-I/subchapter-C/part-314">https://www.ecfr.gov/current/title-16/chapter-I/subchapter-C/part-314</a></td>
+      <td class="small">federal-register-demo</td>
+      <td class="small">2024-05-13</td>
+      <td class="small"><code>DEMO-16CFR314</code></td>
+    </tr>
+    <tr>
+      <td>Regulation (EU) 2016/679 (General Data Protection Regulation) - abridged demo excerpt<br><a class="small" href="https://eur-lex.europa.eu/eli/reg/2016/679/oj">https://eur-lex.europa.eu/eli/reg/2016/679/oj</a></td>
+      <td class="small">eur-lex-demo</td>
+      <td class="small">2018-05-25</td>
+      <td class="small"><code>DEMO-CELEX:32016R0679</code></td>
+    </tr>
+  </table>
+</section>
+
+<section>
+  <h2>Appendix B: Methodology and disclaimer</h2>
+  <h3>How this report was produced</h3>
+  <ul>
+    <li>Regulatory sources are checked daily. Only rules whose content hash changed since the last check enter an audit.</li>
+    <li>Rule text is split into section-aware chunks and embedded into a vector store. The target repository is indexed the same way at the snapshot shown on the cover.</li>
+    <li>For each rule, obligations that software must implement are extracted with the chunks that state them.</li>
+    <li>For each obligation, code evidence is gathered by keyword search and vector similarity, then assessed as compliant, a violation, or needing review.</li>
+    <li>Every citation is then checked without a model: each regulation chunk must exist and belong to the rule, and each <code>file:line</code> range must exist in the audited snapshot. Citations that fail are dropped, and a verdict left without both kinds of support is downgraded to "needs review".</li>
+  </ul>
+  <h3>Limits</h3>
+  <ul>
+    <li>The audit sees only the indexed repository. Controls implemented in infrastructure, vendor systems or policy documents are invisible to it.</li>
+    <li>A "compliant" result means supporting code was found, not that the obligation is fully met.</li>
+    <li>Coverage is limited to the rules listed in Appendix A.</li>
+  </ul>
+  <h3>Disclaimer</h3>
+  <p>
+    This report is automated decision support. It is not legal advice and it does not guarantee
+    compliance or complete coverage of any regulation. Findings should be reviewed by qualified
+    counsel and engineers before any action is taken on them.
+  </p>
+</section>
+
+</body>
+</html>

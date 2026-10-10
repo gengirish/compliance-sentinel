@@ -85,6 +85,15 @@ export async function scrapeEurLex(opts: EurLexOptions = {}): Promise<ScrapedRul
         await page.waitForFunction("document.body && document.body.innerText.length > 500", undefined, {
           timeout: 30_000,
         });
+        // Long acts keep streaming in after DOMContentLoaded; wait until the text stops growing.
+        let previous = -1;
+        let stable = 0;
+        for (let i = 0; i < 40 && stable < 3; i++) {
+          const length = (await page.evaluate("document.body.innerText.length")) as number;
+          stable = length === previous ? stable + 1 : 0;
+          previous = length;
+          await page.waitForTimeout(750);
+        }
         return await page.content();
       } catch (err) {
         lastError = err;
@@ -105,6 +114,10 @@ export async function scrapeEurLex(opts: EurLexOptions = {}): Promise<ScrapedRul
       const url = `${BASE}/TXT/HTML/?uri=CELEX:${id}`;
       const doc = parseEurLexDocument(await load(url, `celex-${id}`));
       if (!doc.text) return;
+      if (/requested document does not exist/i.test(`${doc.title} ${doc.text.slice(0, 2_000)}`)) {
+        log.warn("eur-lex has no English HTML for this act, skipped", { celex: id });
+        return;
+      }
       out.push({
         externalId: `CELEX:${id}`,
         title: doc.title || `CELEX ${id}`,

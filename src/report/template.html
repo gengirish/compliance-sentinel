@@ -82,7 +82,8 @@
     <tr><td>Target repository</td><td>{{run.repo}}</td></tr>
     <tr><td>Audited snapshot</td><td>{{run.commitSha}}</td></tr>
     <tr><td>Rules in scope</td><td>{{rules.length}}</td></tr>
-    <tr><td>Obligations assessed</td><td>{{summary.total}}</td></tr>
+    <tr><td>Obligations assessed</td><td>{{run.obligations}}</td></tr>
+    <tr><td>Findings</td><td>{{summary.total}}</td></tr>
     <tr><td>Analyst</td><td>{{run.analyst}}</td></tr>
     <tr><td>Model cost</td><td>${{run.costUsd}}</td></tr>
   </table>
@@ -92,7 +93,8 @@
   <h2>Executive summary</h2>
   <p>
     This run audited <strong>{{run.repo}}</strong> against {{rules.length}} new or amended
-    rule{{plural rules.length}}. It assessed {{summary.total}} obligation{{plural summary.total}}:
+    rule{{plural rules.length}}. It assessed {{run.obligations}} obligation{{plural run.obligations}}, which
+    consolidated into {{summary.total}} finding{{plural summary.total}}:
     {{summary.byStatus.violation}} violation{{plural summary.byStatus.violation}},
     {{summary.byStatus.needs_review}} needing human review and
     {{summary.byStatus.compliant}} compliant.

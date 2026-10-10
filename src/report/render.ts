@@ -32,7 +32,7 @@ function truncate(text: string, max: number): string {
 
 export type ReportInput = Pick<
   AuditStateType,
-  "runId" | "trigger" | "ruleIds" | "repo" | "commitSha" | "finalFindings" | "errors" | "costUsd"
+  "runId" | "trigger" | "ruleIds" | "repo" | "commitSha" | "obligations" | "finalFindings" | "errors" | "costUsd"
 > & { analyst: string; date?: Date };
 
 /** Joins findings with rule and chunk text into the view model the template renders. */
@@ -121,6 +121,7 @@ export async function buildReportData(db: Db, input: ReportInput) {
       repo: input.repo,
       commitSha: input.commitSha,
       analyst: input.analyst,
+      obligations: input.obligations.length,
       costUsd: input.costUsd.toFixed(4),
     },
     summary: summarize(input.finalFindings),

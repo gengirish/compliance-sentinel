@@ -32,7 +32,8 @@ if (result.status === "skipped") {
   console.log(`
 Run ${result.runId} completed
   rules in scope : ${result.rulesInScope.length}
-  obligations    : ${s.total}
+  obligations    : ${result.state?.obligations.length ?? 0}
+  findings       : ${s.total}
   violations     : ${s.byStatus.violation} (critical ${s.violationsBySeverity.critical}, high ${s.violationsBySeverity.high}, medium ${s.violationsBySeverity.medium}, low ${s.violationsBySeverity.low})
   needs review   : ${s.byStatus.needs_review}
   compliant      : ${s.byStatus.compliant}
