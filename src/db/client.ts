@@ -33,7 +33,7 @@ export async function openDb(opts: { url?: string; pgliteDir?: string | "memory"
   }
 
   const { PGlite } = await import("@electric-sql/pglite");
-  const { vector } = await import("@electric-sql/pglite/vector");
+  const { vector } = await import("@electric-sql/pglite-pgvector");
   const { drizzle } = await import("drizzle-orm/pglite");
   const dir = opts.pgliteDir ?? config.PGLITE_DIR;
   let dataDir: string | undefined;
@@ -52,8 +52,9 @@ export async function migrate(db: Db): Promise<string[]> {
   await db.execute(
     sql`CREATE TABLE IF NOT EXISTS _migrations (name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())`,
   );
-  const done = await db.execute(sql`SELECT name FROM _migrations`);
-  const applied = new Set((done.rows as { name: string }[]).map((r) => r.name));
+  // node-postgres and PGlite both return `{ rows }` from execute(); the shared base type hides it.
+  const done = (await db.execute(sql`SELECT name FROM _migrations`)) as unknown as { rows: { name: string }[] };
+  const applied = new Set(done.rows.map((r) => r.name));
   const files = readdirSync(MIGRATIONS_DIR)
     .filter((f) => f.endsWith(".sql"))
     .sort();

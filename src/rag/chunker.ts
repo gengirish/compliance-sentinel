@@ -7,13 +7,15 @@ export type TextChunk = {
 export type ChunkOptions = {
   /** Soft ceiling per chunk, in approximate tokens. */
   maxTokens?: number;
-  /** Sections smaller than this are merged with their neighbours. */
+  /** Fragments smaller than this are merged into the next section rather than standing alone. */
   minTokens?: number;
   /** Fraction of a chunk repeated at the start of the next one when a section is split. */
   overlap?: number;
 };
 
-const DEFAULTS = { maxTokens: 1200, minTokens: 800, overlap: 0.1 };
+// A section stays its own chunk so citations point at one article; only fragments too
+// small to retrieve on (a title line, a one-line preamble) are merged forward.
+const DEFAULTS = { maxTokens: 1200, minTokens: 60, overlap: 0.1 };
 
 /** Rough token estimate (~4 characters per token for English legal prose). */
 export function estimateTokens(text: string): number {

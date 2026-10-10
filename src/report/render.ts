@@ -83,7 +83,7 @@ export async function buildReportData(db: Db, input: ReportInput) {
       },
       citations: finding.citationChunkIds.flatMap((id) => {
         const chunk = chunkById.get(id);
-        return chunk ? [{ id, sectionRef: chunk.sectionRef ?? "Rule text", excerpt: truncate(chunk.text, 520) }] : [];
+        return chunk ? [{ id, sectionRef: chunk.sectionRef ?? "Rule text", excerpt: truncate(chunk.text, 900) }] : [];
       }),
       evidence: finding.evidence.map((e) => ({
         path: e.path,

@@ -1,0 +1,46 @@
+# One app, two process groups: `web` (HTTP, scales to zero) and `worker` (BullMQ, always on).
+app = "compliance-sentinel"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[deploy]
+  # Runs once per deploy, before new machines start.
+  release_command = "node dist/cli/migrate.js"
+
+[env]
+  PORT = "8080"
+  AUDIT_CRON = "0 6 * * *"
+  MAX_RUN_COST_USD = "2"
+  TARGET_REPO_PATH = "demo-target-app"
+
+[processes]
+  web = "node dist/web/server.js"
+  worker = "node dist/queue/worker.js"
+
+[http_service]
+  processes = ["web"]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/health"
+    interval = "30s"
+    timeout = "5s"
+    grace_period = "15s"
+
+[[vm]]
+  processes = ["web"]
+  size = "shared-cpu-1x"
+  memory = "512mb"
+
+# Chromium plus the audit graph need more headroom than the web process.
+[[vm]]
+  processes = ["worker"]
+  size = "shared-cpu-1x"
+  memory = "1gb"

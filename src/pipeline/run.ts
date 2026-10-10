@@ -3,11 +3,11 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from "node:f
 import path from "node:path";
 import { promisify } from "node:util";
 import { MemorySaver, type BaseCheckpointSaver } from "@langchain/langgraph";
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { config, resolveFromRoot, ROOT_DIR, targetRepoPath } from "../config.js";
 import { openMigratedDb, type DbHandle } from "../db/client.js";
-import { auditRuns, type Rule } from "../db/schema.js";
+import { auditRuns, rules as rulesTable, type Rule } from "../db/schema.js";
 import { buildAuditGraph, runAuditGraph } from "../graph/graph.js";
 import type { AuditStateType, GraphDeps } from "../graph/state.js";
 import type { FindingSummary } from "../graph/types.js";
@@ -163,11 +163,13 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
   const { db } = handle;
   const ownsHandle = !opts.handle;
   let runId: number | undefined;
+  let scope: number[] = [];
   let checkpointer: Awaited<ReturnType<typeof createCheckpointer>> | undefined;
 
   try {
     const changedRules = await collectChangedRules(handle, opts);
     const rulesInScope = changedRules.map((r) => r.id);
+    scope = rulesInScope;
 
     if (changedRules.length === 0) {
       const [row] = await db
@@ -250,6 +252,15 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
         .update(auditRuns)
         .set({ status: "failed", finishedAt: sql`now()`, error: errorMessage(err).slice(0, 4_000) })
         .where(eq(auditRuns.id, runId))
+        .catch(() => undefined);
+    }
+    if (scope.length > 0 && !opts.ruleIds?.length) {
+      // The rules were stored before the audit failed. Invalidate their hashes so the
+      // retry (or tomorrow's run) sees them as changed instead of skipping them.
+      await db
+        .update(rulesTable)
+        .set({ contentHash: sql`'unaudited:' || ${rulesTable.contentHash}` })
+        .where(inArray(rulesTable.id, scope))
         .catch(() => undefined);
     }
     throw err;

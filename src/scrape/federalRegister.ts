@@ -1,3 +1,4 @@
+import * as cheerio from "cheerio";
 import { z } from "zod";
 import { config } from "../config.js";
 import { log } from "../log.js";
@@ -62,6 +63,25 @@ async function fetchWithRetry(fetchImpl: typeof fetch, url: string, attempts = 3
   throw lastError;
 }
 
+/**
+ * The API's "raw text" is an HTML page wrapping a <pre> block. Final rules are
+ * mostly preamble (commentary on the rulemaking, often hundreds of pages); the
+ * binding regulatory text follows the "List of Subjects" heading at the end.
+ * Keep the summary plus that regulatory text, which is what an audit needs.
+ */
+export function extractRuleText(raw: string): string {
+  const text = /<pre|<html/i.test(raw) ? cheerio.load(raw)("pre").text() || cheerio.load(raw).text() : raw;
+  const subjects = text.lastIndexOf("List of Subjects");
+  if (subjects === -1) return text.trim();
+
+  // The summary runs from "SUMMARY:" to the next front-matter heading.
+  const summaryMatch = text.match(
+    /SUMMARY:[\s\S]{0,4000}?(?=\n\s*(?:DATES|ADDRESSES|FOR FURTHER INFORMATION CONTACT|SUPPLEMENTARY INFORMATION):)/,
+  );
+  const summary = summaryMatch ? summaryMatch[0].trim() : "";
+  return [summary, text.slice(subjects).trim()].filter(Boolean).join("\n\n");
+}
+
 /** Final rules from the Federal Register's official JSON API, newest first, with full text. */
 export async function fetchFederalRegisterRules(opts: FederalRegisterOptions = {}): Promise<ScrapedRule[]> {
   const fetchImpl = opts.fetchImpl ?? fetch;
@@ -78,7 +98,7 @@ export async function fetchFederalRegisterRules(opts: FederalRegisterOptions = {
     let text = doc.abstract ?? "";
     if (doc.raw_text_url) {
       try {
-        text = await (await fetchWithRetry(fetchImpl, doc.raw_text_url)).text();
+        text = extractRuleText(await (await fetchWithRetry(fetchImpl, doc.raw_text_url)).text());
       } catch (err) {
         log.warn("federal register full text unavailable, using abstract", {
           document: doc.document_number,
@@ -88,7 +108,7 @@ export async function fetchFederalRegisterRules(opts: FederalRegisterOptions = {
     }
     if (!text.trim()) continue;
     if (text.length > maxChars) {
-      // Some final rules run to hundreds of pages; cap what we embed and say so.
+      // Even the regulatory text alone can be very long; cap what we embed and say so.
       log.warn("federal register document truncated", {
         document: doc.document_number,
         chars: text.length,
