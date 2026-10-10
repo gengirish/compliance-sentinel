@@ -1,0 +1,14 @@
+{
+  "name": "demo-target-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Acme Clinic patient portal API. Audit target for Compliance Sentinel.",
+  "main": "src/server.js",
+  "scripts": { "start": "node src/server.js" },
+  "dependencies": {
+    "express": "^4.19.2",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.11.5"
+  }
+}

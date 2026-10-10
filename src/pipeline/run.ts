@@ -1,0 +1,260 @@
+import { execFile } from "node:child_process";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import path from "node:path";
+import { promisify } from "node:util";
+import { MemorySaver, type BaseCheckpointSaver } from "@langchain/langgraph";
+import { eq, sql } from "drizzle-orm";
+import { z } from "zod";
+import { config, resolveFromRoot, ROOT_DIR, targetRepoPath } from "../config.js";
+import { openMigratedDb, type DbHandle } from "../db/client.js";
+import { auditRuns, type Rule } from "../db/schema.js";
+import { buildAuditGraph, runAuditGraph } from "../graph/graph.js";
+import type { AuditStateType, GraphDeps } from "../graph/state.js";
+import type { FindingSummary } from "../graph/types.js";
+import { Budget, type Analyst } from "../llm/analyst.js";
+import { ClaudeAnalyst } from "../llm/claudeAnalyst.js";
+import { OfflineAnalyst } from "../llm/offlineAnalyst.js";
+import { errorMessage, log } from "../log.js";
+import { notifyCritical } from "../notify/index.js";
+import { createEmbedder, type Embedder } from "../rag/embed.js";
+import { indexRepo } from "../rag/indexRepo.js";
+import { embedRule, getRulesByIds } from "../rag/retrieve.js";
+import { renderReport } from "../report/render.js";
+import { persistChanges, upsertSource, type ScrapedRule, type SourceDef } from "../scrape/diff.js";
+import { EUR_LEX_SOURCE, scrapeEurLex } from "../scrape/eurLex.playwright.js";
+import { FEDERAL_REGISTER_SOURCE, fetchFederalRegisterRules } from "../scrape/federalRegister.js";
+
+const run = promisify(execFile);
+
+export type PipelineOptions = {
+  trigger: "cron" | "manual";
+  /** Force the bundled demo rules through, regardless of content hashes. */
+  demo?: boolean;
+  /** Audit these stored rules instead of scraping. */
+  ruleIds?: number[];
+  /** Injected in tests; defaults are built from the environment. */
+  handle?: DbHandle;
+  analyst?: Analyst;
+  embedder?: Embedder;
+  deps?: Partial<Pick<GraphDeps, "renderReport" | "notify">>;
+  sources?: { def: SourceDef; fetch: () => Promise<ScrapedRule[]> }[];
+  repoPath?: string;
+};
+
+export type PipelineResult = {
+  runId: number;
+  status: "completed" | "skipped";
+  rulesInScope: number[];
+  summary: FindingSummary | null;
+  reportUrl: string | null;
+  reportPath: string | null;
+  costUsd: number;
+  errors: string[];
+  notified: string[];
+  state?: AuditStateType;
+};
+
+const FixtureSchema = z.object({
+  source: z.object({ name: z.string(), url: z.string() }),
+  externalId: z.string(),
+  title: z.string(),
+  effectiveDate: z.string().nullable(),
+  url: z.string(),
+  rawText: z.string(),
+});
+
+/** Demo rules shipped with the repo, grouped by the source they stand in for. */
+export function loadDemoRules(dir = path.join(ROOT_DIR, "fixtures", "rules")) {
+  const bySource = new Map<string, { def: SourceDef; rules: ScrapedRule[] }>();
+  for (const file of readdirSync(dir).filter((f) => f.endsWith(".json")).sort()) {
+    const fixture = FixtureSchema.parse(JSON.parse(readFileSync(path.join(dir, file), "utf8")));
+    const name = `${fixture.source.name}-demo`;
+    const entry = bySource.get(name) ?? { def: { name, kind: "fixture" as const, url: fixture.source.url }, rules: [] };
+    entry.rules.push({
+      externalId: fixture.externalId,
+      title: fixture.title,
+      effectiveDate: fixture.effectiveDate,
+      url: fixture.url,
+      rawText: fixture.rawText,
+    });
+    bySource.set(name, entry);
+  }
+  return [...bySource.values()];
+}
+
+export function defaultSources(): NonNullable<PipelineOptions["sources"]> {
+  const sources: NonNullable<PipelineOptions["sources"]> = [
+    { def: FEDERAL_REGISTER_SOURCE, fetch: () => fetchFederalRegisterRules() },
+  ];
+  if (config.SCRAPE_EURLEX) sources.push({ def: EUR_LEX_SOURCE, fetch: () => scrapeEurLex() });
+  return sources;
+}
+
+export function createAnalyst(): Analyst {
+  if (config.ANTHROPIC_API_KEY) return new ClaudeAnalyst();
+  log.warn("ANTHROPIC_API_KEY not set: using the offline keyword baseline instead of Claude");
+  return new OfflineAnalyst();
+}
+
+async function createCheckpointer(handle: DbHandle): Promise<{ saver: BaseCheckpointSaver; close: () => Promise<void> }> {
+  if (handle.driver === "postgres" && config.DATABASE_URL) {
+    const { PostgresSaver } = await import("@langchain/langgraph-checkpoint-postgres");
+    const saver = PostgresSaver.fromConnString(config.DATABASE_URL);
+    await saver.setup();
+    return { saver, close: () => saver.end() };
+  }
+  // The embedded dev database has no pg pool for PostgresSaver, so checkpoints stay in memory.
+  return { saver: new MemorySaver(), close: async () => undefined };
+}
+
+/** Uses TARGET_REPO_PATH, or shallow-clones TARGET_REPO_URL, or falls back to the demo app. */
+async function resolveTargetRepo(explicit?: string): Promise<string> {
+  if (explicit) return explicit;
+  if (!config.TARGET_REPO_PATH && config.TARGET_REPO_URL) {
+    const dir = resolveFromRoot(".data/target-repo");
+    rmSync(dir, { recursive: true, force: true });
+    mkdirSync(path.dirname(dir), { recursive: true });
+    await run("git", ["clone", "--depth", "1", config.TARGET_REPO_URL, dir], { timeout: 180_000 });
+    return dir;
+  }
+  const dir = targetRepoPath();
+  if (!existsSync(dir)) throw new Error(`target repository not found at ${dir}`);
+  return dir;
+}
+
+/** Scrape -> diff -> persist. Returns only rules that are new or amended. */
+async function collectChangedRules(handle: DbHandle, opts: PipelineOptions): Promise<Rule[]> {
+  const { db } = handle;
+  if (opts.ruleIds?.length) return getRulesByIds(db, opts.ruleIds);
+
+  const changed: Rule[] = [];
+  if (opts.demo) {
+    for (const { def, rules } of loadDemoRules()) {
+      const sourceId = await upsertSource(db, def);
+      changed.push(...(await persistChanges(db, sourceId, rules, { force: true })).changed);
+    }
+    return changed;
+  }
+
+  for (const source of opts.sources ?? defaultSources()) {
+    try {
+      const scraped = await source.fetch();
+      if (scraped.length === 0) log.warn("source returned zero rules; the scraper may be broken", { source: source.def.name });
+      const sourceId = await upsertSource(db, source.def);
+      const result = await persistChanges(db, sourceId, scraped);
+      log.info("source checked", {
+        source: source.def.name,
+        scraped: scraped.length,
+        new: result.changes.filter((c) => c.kind === "new").length,
+        amended: result.changes.filter((c) => c.kind === "amended").length,
+      });
+      changed.push(...result.changed);
+    } catch (err) {
+      // One broken portal must not stop the other source from being audited.
+      log.error("source failed", { source: source.def.name, error: errorMessage(err) });
+    }
+  }
+  return changed;
+}
+
+/** The whole daily job: scrape, diff, embed, audit, report, alert. */
+export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult> {
+  const handle = opts.handle ?? (await openMigratedDb());
+  const { db } = handle;
+  const ownsHandle = !opts.handle;
+  let runId: number | undefined;
+  let checkpointer: Awaited<ReturnType<typeof createCheckpointer>> | undefined;
+
+  try {
+    const changedRules = await collectChangedRules(handle, opts);
+    const rulesInScope = changedRules.map((r) => r.id);
+
+    if (changedRules.length === 0) {
+      const [row] = await db
+        .insert(auditRuns)
+        .values({ status: "skipped", trigger: opts.trigger, finishedAt: sql`now()` })
+        .returning({ id: auditRuns.id });
+      log.info("no new or amended rules; audit skipped", { runId: row!.id });
+      return {
+        runId: row!.id,
+        status: "skipped",
+        rulesInScope: [],
+        summary: null,
+        reportUrl: null,
+        reportPath: null,
+        costUsd: 0,
+        errors: [],
+        notified: [],
+      };
+    }
+
+    const [row] = await db
+      .insert(auditRuns)
+      .values({ status: "running", trigger: opts.trigger, rulesInScope })
+      .returning({ id: auditRuns.id });
+    runId = row!.id;
+    log.info("audit run started", { runId, rules: rulesInScope.length, trigger: opts.trigger });
+
+    const embedder = opts.embedder ?? createEmbedder(db);
+    const analyst = opts.analyst ?? createAnalyst();
+    for (const rule of changedRules) {
+      const chunks = await embedRule(db, embedder, rule);
+      log.info("rule embedded", { ruleId: rule.id, chunks });
+    }
+    const repoPath = await resolveTargetRepo(opts.repoPath);
+    const index = await indexRepo(db, embedder, repoPath);
+
+    checkpointer = await createCheckpointer(handle);
+    const deps: GraphDeps = {
+      db,
+      embedder,
+      analyst,
+      budget: new Budget(config.MAX_RUN_COST_USD),
+      renderReport: opts.deps?.renderReport ?? ((state) => renderReport(db, { ...state, analyst: analyst.name })),
+      notify: opts.deps?.notify ?? notifyCritical,
+    };
+    const graph = buildAuditGraph(deps, { checkpointer: checkpointer.saver });
+    const state = await runAuditGraph(
+      graph,
+      { runId, trigger: opts.trigger, ruleIds: rulesInScope, repo: index.repo, commitSha: index.commitSha },
+      { concurrency: config.AUDIT_CONCURRENCY },
+    );
+
+    await db
+      .update(auditRuns)
+      .set({
+        status: "completed",
+        finishedAt: sql`now()`,
+        reportUrl: state.reportPath,
+        costUsd: state.costUsd,
+        error: state.errors.length ? state.errors.join("\n").slice(0, 4_000) : null,
+      })
+      .where(eq(auditRuns.id, runId));
+    log.info("audit run completed", { runId, costUsd: state.costUsd, ...state.summary });
+
+    return {
+      runId,
+      status: "completed",
+      rulesInScope,
+      summary: state.summary,
+      reportUrl: state.reportUrl,
+      reportPath: state.reportPath,
+      costUsd: state.costUsd,
+      errors: state.errors,
+      notified: state.notified,
+      state,
+    };
+  } catch (err) {
+    if (runId !== undefined) {
+      await db
+        .update(auditRuns)
+        .set({ status: "failed", finishedAt: sql`now()`, error: errorMessage(err).slice(0, 4_000) })
+        .where(eq(auditRuns.id, runId))
+        .catch(() => undefined);
+    }
+    throw err;
+  } finally {
+    await checkpointer?.close().catch(() => undefined);
+    if (ownsHandle) await handle.close();
+  }
+}

@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Compliance Sentinel audit report, run {{run.id}}</title>
+<style>
+  @page {
+    size: A4;
+    margin: 22mm 18mm 20mm 18mm;
+    @top-left { content: "Compliance Sentinel"; font: 8pt "DejaVu Sans", Arial, sans-serif; color: #6b7280; }
+    @top-right { content: "Audit run {{run.id}} · {{run.date}}"; font: 8pt "DejaVu Sans", Arial, sans-serif; color: #6b7280; }
+    @bottom-center { content: "Page " counter(page) " of " counter(pages); font: 8pt "DejaVu Sans", Arial, sans-serif; color: #6b7280; }
+    @bottom-left { content: "Decision support, not legal advice"; font: 8pt "DejaVu Sans", Arial, sans-serif; color: #6b7280; }
+  }
+  @page cover { margin: 0; @top-left { content: none; } @top-right { content: none; } @bottom-center { content: none; } @bottom-left { content: none; } }
+
+  * { box-sizing: border-box; }
+  body { font: 10pt/1.45 "DejaVu Sans", Arial, Helvetica, sans-serif; color: #111827; margin: 0; }
+  h1 { font-size: 20pt; margin: 0 0 6mm; }
+  h2 { font-size: 14pt; margin: 0 0 4mm; padding-bottom: 2mm; border-bottom: 1px solid #d1d5db; }
+  h3 { font-size: 11pt; margin: 0 0 2mm; }
+  p { margin: 0 0 3mm; }
+  a { color: #1d4ed8; text-decoration: none; }
+  section { page-break-before: always; }
+  .muted { color: #6b7280; }
+  .small { font-size: 8.5pt; }
+
+  .cover { page: cover; page-break-before: avoid; height: 297mm; padding: 60mm 24mm 24mm; background: #0f172a; color: #f8fafc; }
+  .cover .kicker { font-size: 10pt; letter-spacing: 0.12em; text-transform: uppercase; color: #94a3b8; }
+  .cover h1 { font-size: 30pt; margin: 6mm 0 10mm; }
+  .cover table { width: 100%; border-collapse: collapse; margin-top: 16mm; }
+  .cover td { padding: 2.5mm 0; border-bottom: 1px solid #334155; font-size: 10pt; vertical-align: top; }
+  .cover td:first-child { width: 42mm; color: #94a3b8; }
+  .cover .verdict { margin-top: 14mm; padding: 5mm 6mm; border-left: 4px solid #f87171; background: #1e293b; font-size: 11pt; }
+  .cover .verdict.ok { border-left-color: #4ade80; }
+
+  table.grid { width: 100%; border-collapse: collapse; margin: 0 0 5mm; }
+  table.grid th, table.grid td { border: 1px solid #e5e7eb; padding: 2mm 2.5mm; text-align: left; vertical-align: top; }
+  table.grid th { background: #f3f4f6; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.04em; }
+  td.num { text-align: right; width: 22mm; }
+
+  .badge { display: inline-block; padding: 0.4mm 2.2mm; border-radius: 2mm; font-size: 8pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.04em; color: #fff; }
+  .badge.critical { background: #b91c1c; }
+  .badge.high { background: #c2410c; }
+  .badge.medium { background: #a16207; }
+  .badge.low { background: #4b5563; }
+  .badge.compliant { background: #15803d; }
+  .badge.needs_review { background: #6d28d9; }
+  .badge.violation { background: #b91c1c; }
+
+  .finding { border: 1px solid #e5e7eb; border-left-width: 4px; border-radius: 1.5mm; padding: 4mm 5mm; margin: 0 0 5mm; page-break-inside: avoid; }
+  .finding.critical { border-left-color: #b91c1c; }
+  .finding.high { border-left-color: #c2410c; }
+  .finding.medium { border-left-color: #a16207; }
+  .finding.low { border-left-color: #4b5563; }
+  .finding.compliant { border-left-color: #15803d; }
+  .finding.needs_review { border-left-color: #6d28d9; }
+  .finding .id { float: right; }
+  .label { font-size: 8pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin: 3mm 0 1mm; }
+  blockquote { margin: 0 0 2mm; padding: 2mm 3mm; background: #f9fafb; border-left: 2px solid #9ca3af; font-size: 9pt; }
+  pre { margin: 0 0 2mm; padding: 2.5mm 3mm; background: #111827; color: #e5e7eb; font: 8pt/1.4 "DejaVu Sans Mono", Consolas, monospace; white-space: pre-wrap; word-break: break-all; border-radius: 1mm; }
+  code { font: 8.5pt "DejaVu Sans Mono", Consolas, monospace; }
+  .loc { font: bold 8.5pt "DejaVu Sans Mono", Consolas, monospace; margin: 0 0 1mm; }
+  ul { margin: 0 0 3mm; padding-left: 5mm; }
+  .note { font-size: 8.5pt; color: #92400e; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="kicker">Compliance Sentinel · Audit report</div>
+  <h1>Regulatory audit of {{run.repo}}</h1>
+  <div>Run {{run.id}} · {{run.date}} · triggered by {{run.trigger}}</div>
+  <div class="verdict {{#unless summary.hasCritical}}ok{{/unless}}">
+    {{#if summary.hasCritical}}
+      {{summary.violationsBySeverity.critical}} critical violation{{plural summary.violationsBySeverity.critical}} found. Action is needed.
+    {{else}}
+      No critical violations found in this run.
+    {{/if}}
+  </div>
+  <table>
+    <tr><td>Target repository</td><td>{{run.repo}}</td></tr>
+    <tr><td>Audited snapshot</td><td>{{run.commitSha}}</td></tr>
+    <tr><td>Rules in scope</td><td>{{rules.length}}</td></tr>
+    <tr><td>Obligations assessed</td><td>{{summary.total}}</td></tr>
+    <tr><td>Analyst</td><td>{{run.analyst}}</td></tr>
+    <tr><td>Model cost</td><td>${{run.costUsd}}</td></tr>
+  </table>
+</div>
+
+<section>
+  <h2>Executive summary</h2>
+  <p>
+    This run audited <strong>{{run.repo}}</strong> against {{rules.length}} new or amended
+    rule{{plural rules.length}}. It assessed {{summary.total}} obligation{{plural summary.total}}:
+    {{summary.byStatus.violation}} violation{{plural summary.byStatus.violation}},
+    {{summary.byStatus.needs_review}} needing human review and
+    {{summary.byStatus.compliant}} compliant.
+  </p>
+
+  <table class="grid">
+    <tr><th>Violations by severity</th><th>Count</th></tr>
+    <tr><td><span class="badge critical">Critical</span></td><td class="num">{{summary.violationsBySeverity.critical}}</td></tr>
+    <tr><td><span class="badge high">High</span></td><td class="num">{{summary.violationsBySeverity.high}}</td></tr>
+    <tr><td><span class="badge medium">Medium</span></td><td class="num">{{summary.violationsBySeverity.medium}}</td></tr>
+    <tr><td><span class="badge low">Low</span></td><td class="num">{{summary.violationsBySeverity.low}}</td></tr>
+  </table>
+
+  <table class="grid">
+    <tr><th>#</th><th>Status</th><th>Obligation</th><th>Rule</th><th>Primary location</th></tr>
+    {{#each findings}}
+    <tr>
+      <td>{{number}}</td>
+      <td><span class="badge {{badge}}">{{badgeLabel}}</span></td>
+      <td>{{obligation}}</td>
+      <td class="small">{{rule.shortTitle}}</td>
+      <td class="small"><code>{{primaryLocation}}</code></td>
+    </tr>
+    {{/each}}
+    {{#unless findings.length}}
+    <tr><td colspan="5" class="muted">No obligations were assessed in this run.</td></tr>
+    {{/unless}}
+  </table>
+</section>
+
+{{#each groups}}
+<section>
+  <h2>{{title}} ({{findings.length}})</h2>
+  {{#if intro}}<p class="muted">{{intro}}</p>{{/if}}
+  {{#each findings}}
+  <div class="finding {{badge}}">
+    <div class="id muted small">Finding {{number}}</div>
+    <span class="badge {{badge}}">{{badgeLabel}}</span>
+    <h3 style="margin-top:2mm">{{obligation}}</h3>
+    <p>{{rationale}}</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>{{rule.title}}</strong><br>
+      {{#if rule.effectiveDate}}Effective {{rule.effectiveDate}} · {{/if}}<a href="{{rule.url}}">{{rule.url}}</a>
+    </p>
+    {{#each citations}}
+    <blockquote><strong>{{sectionRef}}</strong> <span class="muted">(chunk {{id}})</span><br>{{excerpt}}</blockquote>
+    {{/each}}
+
+    <div class="label">Code evidence</div>
+    {{#each evidence}}
+    <div class="loc">{{path}}:{{lines}}</div>
+    <pre>{{excerpt}}</pre>
+    {{/each}}
+    {{#unless evidence.length}}<p class="muted small">No code location could be verified for this item.</p>{{/unless}}
+
+    {{#if verification.length}}
+    <div class="label">Verification notes</div>
+    <ul class="note">{{#each verification}}<li>{{this}}</li>{{/each}}</ul>
+    {{/if}}
+  </div>
+  {{/each}}
+</section>
+{{/each}}
+
+<section>
+  <h2>Appendix A: Rules in scope</h2>
+  <table class="grid">
+    <tr><th>Rule</th><th>Source</th><th>Effective</th><th>Identifier</th></tr>
+    {{#each rules}}
+    <tr>
+      <td>{{title}}<br><a class="small" href="{{url}}">{{url}}</a></td>
+      <td class="small">{{source}}</td>
+      <td class="small">{{effectiveDate}}</td>
+      <td class="small"><code>{{externalId}}</code></td>
+    </tr>
+    {{/each}}
+  </table>
+  {{#if errors.length}}
+  <h3>Run notes</h3>
+  <ul class="small">{{#each errors}}<li>{{this}}</li>{{/each}}</ul>
+  {{/if}}
+</section>
+
+<section>
+  <h2>Appendix B: Methodology and disclaimer</h2>
+  <h3>How this report was produced</h3>
+  <ul>
+    <li>Regulatory sources are checked daily. Only rules whose content hash changed since the last check enter an audit.</li>
+    <li>Rule text is split into section-aware chunks and embedded into a vector store. The target repository is indexed the same way at the snapshot shown on the cover.</li>
+    <li>For each rule, obligations that software must implement are extracted with the chunks that state them.</li>
+    <li>For each obligation, code evidence is gathered by keyword search and vector similarity, then assessed as compliant, a violation, or needing review.</li>
+    <li>Every citation is then checked without a model: each regulation chunk must exist and belong to the rule, and each <code>file:line</code> range must exist in the audited snapshot. Citations that fail are dropped, and a verdict left without both kinds of support is downgraded to "needs review".</li>
+  </ul>
+  <h3>Limits</h3>
+  <ul>
+    <li>The audit sees only the indexed repository. Controls implemented in infrastructure, vendor systems or policy documents are invisible to it.</li>
+    <li>A "compliant" result means supporting code was found, not that the obligation is fully met.</li>
+    <li>Coverage is limited to the rules listed in Appendix A.</li>
+  </ul>
+  <h3>Disclaimer</h3>
+  <p>
+    This report is automated decision support. It is not legal advice and it does not guarantee
+    compliance or complete coverage of any regulation. Findings should be reviewed by qualified
+    counsel and engineers before any action is taken on them.
+  </p>
+</section>
+
+</body>
+</html>

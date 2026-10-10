@@ -1,0 +1,54 @@
+{
+  "name": "compliance-sentinel",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LangGraph agent that watches regulatory portals, audits a codebase against new rules, and emits a cited PDF report with alerts.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && node scripts/copy-assets.mjs",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src tests",
+    "test": "vitest run",
+    "db:migrate": "tsx src/cli/migrate.ts",
+    "index:repo": "tsx src/cli/indexRepo.ts",
+    "audit:run": "tsx src/cli/auditRun.ts",
+    "eval:retrieval": "tsx src/cli/evalRetrieval.ts",
+    "eval:golden": "tsx src/cli/evalGolden.ts",
+    "dev:web": "tsx watch src/web/server.ts",
+    "dev:worker": "tsx watch src/queue/worker.ts",
+    "start:web": "node dist/web/server.js",
+    "start:worker": "node dist/queue/worker.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0",
+    "@aws-sdk/client-s3": "^3.1149.0",
+    "@aws-sdk/s3-request-presigner": "^3.1149.0",
+    "@electric-sql/pglite": "^0.5.8",
+    "@hono/node-server": "^2.1.4",
+    "@langchain/core": "^1.2.17",
+    "@langchain/langgraph": "^1.4.21",
+    "@langchain/langgraph-checkpoint-postgres": "^1.0.6",
+    "bullmq": "^6.3.12",
+    "cheerio": "^1.2.0",
+    "dotenv": "^18.0.7",
+    "drizzle-orm": "^0.45.4",
+    "handlebars": "^4.7.10",
+    "hono": "^4.13.13",
+    "ioredis": "^6.0.0",
+    "pg": "^8.23.1",
+    "playwright": "^1.64.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/pg": "^8.23.1",
+    "eslint": "^10.12.0",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.71.1",
+    "vitest": "^5.0.3"
+  }
+}

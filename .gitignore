@@ -9,3 +9,5 @@ reports/
 playwright-report/
 test-results/
 .claude/settings.local.json
+.data/
+coverage/
