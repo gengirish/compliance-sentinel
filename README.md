@@ -14,6 +14,7 @@ Each day it checks two sources for new or amended rules. When something changed,
 | Federal Register API source | Verified against the live API |
 | EUR-Lex Playwright source | Verified against the live site (GDPR: 99 articles, plus its corrigendum) |
 | Full run on live sources, then a second run that correctly skips | Verified locally |
+| Neon Postgres with pgvector, including the Postgres checkpointer | Verified: migrations and a demo audit ran against Neon |
 | Audit with Claude (`claude-sonnet-5-5`, `claude-haiku-5-5`) and Voyage `voyage-law-2` | Implemented, **not yet run**: needs API keys |
 | Docker image and PDF rendering with WeasyPrint | Verified in CI on every push (image builds, demo report renders to a 17-page PDF) |
 | BullMQ worker and cron | Implemented and typechecked; **not yet run against Redis** |
@@ -28,6 +29,12 @@ Without API keys the pipeline still runs end to end using two labelled stand-ins
 
 ## Architecture
 
+![Compliance Sentinel architecture](docs/architecture.png)
+
+[docs/architecture.html](docs/architecture.html) is the interactive version (open it locally): each component links to its source file, and three guided views walk through the trigger path, the audit's inputs and its outputs. It is generated from [docs/architecture.json](docs/architecture.json) with Archify.
+
+The pipeline, step by step:
+
 ```mermaid
 flowchart TD
     cron["BullMQ repeatable job<br/>daily 06:00 UTC"] --> scrape
@@ -36,7 +43,7 @@ flowchart TD
     subgraph ing [Ingest]
         scrape["Scrape<br/>Federal Register API + EUR-Lex (Playwright)"] --> diff{"Content hash<br/>changed?"}
         diff -- no --> skip["Log and exit<br/>(no model cost)"]
-        diff -- yes --> embed["Chunk by section, embed<br/>Postgres + pgvector"]
+        diff -- yes --> embed["Chunk by section, embed<br/>Neon Postgres + pgvector"]
     end
 
     embed --> extract
@@ -97,19 +104,20 @@ Other commands:
 | `pnpm eval:retrieval` | Print top-k rule and code chunks for ten hand-written queries |
 | `pnpm db:migrate` | Apply migrations |
 | `pnpm dev:web` / `pnpm dev:worker` | Run the HTTP server or the queue worker (worker needs Redis) |
-| `docker compose up -d` | Local Postgres with pgvector, and Redis |
+| `docker compose up -d` | Local Redis for the queue |
 
-With `DATABASE_URL` unset the app uses an embedded PGlite database under `.data/`, so Docker is optional locally.
+Set `DATABASE_URL` to a Neon connection string to use Neon locally too. With it unset the app uses an embedded PGlite database under `.data/`, so a dry run needs neither Neon nor Docker.
 
 ## Deploy to Fly.io
 
 ```bash
 fly launch --no-deploy --copy-config        # keep the provided fly.toml
-fly postgres create && fly postgres attach <pg-app>      # sets DATABASE_URL
+neonctl projects create --name compliance-sentinel-db --region-id aws-us-east-1   # prints the connection string
 fly redis create                            # Upstash; set eviction to "noeviction"
 fly storage create                          # Tigris bucket; prints the bucket name and keys
 
 fly secrets set \
+  DATABASE_URL='postgresql://...neon.tech/neondb?sslmode=verify-full' \
   REDIS_URL=... ANTHROPIC_API_KEY=... VOYAGE_API_KEY=... \
   SLACK_WEBHOOK_URL=... RESEND_API_KEY=... ALERT_EMAIL_TO=... \
   TIGRIS_BUCKET=... TIGRIS_ACCESS_KEY_ID=... TIGRIS_SECRET_ACCESS_KEY=... \
@@ -119,7 +127,7 @@ fly deploy
 fly scale count web=1 worker=1
 ```
 
-The Postgres database needs the `vector` extension available; the first migration enables it. Then trigger a demo run and watch it:
+The database is [Neon](https://neon.tech) Postgres. Use the direct connection string rather than the `-pooler` one, because migrations and the LangGraph checkpointer hold session state. The first migration enables the `vector` extension. Then trigger a demo run and watch it:
 
 ```bash
 curl -X POST "https://<app>.fly.dev/runs?demo=1" -H "Authorization: Bearer $RUN_TRIGGER_TOKEN"
@@ -171,7 +179,8 @@ See [.env.example](.env.example) for the full list with defaults. The main ones:
 - **Keyword search is in-process**, not a `ripgrep` subprocess. It searches the indexed snapshot in the database, so evidence always matches the lines that citations are verified against.
 - **Chunks follow sections** rather than a fixed 800 to 1,200 tokens: a section stays one chunk up to 1,200 tokens so a citation points at one article.
 - **Deduplication is by rule and code location**, not rule and file, so two different duties broken in one file stay separate findings.
-- **Embedded database for local runs** (PGlite with pgvector), so tests and dry runs need no Docker. The checkpointer is in-memory in that mode and Postgres-backed otherwise.
+- **Neon instead of Fly Postgres** for the database (the plan allowed either).
+- **Embedded database for tests and dry runs** (PGlite with pgvector), so they need no network or Docker. The checkpointer is in-memory in that mode and Postgres-backed on Neon.
 - **Migrations are plain SQL files** applied by a small runner; the Drizzle schema is used for queries.
 
 ## Repository layout

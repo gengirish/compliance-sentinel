@@ -28,6 +28,9 @@ export async function openDb(opts: { url?: string; pgliteDir?: string | "memory"
     const { default: pg } = await import("pg");
     const { drizzle } = await import("drizzle-orm/node-postgres");
     const pool = new pg.Pool({ connectionString: url, max: 5, idleTimeoutMillis: 30_000 });
+    // Neon suspends idle compute and drops its connections; without a listener an
+    // error on an idle pooled client would crash the process. The pool reconnects on demand.
+    pool.on("error", (err) => log.warn("idle database connection dropped", { error: err.message }));
     const db = drizzle(pool, { schema }) as unknown as Db;
     return { db, driver: "postgres", close: () => pool.end() };
   }

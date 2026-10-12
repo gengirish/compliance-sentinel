@@ -37,7 +37,7 @@ One-liner: a LangGraph agent scrapes regulatory portals daily, embeds new rules 
 | PDF | WeasyPrint CLI invoked via `child_process` inside the same Docker image | Avoids a second Fly service. Python + Pango/Cairo deps go in the Dockerfile. |
 | LLM | Claude via the Anthropic SDK. `claude-sonnet-5-5` for extraction and assessment, `claude-haiku-5-5` for cheap classification/dedupe | Cost-aware; structured outputs via tool use with Zod schemas. |
 | Embeddings | Voyage `voyage-law-2` (legal-tuned) with a fallback to a general model | Legal text retrieval quality matters more than anything else here. |
-| Database | Fly Postgres (or Neon) with `pgvector`, schema via Drizzle | One DB for rules, chunks, audit runs, findings, and the LangGraph checkpointer. |
+| Database | Neon Postgres with `pgvector`, schema via Drizzle | One DB for rules, chunks, audit runs, findings, and the LangGraph checkpointer. |
 | Queue | BullMQ on Upstash Redis (Fly Redis). `maxmemory-policy=noeviction` | Repeatable jobs with cron + retries + backoff out of the box. |
 | Regulatory sources (v1) | **Federal Register** (official JSON API, no scraping fragility) and **EUR-Lex / GDPR amendments page** (Playwright, JS-rendered) | One API source proves the pipeline reliably; one Playwright source proves the scraping requirement. |
 | Target codebase | A seeded fixture repo `demo-target-app/` with planted violations (PII in logs, no data-retention job, plaintext secrets, missing consent capture, no breach-notification hook) | Makes the Loom demo deterministic and the findings verifiable. |
@@ -118,7 +118,7 @@ Guardrails: per-run token budget; `max_retries` with backoff per node; checkpoin
 
 **Day 1 — Scaffold, DB, sources**
 - `pnpm init`, TS, ESLint, Vitest. Folders: `src/scrape`, `src/rag`, `src/graph`, `src/report`, `src/queue`, `src/web`, `demo-target-app/`.
-- Docker Compose for Postgres (pgvector image) + Redis. Drizzle schema + migrations.
+- Neon Postgres (pgvector) for the database, Docker Compose for Redis. Drizzle schema + migrations.
 - Federal Register client (search by agency/topic, pull full text). Playwright scraper for EUR-Lex page with retry + screenshot-on-failure.
 - Content-hash diff; persist `rules`. Unit tests on diff logic with fixtures.
 
@@ -141,7 +141,7 @@ Guardrails: per-run token budget; `max_retries` with backoff per node; checkpoin
 **Day 5 — Queue + Fly.io**
 - BullMQ queue `compliance`, repeatable job `daily-audit` (cron `0 6 * * *`), job `manual-audit`. Worker with concurrency 1, exponential backoff, dead-letter logging.
 - Dockerfile: `node:22-slim` + `python3`, `weasyprint`, `libpango`, `libcairo`, Playwright Chromium deps. Multi-stage.
-- `fly.toml` with `web` and `worker` process groups, Fly Postgres, Upstash Redis, Tigris bucket, secrets via `fly secrets set`.
+- `fly.toml` with `web` and `worker` process groups, Neon Postgres, Upstash Redis, Tigris bucket, secrets via `fly secrets set`.
 - Deploy, trigger `POST /runs`, confirm PDF + Slack alert end to end.
 
 **Day 6 — Polish and demo**

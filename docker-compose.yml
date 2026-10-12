@@ -1,22 +1,5 @@
-# Local Postgres (with pgvector) and Redis. Optional: without DATABASE_URL the app
-# uses an embedded PGlite database, and the queue is only needed for web/worker.
+# Local Redis for the BullMQ queue (web + worker). The database is Neon; see README.
 services:
-  postgres:
-    image: pgvector/pgvector:pg17
-    environment:
-      POSTGRES_USER: sentinel
-      POSTGRES_PASSWORD: sentinel
-      POSTGRES_DB: sentinel
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sentinel"]
-      interval: 5s
-      timeout: 3s
-      retries: 10
-
   redis:
     image: redis:7-alpine
     # BullMQ must never lose keys to eviction.
@@ -27,5 +10,4 @@ services:
       - redisdata:/data
 
 volumes:
-  pgdata:
   redisdata:

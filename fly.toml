@@ -6,7 +6,7 @@ primary_region = "iad"
   dockerfile = "Dockerfile"
 
 [deploy]
-  # Runs once per deploy, before new machines start.
+  # Runs once per deploy, before new machines start. Needs the DATABASE_URL secret (Neon).
   release_command = "node dist/cli/migrate.js"
 
 [env]
