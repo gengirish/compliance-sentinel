@@ -25,6 +25,28 @@ jobs:
       - run: pnpm test
       - run: pnpm build
 
+  # The Next.js dashboard. e2e runs against a mock API, so it needs no database or Redis.
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: web/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
+
   # Builds the production image (which smoke-tests `weasyprint --version`) and renders
   # the demo report to PDF inside it, so the WeasyPrint path is exercised on every push.
   image:

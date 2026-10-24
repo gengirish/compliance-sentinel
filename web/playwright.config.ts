@@ -8,9 +8,9 @@ const baseURL = `http://localhost:${E2E_PORT}`;
 // real API, Neon nor Redis. Clerk is bypassed because Playwright cannot drive its UI.
 export default defineConfig({
   testDir: "./tests/e2e",
-  fullyParallel: true,
+  // One worker: the suite takes seconds, and parallel Chromium instances starve the server on small machines.
+  workers: 1,
   retries: process.env.CI ? 1 : 0,
-  workers: process.env.CI ? 1 : undefined,
   reporter: process.env.CI ? "github" : "list",
   use: { baseURL, trace: "on-first-retry", screenshot: "only-on-failure" },
   timeout: 60_000,
@@ -20,13 +20,13 @@ export default defineConfig({
       command: "node tests/e2e/mock-api.mjs",
       url: `http://127.0.0.1:${MOCK_API_PORT}/health`,
       env: { MOCK_API_PORT },
-      reuseExistingServer: false,
+      reuseExistingServer: !process.env.CI,
     },
     {
       // A production build: dev mode compiles each route on first hit, which times out parallel tests.
       command: `npx next build && npx next start -p ${E2E_PORT}`,
       url: baseURL,
-      reuseExistingServer: false,
+      reuseExistingServer: !process.env.CI,
       timeout: 300_000,
       env: {
         SENTINEL_API_URL: `http://127.0.0.1:${MOCK_API_PORT}`,

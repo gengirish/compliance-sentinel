@@ -22,7 +22,7 @@ export default async function RunsPage() {
       {runs.length === 0 ? (
         <EmptyState title="No runs yet" />
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-border">
+        <div className="relative overflow-x-auto rounded-xl border border-border">
           <table className="w-full min-w-[720px] text-sm">
             <thead className="bg-surface text-left text-xs uppercase tracking-wide text-muted">
               <tr>

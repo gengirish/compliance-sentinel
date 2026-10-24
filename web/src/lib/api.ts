@@ -46,6 +46,7 @@ const Finding = z.object({
   status: z.enum(FINDING_STATUSES),
   severity: z.enum(SEVERITIES),
   rationale: z.string(),
+  citationChunkIds: z.array(z.number()),
   evidence: z.array(
     z.object({ path: z.string(), start_line: z.number(), end_line: z.number(), excerpt: z.string() }),
   ),

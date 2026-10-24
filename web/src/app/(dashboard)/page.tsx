@@ -9,6 +9,8 @@ import { Card, CardTitle } from "@/components/ui/card";
 import { api } from "@/lib/api";
 import { cn, formatDateTime, formatDuration, formatUsd } from "@/lib/utils";
 
+const OVERVIEW_LIMIT = 3;
+
 export default async function OverviewPage() {
   const stats = await api.stats();
   const latest = stats.latestCompletedRun;
@@ -36,17 +38,17 @@ export default async function OverviewPage() {
         </EmptyState>
       ) : (
         <div className="space-y-8">
-          <section aria-label={`Findings from run ${latest.id}`} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <section aria-label={`Findings from run ${latest.id}`} className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             {tiles.map((t) => (
               <Card key={t.label}>
                 <CardTitle>{t.label}</CardTitle>
-                <p className={cn("mt-2 text-4xl font-bold tabular-nums", t.className)}>{t.value ?? 0}</p>
+                <p className={cn("mt-2 text-3xl font-bold tabular-nums sm:text-4xl", t.className)}>{t.value ?? 0}</p>
               </Card>
             ))}
           </section>
 
           <div className="grid gap-4 lg:grid-cols-3">
-            <Card className="h-fit lg:col-span-1">
+            <Card className="h-fit min-w-0 lg:col-span-1">
               <CardTitle>Latest audit</CardTitle>
               <dl className="mt-4 space-y-3 text-sm">
                 <Row label="Run">
@@ -84,12 +86,22 @@ export default async function OverviewPage() {
               )}
             </Card>
 
-            <section className="space-y-4 lg:col-span-2">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Critical violations</h2>
+            <section className="min-w-0 space-y-4 lg:col-span-2">
+              <div className="flex items-baseline justify-between gap-4">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Critical violations</h2>
+                {critical.length > OVERVIEW_LIMIT && (
+                  <Link
+                    href={`/runs/${latest.id}?status=violation&severity=critical`}
+                    className="text-sm text-accent hover:underline"
+                  >
+                    View all {critical.length}
+                  </Link>
+                )}
+              </div>
               {critical.length === 0 ? (
                 <EmptyState title="No critical violations in the latest audit" />
               ) : (
-                critical.map((f) => <FindingCard key={f.id} finding={f} />)
+                critical.slice(0, OVERVIEW_LIMIT).map((f) => <FindingCard key={f.id} finding={f} />)
               )}
             </section>
           </div>

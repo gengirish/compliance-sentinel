@@ -31,6 +31,7 @@ const finding = (id, status, severity, obligation) => ({
   status,
   severity,
   rationale: `Rationale for ${obligation}.`,
+  citationChunkIds: [100 + id],
   evidence: [{ path: "src/auth/session.ts", start_line: 10 + id, end_line: 14 + id, excerpt: "const ttl = 0;" }],
   rule,
   citations: [{ id: 100 + id, sectionRef: "§ 314.4(c)", excerpt: "Encrypt all customer information." }],

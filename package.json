@@ -19,6 +19,7 @@
     "eval:golden": "tsx src/cli/evalGolden.ts",
     "dev:web": "tsx watch src/web/server.ts",
     "dev:worker": "tsx watch src/queue/worker.ts",
+    "dev:dashboard": "pnpm --dir web dev",
     "start:web": "node dist/web/server.js",
     "start:worker": "node dist/queue/worker.js"
   },

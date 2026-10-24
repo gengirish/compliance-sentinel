@@ -10,7 +10,8 @@ Each day it checks two sources for new or amended rules. When something changed,
 
 | Part | State |
 |---|---|
-| Scrape, change detection, embedding, LangGraph audit, report, alerts | Built and tested (61 tests) |
+| Scrape, change detection, embedding, LangGraph audit, report, alerts | Built and tested (66 tests) |
+| Dashboard (Next.js 16, Clerk) in [web/](web) | Built; 7 Playwright e2e tests against a mock API; verified locally against Neon. Clerk keys not yet configured; **not yet deployed** |
 | Federal Register API source | Verified against the live API |
 | EUR-Lex Playwright source | Verified against the live site (GDPR: 99 articles, plus its corrigendum) |
 | Full run on live sources, then a second run that correctly skips | Verified locally |
@@ -65,8 +66,35 @@ flowchart TD
 
 One Fly app runs two process groups from the same image:
 
-- `web`: a small Hono server. `GET /health`, `POST /runs` (manual trigger), `GET /runs`, `GET /reports/:id` (redirects to a freshly signed link). It can scale to zero.
+- `web`: a small Hono server. `GET /health`, `POST /runs` (manual trigger), `GET /runs` (`?counts=1` adds finding counts), `GET /runs/:id`, `GET /runs/:id/findings` (`?status=` and `?severity=` take comma lists), `GET /rules`, `GET /stats`, and `GET /reports/:id` (redirects to a freshly signed link). Everything except `/health` needs `RUN_TRIGGER_TOKEN`. It can scale to zero.
 - `worker`: the BullMQ worker, which also registers the daily schedule. One machine, always on.
+
+The dashboard in [web/](web) is a separate Next.js app, deployed to Vercel. Its server components call the API with the token; the browser only talks to the dashboard, which signs users in with Clerk.
+
+## Dashboard
+
+[web/](web) is built on the IntelliForge stack: Next.js 16 App Router, React 19, Tailwind 4, Clerk, zod and lucide-react. It has its own `package.json` and lockfile, so the API's image and CI are unaffected.
+
+| Page | Shows |
+|---|---|
+| `/` | Finding counts from the latest completed audit, its critical violations, and a **Run audit** button |
+| `/runs` | The 20 most recent runs with status, duration, violations and cost |
+| `/runs/[id]` | Every finding in a run, filterable by verdict and severity, each with its regulation citation and `file:line` evidence |
+| `/rules` | Tracked regulations, their source, last change and last audit |
+
+Run it locally next to the API:
+
+```bash
+pnpm dev:web                         # API on :8080 (repo root)
+cd web && pnpm install
+cp .env.example .env.local           # SENTINEL_API_TOKEN = the root RUN_TRIGGER_TOKEN, plus Clerk keys
+pnpm dev                             # dashboard on :3000
+pnpm test:e2e                        # builds the app and runs Playwright against tests/e2e/mock-api.mjs
+```
+
+**Run audit** only queues a job. It needs Redis and the worker (`docker compose up -d`, `pnpm dev:worker`); without them the button reports that the queue is unreachable.
+
+To deploy, import the repo into Vercel with **Root Directory** set to `web`, and set `SENTINEL_API_URL` (the Fly app's URL), `SENTINEL_API_TOKEN`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY`.
 
 ## How it works
 
