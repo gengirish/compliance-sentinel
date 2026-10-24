@@ -51,7 +51,14 @@ const EnvSchema = z.object({
 export type Config = z.infer<typeof EnvSchema>;
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
-  return EnvSchema.parse(env);
+  // `fly storage create` sets BUCKET_NAME and AWS_* secrets; accept them when TIGRIS_* are unset.
+  return EnvSchema.parse({
+    ...env,
+    TIGRIS_BUCKET: env.TIGRIS_BUCKET || env.BUCKET_NAME,
+    TIGRIS_ACCESS_KEY_ID: env.TIGRIS_ACCESS_KEY_ID || env.AWS_ACCESS_KEY_ID,
+    TIGRIS_SECRET_ACCESS_KEY: env.TIGRIS_SECRET_ACCESS_KEY || env.AWS_SECRET_ACCESS_KEY,
+    TIGRIS_ENDPOINT: env.TIGRIS_ENDPOINT || env.AWS_ENDPOINT_URL_S3,
+  });
 }
 
 export const config = loadConfig();
