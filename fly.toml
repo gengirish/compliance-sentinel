@@ -1,5 +1,5 @@
 # One app, two process groups: `web` (HTTP, scales to zero) and `worker` (BullMQ, always on).
-app = "compliance-sentinel"
+app = "compliance-sentinel-gengirish"
 primary_region = "iad"
 
 [build]
