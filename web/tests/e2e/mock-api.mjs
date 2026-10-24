@@ -1,0 +1,86 @@
+// Stand-in for the Sentinel API during e2e runs: fixed fixtures, same routes and token check.
+import { createServer } from "node:http";
+
+const PORT = Number(process.env.MOCK_API_PORT ?? 8099);
+const TOKEN = "e2e-token";
+
+const counts = {
+  total: 3,
+  byStatus: { compliant: 1, violation: 2, needs_review: 0 },
+  bySeverity: { critical: 1, high: 1, medium: 1, low: 0 },
+  criticalViolations: 1,
+};
+const run = {
+  id: 1,
+  startedAt: "2026-10-12T03:06:38.894Z",
+  finishedAt: "2026-10-12T03:07:24.635Z",
+  status: "completed",
+  trigger: "manual",
+  rulesInScope: [1],
+  reportUrl: "/tmp/run-1.html",
+  costUsd: 0,
+  error: null,
+  counts,
+};
+const rule = { id: 1, title: "Demo Safeguards Rule", url: "https://example.com/rule", externalId: "DEMO-1" };
+const finding = (id, status, severity, obligation) => ({
+  id,
+  runId: 1,
+  ruleId: 1,
+  obligation,
+  status,
+  severity,
+  rationale: `Rationale for ${obligation}.`,
+  evidence: [{ path: "src/auth/session.ts", start_line: 10 + id, end_line: 14 + id, excerpt: "const ttl = 0;" }],
+  rule,
+  citations: [{ id: 100 + id, sectionRef: "§ 314.4(c)", excerpt: "Encrypt all customer information." }],
+});
+const findings = [
+  finding(1, "violation", "critical", "Encrypt customer data at rest"),
+  finding(2, "violation", "high", "Expire sessions after inactivity"),
+  finding(3, "compliant", "medium", "Log access to customer records"),
+];
+
+const routes = {
+  "GET /stats": () => ({ latestRun: run, latestCompletedRun: run, totals: { rules: 1, runs: 1 } }),
+  "GET /runs": () => [run],
+  "GET /runs/1": () => run,
+  "GET /rules": () => [
+    {
+      ...rule,
+      effectiveDate: "2026-01-01",
+      firstSeenAt: run.startedAt,
+      lastChangedAt: run.startedAt,
+      source: { name: "fixture-demo", kind: "fixture" },
+      lastAuditedRunId: 1,
+    },
+  ],
+  "POST /runs": () => [202, { jobId: "e2e-job", demo: true }],
+};
+
+createServer((req, res) => {
+  const url = new URL(req.url, "http://localhost");
+  const send = (status, body) => {
+    res.writeHead(status, { "content-type": "application/json" });
+    res.end(JSON.stringify(body));
+  };
+  if (url.pathname === "/health") return send(200, { ok: true });
+  if (req.headers.authorization !== `Bearer ${TOKEN}`) return send(401, { error: "unauthorized" });
+
+  if (req.method === "GET" && url.pathname === "/runs/1/findings") {
+    const status = url.searchParams.get("status")?.split(",");
+    const severity = url.searchParams.get("severity")?.split(",");
+    return send(
+      200,
+      findings.filter((f) => (!status || status.includes(f.status)) && (!severity || severity.includes(f.severity))),
+    );
+  }
+  if (req.method === "GET" && url.pathname === "/reports/1") {
+    res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+    return res.end("<h1>Demo report</h1>");
+  }
+  const handler = routes[`${req.method} ${url.pathname}`];
+  if (!handler) return send(404, { error: "not found" });
+  const out = handler();
+  return Array.isArray(out) && typeof out[0] === "number" ? send(out[0], out[1]) : send(200, out);
+}).listen(PORT, "127.0.0.1", () => console.log(`mock api on ${PORT}`));

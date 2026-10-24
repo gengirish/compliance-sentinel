@@ -1,0 +1,37 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { History, LayoutDashboard, ScrollText } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const LINKS = [
+  { href: "/", label: "Overview", icon: LayoutDashboard },
+  { href: "/runs", label: "Runs", icon: History },
+  { href: "/rules", label: "Rules", icon: ScrollText },
+];
+
+export function Nav() {
+  const pathname = usePathname();
+  return (
+    <nav aria-label="Main" className="flex gap-1">
+      {LINKS.map(({ href, label, icon: Icon }) => {
+        const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+        return (
+          <Link
+            key={href}
+            href={href}
+            aria-current={active ? "page" : undefined}
+            className={cn(
+              "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium",
+              active ? "bg-surface-light text-foreground" : "text-muted hover:text-foreground",
+            )}
+          >
+            <Icon className="size-4" aria-hidden />
+            <span className="hidden sm:inline">{label}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
