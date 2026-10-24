@@ -4,11 +4,11 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { serve } from "@hono/node-server";
 import type { Queue } from "bullmq";
-import { desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, inArray, max, type SQL } from "drizzle-orm";
 import { Hono } from "hono";
 import { config } from "../config.js";
 import { openMigratedDb, type Db } from "../db/client.js";
-import { auditRuns } from "../db/schema.js";
+import { auditRuns, findings, ruleChunks, rules, sources } from "../db/schema.js";
 import { errorMessage, log } from "../log.js";
 import { createQueue, enqueueManualAudit, type AuditJobData } from "../queue/queue.js";
 import { signReportUrl } from "../report/upload.js";
@@ -19,6 +19,55 @@ export type AppDeps = {
   getQueue: () => Queue<AuditJobData>;
   token?: string;
 };
+
+const FINDING_STATUSES = ["compliant", "violation", "needs_review"] as const;
+const SEVERITIES = ["critical", "high", "medium", "low"] as const;
+type FindingStatus = (typeof FINDING_STATUSES)[number];
+type Severity = (typeof SEVERITIES)[number];
+
+type FindingCounts = {
+  total: number;
+  byStatus: Record<FindingStatus, number>;
+  bySeverity: Record<Severity, number>;
+  criticalViolations: number;
+};
+
+function parseId(raw: string): number | undefined {
+  const id = Number(raw);
+  return Number.isInteger(id) && id > 0 ? id : undefined;
+}
+
+/** Splits `?status=violation,needs_review` into the allowed values, ignoring anything else. */
+function parseList<T extends string>(raw: string | undefined, allowed: readonly T[]): T[] {
+  if (!raw) return [];
+  return raw.split(",").filter((v): v is T => (allowed as readonly string[]).includes(v));
+}
+
+async function countFindings(db: Db, runIds: number[]): Promise<Map<number, FindingCounts>> {
+  const out = new Map<number, FindingCounts>();
+  if (runIds.length === 0) return out;
+  const rows = await db
+    .select({ runId: findings.runId, status: findings.status, severity: findings.severity, n: count() })
+    .from(findings)
+    .where(inArray(findings.runId, runIds))
+    .groupBy(findings.runId, findings.status, findings.severity);
+  for (const runId of runIds) {
+    out.set(runId, {
+      total: 0,
+      byStatus: { compliant: 0, violation: 0, needs_review: 0 },
+      bySeverity: { critical: 0, high: 0, medium: 0, low: 0 },
+      criticalViolations: 0,
+    });
+  }
+  for (const r of rows) {
+    const c = out.get(r.runId)!;
+    c.total += r.n;
+    c.byStatus[r.status] += r.n;
+    c.bySeverity[r.severity] += r.n;
+    if (r.status === "violation" && r.severity === "critical") c.criticalViolations += r.n;
+  }
+  return out;
+}
 
 function tokenMatches(expected: string, header: string | undefined): boolean {
   const given = Buffer.from(header?.replace(/^Bearer\s+/i, "") ?? "");
@@ -49,13 +98,110 @@ export function createApp(deps: AppDeps): Hono {
 
   app.get("/runs", async (c) => {
     const rows = await deps.db.select().from(auditRuns).orderBy(desc(auditRuns.id)).limit(20);
+    if (c.req.query("counts") !== "1") return c.json(rows);
+    const counts = await countFindings(
+      deps.db,
+      rows.map((r) => r.id),
+    );
+    return c.json(rows.map((r) => ({ ...r, counts: counts.get(r.id) })));
+  });
+
+  /** Dashboard summary: the latest run of any status, and the latest completed run with its finding counts. */
+  app.get("/stats", async (c) => {
+    const [latestRun] = await deps.db.select().from(auditRuns).orderBy(desc(auditRuns.id)).limit(1);
+    const [latestCompleted] = await deps.db
+      .select()
+      .from(auditRuns)
+      .where(eq(auditRuns.status, "completed"))
+      .orderBy(desc(auditRuns.id))
+      .limit(1);
+    const [ruleCount] = await deps.db.select({ n: count() }).from(rules);
+    const [runCount] = await deps.db.select({ n: count() }).from(auditRuns);
+    const counts = latestCompleted ? (await countFindings(deps.db, [latestCompleted.id])).get(latestCompleted.id) : undefined;
+    return c.json({
+      latestRun: latestRun ?? null,
+      latestCompletedRun: latestCompleted ? { ...latestCompleted, counts } : null,
+      totals: { rules: ruleCount?.n ?? 0, runs: runCount?.n ?? 0 },
+    });
+  });
+
+  app.get("/runs/:id", async (c) => {
+    const id = parseId(c.req.param("id"));
+    if (!id) return c.json({ error: "invalid run id" }, 400);
+    const [run] = await deps.db.select().from(auditRuns).where(eq(auditRuns.id, id));
+    if (!run) return c.json({ error: "run not found" }, 404);
+    const counts = (await countFindings(deps.db, [id])).get(id);
+    return c.json({ ...run, counts });
+  });
+
+  /** Findings for a run with their rule and resolved regulation citations. `?status=` and `?severity=` take comma lists. */
+  app.get("/runs/:id/findings", async (c) => {
+    const id = parseId(c.req.param("id"));
+    if (!id) return c.json({ error: "invalid run id" }, 400);
+    const statuses = parseList(c.req.query("status"), FINDING_STATUSES);
+    const severities = parseList(c.req.query("severity"), SEVERITIES);
+    const where: SQL[] = [eq(findings.runId, id)];
+    if (statuses.length) where.push(inArray(findings.status, statuses));
+    if (severities.length) where.push(inArray(findings.severity, severities));
+
+    const rows = await deps.db
+      .select({
+        finding: findings,
+        rule: { id: rules.id, title: rules.title, url: rules.url, externalId: rules.externalId },
+      })
+      .from(findings)
+      .innerJoin(rules, eq(findings.ruleId, rules.id))
+      .where(and(...where))
+      .orderBy(findings.id);
+
+    const chunkIds = [...new Set(rows.flatMap((r) => r.finding.citationChunkIds))];
+    const chunks = chunkIds.length
+      ? await deps.db
+          .select({ id: ruleChunks.id, sectionRef: ruleChunks.sectionRef, text: ruleChunks.text })
+          .from(ruleChunks)
+          .where(inArray(ruleChunks.id, chunkIds))
+      : [];
+    const byId = new Map(chunks.map((ch) => [ch.id, { id: ch.id, sectionRef: ch.sectionRef, excerpt: ch.text.slice(0, 600) }]));
+
+    return c.json(
+      rows.map(({ finding, rule }) => ({
+        ...finding,
+        rule,
+        citations: finding.citationChunkIds.flatMap((cid) => byId.get(cid) ?? []),
+      })),
+    );
+  });
+
+  /** Tracked rules with their source and the last run that produced findings for them. */
+  app.get("/rules", async (c) => {
+    const lastAudited = deps.db
+      .select({ ruleId: findings.ruleId, runId: max(findings.runId).as("last_run_id") })
+      .from(findings)
+      .groupBy(findings.ruleId)
+      .as("last_audited");
+    const rows = await deps.db
+      .select({
+        id: rules.id,
+        externalId: rules.externalId,
+        title: rules.title,
+        url: rules.url,
+        effectiveDate: rules.effectiveDate,
+        firstSeenAt: rules.firstSeenAt,
+        lastChangedAt: rules.lastChangedAt,
+        source: { name: sources.name, kind: sources.kind },
+        lastAuditedRunId: lastAudited.runId,
+      })
+      .from(rules)
+      .innerJoin(sources, eq(rules.sourceId, sources.id))
+      .leftJoin(lastAudited, eq(lastAudited.ruleId, rules.id))
+      .orderBy(desc(rules.lastChangedAt));
     return c.json(rows);
   });
 
   /** Redirects to a freshly signed download link, or streams the local file in dev. */
   app.get("/reports/:id", async (c) => {
-    const id = Number(c.req.param("id"));
-    if (!Number.isInteger(id) || id <= 0) return c.json({ error: "invalid run id" }, 400);
+    const id = parseId(c.req.param("id"));
+    if (!id) return c.json({ error: "invalid run id" }, 400);
     const [run] = await deps.db.select().from(auditRuns).where(eq(auditRuns.id, id));
     if (!run?.reportUrl) return c.json({ error: "no report for this run" }, 404);
 
