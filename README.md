@@ -132,6 +132,7 @@ Other commands:
 | `pnpm eval:retrieval` | Print top-k rule and code chunks for ten hand-written queries |
 | `pnpm db:migrate` | Apply migrations |
 | `pnpm dev:web` / `pnpm dev:worker` | Run the HTTP server or the queue worker (worker needs Redis) |
+| `pnpm dev:dashboard` | Run the Next.js dashboard on :3000 (see [Dashboard](#dashboard)) |
 | `docker compose up -d` | Local Redis for the queue |
 
 Set `DATABASE_URL` to a Neon connection string to use Neon locally too. With it unset the app uses an embedded PGlite database under `.data/`, so a dry run needs neither Neon nor Docker.
@@ -197,7 +198,8 @@ See [.env.example](.env.example) for the full list with defaults. The main ones:
 - **Code only.** Controls that live in infrastructure, vendor systems or policy documents are invisible to the audit.
 - **Two sources.** Coverage is whatever the Federal Register search terms and one EUR-Lex act return.
 - **Reports only.** It does not fix code or open pull requests.
-- **Single tenant.** One target repository, no UI beyond the report and the trigger endpoint.
+- **Single tenant.** One target repository. Every signed-in dashboard user sees every run; there are no roles.
+- **Citations can go stale.** Findings store rule chunk ids without a foreign key, and re-embedding a rule replaces its chunks, so an older run's citations stop resolving. The dashboard says so; the PDF report keeps the text it was rendered with.
 - **Long rules are capped.** Federal Register text beyond `FEDREG_MAX_CHARS` is cut, with a warning in the logs.
 - **Scrapers break.** A source that fails or returns nothing is logged and skipped; the other source still runs.
 
@@ -222,7 +224,7 @@ src/
   report/     template.html, render.ts, upload.ts
   notify/     slack.ts, email.ts
   queue/      queue.ts, worker.ts, schedule.ts
-  web/        server.ts
+  web/        server.ts         the API the dashboard reads
   pipeline/   run.ts            scrape -> diff -> embed -> graph, one function
   db/         schema.ts, client.ts, migrations/
   cli/        auditRun, evalGolden, evalRetrieval, indexRepo, migrate
