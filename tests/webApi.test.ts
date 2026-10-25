@@ -75,9 +75,30 @@ describe("web API", () => {
     expect(violation.citations.length).toBeGreaterThan(0);
     expect(violation.evidence[0].path).toBeTruthy();
 
-    const filtered = await get(`/runs/${runId}/findings?status=violation&severity=critical,bogus`);
+    const filtered = await get(`/runs/${runId}/findings?status=violation&severity=critical`);
     expect(filtered.body.length).toBeGreaterThan(0);
     expect(filtered.body.every((f: any) => f.status === "violation" && f.severity === "critical")).toBe(true);
+  });
+
+  it("rejects malformed input with a 400 that names the bad field", async () => {
+    const bogus = await get(`/runs/${runId}/findings?severity=critical,bogus`);
+    expect(bogus.status).toBe(400);
+    expect(bogus.body.issues.some((i: any) => i.path.startsWith("severity"))).toBe(true);
+
+    const badId = await get("/runs/1.5");
+    expect(badId.status).toBe(400);
+    expect(badId.body.issues[0].path).toBe("id");
+
+    expect((await get("/runs?counts=yes")).status).toBe(400);
+    const badDemo = await app.request("/runs?demo=maybe", { method: "POST", headers: auth });
+    expect(badDemo.status).toBe(400);
+  });
+
+  it("lists runs with counts only when asked", async () => {
+    const plain = await get("/runs");
+    expect(plain.body[0].counts).toBeUndefined();
+    const withCounts = await get("/runs?counts=1");
+    expect(withCounts.body[0].counts.total).toBeGreaterThanOrEqual(0);
   });
 
   it("lists rules with the last run that audited them", async () => {

@@ -5,13 +5,16 @@ import { pathToFileURL } from "node:url";
 import { serve } from "@hono/node-server";
 import type { Queue } from "bullmq";
 import { and, count, desc, eq, inArray, max, type SQL } from "drizzle-orm";
-import { Hono } from "hono";
+import { type Context, Hono } from "hono";
+import type { z } from "zod";
 import { config } from "../config.js";
 import { openMigratedDb, type Db } from "../db/client.js";
 import { auditRuns, findings, ruleChunks, rules, sources } from "../db/schema.js";
+import type { Severity, Status } from "../graph/types.js";
 import { errorMessage, log } from "../log.js";
 import { createQueue, enqueueManualAudit, type AuditJobData } from "../queue/queue.js";
 import { signReportUrl } from "../report/upload.js";
+import { describeIssues, FindingsQuery, ListRunsQuery, RunIdParams, TriggerRunQuery } from "./schemas.js";
 
 export type AppDeps = {
   db: Db;
@@ -20,27 +23,20 @@ export type AppDeps = {
   token?: string;
 };
 
-const FINDING_STATUSES = ["compliant", "violation", "needs_review"] as const;
-const SEVERITIES = ["critical", "high", "medium", "low"] as const;
-type FindingStatus = (typeof FINDING_STATUSES)[number];
-type Severity = (typeof SEVERITIES)[number];
-
 type FindingCounts = {
   total: number;
-  byStatus: Record<FindingStatus, number>;
+  byStatus: Record<Status, number>;
   bySeverity: Record<Severity, number>;
   criticalViolations: number;
 };
 
-function parseId(raw: string): number | undefined {
-  const id = Number(raw);
-  return Number.isInteger(id) && id > 0 ? id : undefined;
-}
+type Parsed<T> = { ok: true; data: T } | { ok: false; response: Response };
 
-/** Splits `?status=violation,needs_review` into the allowed values, ignoring anything else. */
-function parseList<T extends string>(raw: string | undefined, allowed: readonly T[]): T[] {
-  if (!raw) return [];
-  return raw.split(",").filter((v): v is T => (allowed as readonly string[]).includes(v));
+/** Validates request input against a schema, or builds the 400 response that names each bad field. */
+function parseInput<S extends z.ZodType>(c: Context, schema: S, input: unknown): Parsed<z.infer<S>> {
+  const result = schema.safeParse(input);
+  if (result.success) return { ok: true, data: result.data };
+  return { ok: false, response: c.json({ error: "invalid request", issues: describeIssues(result.error) }, 400) };
 }
 
 async function countFindings(db: Db, runIds: number[]): Promise<Map<number, FindingCounts>> {
@@ -90,15 +86,19 @@ export function createApp(deps: AppDeps): Hono {
 
   /** Manual trigger. `?demo=1` forces the bundled demo rules through. */
   app.post("/runs", async (c) => {
-    const demo = ["1", "true"].includes(c.req.query("demo") ?? "");
+    const query = parseInput(c, TriggerRunQuery, c.req.query());
+    if (!query.ok) return query.response;
+    const { demo } = query.data;
     const jobId = await enqueueManualAudit(deps.getQueue(), { demo });
     log.info("manual audit enqueued", { jobId, demo });
     return c.json({ jobId, demo }, 202);
   });
 
   app.get("/runs", async (c) => {
+    const query = parseInput(c, ListRunsQuery, c.req.query());
+    if (!query.ok) return query.response;
     const rows = await deps.db.select().from(auditRuns).orderBy(desc(auditRuns.id)).limit(20);
-    if (c.req.query("counts") !== "1") return c.json(rows);
+    if (!query.data.counts) return c.json(rows);
     const counts = await countFindings(
       deps.db,
       rows.map((r) => r.id),
@@ -126,8 +126,9 @@ export function createApp(deps: AppDeps): Hono {
   });
 
   app.get("/runs/:id", async (c) => {
-    const id = parseId(c.req.param("id"));
-    if (!id) return c.json({ error: "invalid run id" }, 400);
+    const params = parseInput(c, RunIdParams, c.req.param());
+    if (!params.ok) return params.response;
+    const { id } = params.data;
     const [run] = await deps.db.select().from(auditRuns).where(eq(auditRuns.id, id));
     if (!run) return c.json({ error: "run not found" }, 404);
     const counts = (await countFindings(deps.db, [id])).get(id);
@@ -136,10 +137,12 @@ export function createApp(deps: AppDeps): Hono {
 
   /** Findings for a run with their rule and resolved regulation citations. `?status=` and `?severity=` take comma lists. */
   app.get("/runs/:id/findings", async (c) => {
-    const id = parseId(c.req.param("id"));
-    if (!id) return c.json({ error: "invalid run id" }, 400);
-    const statuses = parseList(c.req.query("status"), FINDING_STATUSES);
-    const severities = parseList(c.req.query("severity"), SEVERITIES);
+    const params = parseInput(c, RunIdParams, c.req.param());
+    if (!params.ok) return params.response;
+    const { id } = params.data;
+    const query = parseInput(c, FindingsQuery, c.req.query());
+    if (!query.ok) return query.response;
+    const { status: statuses, severity: severities } = query.data;
     const where: SQL[] = [eq(findings.runId, id)];
     if (statuses.length) where.push(inArray(findings.status, statuses));
     if (severities.length) where.push(inArray(findings.severity, severities));
@@ -200,8 +203,9 @@ export function createApp(deps: AppDeps): Hono {
 
   /** Redirects to a freshly signed download link, or streams the local file in dev. */
   app.get("/reports/:id", async (c) => {
-    const id = parseId(c.req.param("id"));
-    if (!id) return c.json({ error: "invalid run id" }, 400);
+    const params = parseInput(c, RunIdParams, c.req.param());
+    if (!params.ok) return params.response;
+    const { id } = params.data;
     const [run] = await deps.db.select().from(auditRuns).where(eq(auditRuns.id, id));
     if (!run?.reportUrl) return c.json({ error: "no report for this run" }, 404);
 
