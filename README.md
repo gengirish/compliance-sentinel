@@ -10,8 +10,8 @@ Each day it checks two sources for new or amended rules. When something changed,
 
 | Part | State |
 |---|---|
-| Scrape, change detection, embedding, LangGraph audit, report, alerts | Built and tested (66 tests) |
-| Dashboard (Next.js 16, Clerk) in [web/](web) | Built; 7 Playwright e2e tests against a mock API; verified locally against Neon. Clerk keys not yet configured; **not yet deployed** |
+| Scrape, change detection, embedding, LangGraph audit, report, alerts | Built and tested (68 tests) |
+| Dashboard (Next.js 16, Clerk) in [web/](web) | Built; 7 Playwright e2e tests against a mock API; verified locally against Neon. Deployed to Vercel at <https://compliance-sentinel-web.vercel.app> with Clerk keys set; signed-in pages not yet checked in production |
 | Federal Register API source | Verified against the live API |
 | EUR-Lex Playwright source | Verified against the live site (GDPR: 99 articles, plus its corrigendum) |
 | Full run on live sources, then a second run that correctly skips | Verified locally |
@@ -19,7 +19,7 @@ Each day it checks two sources for new or amended rules. When something changed,
 | Audit with Claude (`claude-sonnet-5-5`, `claude-haiku-5-5`) and Voyage `voyage-law-2` | Implemented, **not yet run**: needs API keys |
 | Docker image and PDF rendering with WeasyPrint | Verified in CI on every push (image builds, demo report renders to a 17-page PDF) |
 | BullMQ worker and cron | Implemented and typechecked; **not yet run against Redis** |
-| Fly.io deployment | `Dockerfile` and `fly.toml` written; **not yet deployed** |
+| Fly.io deployment | Deployed at <https://compliance-sentinel-gengirish.fly.dev> (`/health` returns 200; other routes need the token) |
 | Loom demo | Not recorded yet |
 
 Without API keys the pipeline still runs end to end using two labelled stand-ins: a keyword-based offline analyst instead of Claude, and a local hash embedder instead of Voyage. That is what the tests and the sample report use.
@@ -66,7 +66,7 @@ flowchart TD
 
 One Fly app runs two process groups from the same image:
 
-- `web`: a small Hono server. `GET /health`, `POST /runs` (manual trigger), `GET /runs` (`?counts=1` adds finding counts), `GET /runs/:id`, `GET /runs/:id/findings` (`?status=` and `?severity=` take comma lists), `GET /rules`, `GET /stats`, and `GET /reports/:id` (redirects to a freshly signed link). Everything except `/health` needs `RUN_TRIGGER_TOKEN`. It can scale to zero.
+- `web`: a small Hono server. `GET /health`, `POST /runs` (manual trigger), `GET /runs` (`?counts=1` adds finding counts), `GET /runs/:id`, `GET /runs/:id/findings` (`?status=` and `?severity=` take comma lists), `GET /rules`, `GET /stats`, and `GET /reports/:id` (redirects to a freshly signed link). Everything except `/health` needs `RUN_TRIGGER_TOKEN`. Path params and query strings are validated with zod ([src/web/schemas.ts](src/web/schemas.ts)): a bad run id, flag or filter value gets a 400 that names the field, rather than being silently ignored. It can scale to zero.
 - `worker`: the BullMQ worker, which also registers the daily schedule. One machine, always on.
 
 The dashboard in [web/](web) is a separate Next.js app, deployed to Vercel. Its server components call the API with the token; the browser only talks to the dashboard, which signs users in with Clerk.
@@ -94,7 +94,7 @@ pnpm test:e2e                        # builds the app and runs Playwright agains
 
 **Run audit** only queues a job. It needs Redis and the worker (`docker compose up -d`, `pnpm dev:worker`); without them the button reports that the queue is unreachable.
 
-To deploy, import the repo into Vercel with **Root Directory** set to `web`, and set `SENTINEL_API_URL` (the Fly app's URL), `SENTINEL_API_TOKEN`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY`.
+To deploy, import the repo into Vercel with **Root Directory** set to `web` ([web/vercel.json](web/vercel.json) pins the framework to Next.js), and set `SENTINEL_API_URL` (the Fly app's URL), `SENTINEL_API_TOKEN`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY`.
 
 ## How it works
 
@@ -152,7 +152,7 @@ fly secrets set \
   TIGRIS_BUCKET=... TIGRIS_ACCESS_KEY_ID=... TIGRIS_SECRET_ACCESS_KEY=... \
   RUN_TRIGGER_TOKEN=$(openssl rand -hex 24)
 
-fly deploy
+fly deploy                                  # if the Depot builder fails with an x509 error, add --depot=false
 fly scale count web=1 worker=1
 ```
 
