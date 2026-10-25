@@ -1,7 +1,16 @@
 import { expect, test } from "@playwright/test";
 
-test("overview shows the latest audit and its critical violations", async ({ page }) => {
+test("landing page explains the product and links to the dashboard", async ({ page }) => {
   await page.goto("/");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Down to the line");
+  await expect(page.getByText("src/routes/signup.js:10")).toBeVisible();
+  await page.getByRole("link", { name: "Open dashboard" }).first().click();
+  await expect(page).toHaveURL(/\/overview$/);
+  await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
+});
+
+test("overview shows the latest audit and its critical violations", async ({ page }) => {
+  await page.goto("/overview");
   await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
   await expect(page.getByText("Critical violations").first()).toBeVisible();
   await expect(page.getByRole("heading", { name: "Encrypt customer data at rest" })).toBeVisible();
@@ -42,7 +51,7 @@ test("runs and rules tables render", async ({ page }) => {
 });
 
 test("run audit button queues a job", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/overview");
   await page.getByRole("button", { name: "Run audit" }).click();
   await expect(page.getByRole("status")).toContainText("Audit queued (job e2e-job)");
 });

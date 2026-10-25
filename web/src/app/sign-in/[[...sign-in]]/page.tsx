@@ -3,7 +3,7 @@ import { ShieldCheck } from "lucide-react";
 import { isE2EBypass } from "@/lib/utils";
 
 function safeRedirectUrl(raw?: string): string {
-  return raw?.startsWith("/") && !raw.startsWith("//") ? raw : "/";
+  return raw?.startsWith("/") && !raw.startsWith("//") ? raw : "/overview";
 }
 
 export default async function SignInPage({ searchParams }: { searchParams: Promise<{ redirect_url?: string }> }) {

@@ -6,7 +6,7 @@ import { History, LayoutDashboard, ScrollText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const LINKS = [
-  { href: "/", label: "Overview", icon: LayoutDashboard },
+  { href: "/overview", label: "Overview", icon: LayoutDashboard },
   { href: "/runs", label: "Runs", icon: History },
   { href: "/rules", label: "Rules", icon: ScrollText },
 ];
@@ -16,7 +16,7 @@ export function Nav() {
   return (
     <nav aria-label="Main" className="flex gap-1">
       {LINKS.map(({ href, label, icon: Icon }) => {
-        const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+        const active = pathname.startsWith(href);
         return (
           <Link
             key={href}

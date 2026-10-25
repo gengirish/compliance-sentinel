@@ -77,7 +77,8 @@ The dashboard in [web/](web) is a separate Next.js app, deployed to Vercel. Its 
 
 | Page | Shows |
 |---|---|
-| `/` | Finding counts from the latest completed audit, its critical violations, and a **Run audit** button |
+| `/` | Public landing page: what the agent does, a sample finding, and the demo evaluation |
+| `/overview` | Finding counts from the latest completed audit, its critical violations, and a **Run audit** button |
 | `/runs` | The 20 most recent runs with status, duration, violations and cost |
 | `/runs/[id]` | Every finding in a run, filterable by verdict and severity, each with its regulation citation and `file:line` evidence |
 | `/rules` | Tracked regulations, their source, last change and last audit |
