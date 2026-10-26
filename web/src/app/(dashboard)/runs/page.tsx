@@ -42,7 +42,7 @@ export default async function RunsPage() {
               {runs.map((run) => (
                 <tr key={run.id} className="hover:bg-surface/60">
                   <td className="px-4 py-3">
-                    <Link href={`/runs/${run.id}`} className="font-medium text-accent hover:underline">
+                    <Link href={`/runs/${run.id}`} prefetch={false} className="font-medium text-accent hover:underline">
                       #{run.id}
                     </Link>
                     <span className="ml-2 text-xs text-muted">{run.trigger}</span>

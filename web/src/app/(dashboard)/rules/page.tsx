@@ -53,7 +53,7 @@ export default async function RulesPage() {
                   <td className="px-4 py-3 text-muted">{formatDateTime(r.lastChangedAt)}</td>
                   <td className="px-4 py-3">
                     {r.lastAuditedRunId ? (
-                      <Link href={`/runs/${r.lastAuditedRunId}`} className="text-accent hover:underline">
+                      <Link href={`/runs/${r.lastAuditedRunId}`} prefetch={false} className="text-accent hover:underline">
                         Run #{r.lastAuditedRunId}
                       </Link>
                     ) : (

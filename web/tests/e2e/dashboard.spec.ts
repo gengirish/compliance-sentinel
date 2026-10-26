@@ -90,3 +90,19 @@ test("a run the watchdog timed out shows as failed with its reason", async ({ pa
   await row.getByRole("link", { name: "#2" }).click();
   await expect(page.getByText(/Timed out: still running after 30 minutes/)).toBeVisible();
 });
+
+test("run links and filter chips are not prefetched", async ({ page }) => {
+  const rsc: string[] = [];
+  page.on("request", (r) => {
+    if (r.url().includes("_rsc=")) rsc.push(new URL(r.url()).pathname + new URL(r.url()).search);
+  });
+
+  await page.goto("/runs/1");
+  await page.waitForLoadState("networkidle");
+  await page.goto("/runs");
+  await page.waitForLoadState("networkidle");
+
+  // Only the handful of nav links may prefetch, never one request per row or chip.
+  expect(rsc.filter((u) => /status=|severity=/.test(u))).toEqual([]);
+  expect(rsc.filter((u) => /^\/runs\/\d+/.test(u))).toEqual([]);
+});

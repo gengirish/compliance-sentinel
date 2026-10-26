@@ -52,7 +52,7 @@ export default async function OverviewPage() {
               <CardTitle>Latest audit</CardTitle>
               <dl className="mt-4 space-y-3 text-sm">
                 <Row label="Run">
-                  <Link href={`/runs/${latest.id}`} className="font-medium text-accent hover:underline">
+                  <Link href={`/runs/${latest.id}`} prefetch={false} className="font-medium text-accent hover:underline">
                     #{latest.id}
                   </Link>
                 </Row>
@@ -65,7 +65,7 @@ export default async function OverviewPage() {
                 <Row label="Model cost">{formatUsd(latest.costUsd)}</Row>
               </dl>
               <div className="mt-5 flex flex-wrap gap-2">
-                <Link href={`/runs/${latest.id}`} className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                <Link href={`/runs/${latest.id}`} prefetch={false} className={buttonVariants({ variant: "secondary", size: "sm" })}>
                   All findings <ArrowRight className="size-3.5" aria-hidden />
                 </Link>
                 {latest.reportUrl && (
@@ -92,6 +92,7 @@ export default async function OverviewPage() {
                 {critical.length > OVERVIEW_LIMIT && (
                   <Link
                     href={`/runs/${latest.id}?status=violation&severity=critical`}
+                    prefetch={false}
                     className="text-sm text-accent hover:underline"
                   >
                     View all {critical.length}

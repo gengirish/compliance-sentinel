@@ -100,7 +100,7 @@ export default async function RunPage({
           </FilterChip>
         ))}
         {(status.length > 0 || severity.length > 0) && (
-          <Link href={`/runs/${id}`} className="ml-1 text-sm text-muted hover:text-foreground">
+          <Link href={`/runs/${id}`} prefetch={false} className="ml-1 text-sm text-muted hover:text-foreground">
             Clear
           </Link>
         )}
@@ -123,6 +123,8 @@ function FilterChip({ href, active, children }: { href: string; active: boolean;
   return (
     <Link
       href={href}
+      // A run page has seven chips; prefetching each one is a server render apiece (DEF-004).
+      prefetch={false}
       aria-current={active ? "true" : undefined}
       scroll={false}
       className={cn(
