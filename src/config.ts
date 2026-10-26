@@ -26,9 +26,13 @@ const EnvSchema = z.object({
   ANTHROPIC_API_KEY: optional,
   VOYAGE_API_KEY: optional,
   SLACK_WEBHOOK_URL: optional,
-  RESEND_API_KEY: optional,
+  /** AgentMail: the app's own inbox. Alerts are sent from it; mail sent to it arrives through the signed webhook. */
+  AGENTMAIL_API_KEY: optional,
+  AGENTMAIL_INBOX_ID: optional,
+  AGENTMAIL_WEBHOOK_SECRET: optional,
+  AGENTMAIL_API_URL: z.string().default("https://api.agentmail.to/v0"),
+  /** Comma-separated alert recipients; they are also the senders allowed to ask the inbox for an audit. */
   ALERT_EMAIL_TO: optional,
-  ALERT_EMAIL_FROM: z.string().default("Compliance Sentinel <alerts@resend.dev>"),
   TIGRIS_BUCKET: optional,
   TIGRIS_ACCESS_KEY_ID: optional,
   TIGRIS_SECRET_ACCESS_KEY: optional,

@@ -53,6 +53,8 @@ export type NotifyInput = {
   summary: FindingSummary;
   findings: Finding[];
   reportUrl: string | null;
+  /** Local path of the rendered report, when it is on disk; email attaches it. */
+  reportPath?: string | null;
 };
 
 /** Everything the nodes need from the outside world, injected so tests can swap it. */

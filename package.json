@@ -18,6 +18,7 @@
     "eval:retrieval": "tsx src/cli/evalRetrieval.ts",
     "eval:golden": "tsx src/cli/evalGolden.ts",
     "runs:fail-stale": "tsx src/cli/failStaleRuns.ts",
+    "agentmail:webhook": "node scripts/agentmail-webhook.mjs",
     "dev:web": "tsx watch src/web/server.ts",
     "dev:worker": "tsx watch src/queue/worker.ts",
     "dev:dashboard": "pnpm --dir web dev",

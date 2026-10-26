@@ -15,6 +15,7 @@ export function notifyNode(deps: GraphDeps) {
         summary: state.summary,
         findings: state.finalFindings,
         reportUrl: state.reportUrl,
+        reportPath: state.reportPath,
       });
       log.info("alerts sent", { runId: state.runId, channels: notified });
       return { notified };

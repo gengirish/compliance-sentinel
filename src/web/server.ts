@@ -12,6 +12,7 @@ import { openMigratedDb, type Db } from "../db/client.js";
 import { auditRuns, findings, ruleChunks, rules, sources } from "../db/schema.js";
 import type { Severity, Status } from "../graph/types.js";
 import { errorMessage, log } from "../log.js";
+import { AgentMailClient, parseInboundCommand, senderAddress, verifyWebhookSignature, WebhookEvent } from "../notify/agentmail.js";
 import { failStaleRuns } from "../pipeline/watchdog.js";
 import { createQueue, enqueueManualAudit, type AuditJobData } from "../queue/queue.js";
 import { signReportUrl } from "../report/upload.js";
@@ -24,7 +25,17 @@ export type AppDeps = {
   token?: string;
   /** When set, reads of run status first mark runs stuck longer than this as failed. */
   runTimeoutMinutes?: number;
+  /** Mail sent to the app's AgentMail inbox. Unset: the inbound route answers 503. */
+  inbound?: {
+    /** Svix signing secret of the AgentMail webhook. */
+    secret?: string;
+    /** Lower-cased addresses whose "run audit" emails are acted on. */
+    allowedSenders: string[];
+    reply: (messageId: string, text: string) => Promise<unknown>;
+  };
 };
+
+export const INBOUND_PATH = "/inbox/agentmail";
 
 /** Run reads sweep for orphaned runs at most this often, so the dashboard never shows one as live. */
 const SWEEP_EVERY_MS = 60_000;
@@ -82,9 +93,51 @@ export function createApp(deps: AppDeps): Hono {
 
   app.get("/health", (c) => c.json({ ok: true }));
 
+  /**
+   * AgentMail delivers mail sent to the app's inbox here. It is authenticated by
+   * the webhook signature, not the trigger token. The only command understood is
+   * a request to run an audit, and only from the configured alert recipients;
+   * everything else is logged and acknowledged so AgentMail stops retrying.
+   */
+  app.post(INBOUND_PATH, async (c) => {
+    const inbound = deps.inbound;
+    if (!inbound?.secret) return c.json({ error: "AGENTMAIL_WEBHOOK_SECRET is not configured" }, 503);
+    const raw = await c.req.text();
+    const headers = { id: c.req.header("svix-id"), timestamp: c.req.header("svix-timestamp"), signature: c.req.header("svix-signature") };
+    if (!verifyWebhookSignature(raw, headers, inbound.secret)) return c.json({ error: "invalid signature" }, 400);
+
+    let json: unknown;
+    try {
+      json = JSON.parse(raw);
+    } catch {
+      return c.json({ error: "invalid JSON" }, 400);
+    }
+    const event = WebhookEvent.safeParse(json);
+    if (!event.success) return c.json({ error: "unexpected payload", issues: describeIssues(event.error) }, 400);
+    const message = event.data.event_type === "message.received" ? event.data.message : undefined;
+    if (!message) return c.body(null, 204);
+
+    const from = senderAddress(message.from);
+    const command = parseInboundCommand(message.subject, message.text ?? message.preview);
+    log.info("inbound email", { from, subject: message.subject, messageId: message.message_id, command: command?.kind ?? null });
+    if (!command) return c.body(null, 204);
+    if (!from || !inbound.allowedSenders.includes(from)) {
+      log.warn("inbound email asked for an audit from an address that is not an alert recipient; ignored", { from });
+      return c.body(null, 204);
+    }
+
+    const jobId = await enqueueManualAudit(deps.getQueue(), { demo: command.demo });
+    log.info("manual audit enqueued by email", { jobId, demo: command.demo, from });
+    const note = command.demo ? "A demo audit of the bundled rules is queued." : "An audit of the live sources is queued.";
+    await inbound
+      .reply(message.message_id, `${note} If it finds a critical violation you will get an alert email with the report attached; every run is in the dashboard.`)
+      .catch((err) => log.warn("inbound email reply failed", { messageId: message.message_id, error: errorMessage(err) }));
+    return c.body(null, 204);
+  });
+
   // Everything below needs the trigger token. With no token configured, the routes stay closed.
   app.use("*", async (c, next) => {
-    if (c.req.path === "/health") return next();
+    if (c.req.path === "/health" || c.req.path === INBOUND_PATH) return next();
     if (!deps.token) return c.json({ error: "RUN_TRIGGER_TOKEN is not configured" }, 503);
     if (!tokenMatches(deps.token, c.req.header("authorization"))) return c.json({ error: "unauthorized" }, 401);
     return next();
@@ -247,11 +300,21 @@ export function createApp(deps: AppDeps): Hono {
 async function main() {
   const handle = await openMigratedDb();
   let queue: Queue<AuditJobData> | undefined;
+  const mail = AgentMailClient.fromConfig();
   const app = createApp({
     db: handle.db,
     getQueue: () => (queue ??= createQueue()),
     token: config.RUN_TRIGGER_TOKEN,
     runTimeoutMinutes: config.RUN_TIMEOUT_MINUTES,
+    inbound: {
+      secret: config.AGENTMAIL_WEBHOOK_SECRET,
+      allowedSenders: (config.ALERT_EMAIL_TO ?? "")
+        .split(",")
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean),
+      reply: (messageId, text) =>
+        mail ? mail.reply(messageId, { text }) : Promise.reject(new Error("AgentMail is not configured, reply skipped")),
+    },
   });
   serve({ fetch: app.fetch, port: config.PORT, hostname: "0.0.0.0" }, (info) => {
     log.info("web listening", { port: info.port });

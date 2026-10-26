@@ -2,7 +2,7 @@
 
 When a regulation with a deadline applies to you, an auditor or regulator wants proof of where your code meets each requirement. Today an engineer and a compliance person build that mapping by hand, one requirement at a time, in a spreadsheet. Compliance Sentinel builds it from the rule text and the repository: every obligation tied to a `file:line`, with the regulation section cited, in an audit-ready report.
 
-Give it a rule (or let it pick up new and amended rules from five regulatory sources each day). It embeds the rule text, extracts the obligations a software team would have to implement, searches the target repository for evidence, and judges each obligation as compliant, a violation, or needing human review. Citations are checked mechanically: a cited chunk must belong to the rule and a cited `file:line` must exist, or the verdict is downgraded. Critical violations go to Slack and email.
+Give it a rule (or let it pick up new and amended rules from five regulatory sources each day). It embeds the rule text, extracts the obligations a software team would have to implement, searches the target repository for evidence, and judges each obligation as compliant, a violation, or needing human review. Citations are checked mechanically: a cited chunk must belong to the rule and a cited `file:line` must exist, or the verdict is downgraded. Critical violations go to Slack and email, and the email inbox is two-way: reply "run audit" and a run is queued.
 
 > This is decision support, not legal advice. It does not guarantee compliance or complete coverage of any regulation.
 
@@ -10,7 +10,7 @@ Give it a rule (or let it pick up new and amended rules from five regulatory sou
 
 | Part | State |
 |---|---|
-| Scrape, change detection, embedding, LangGraph audit, report, alerts | Built and tested (81 tests) |
+| Scrape, change detection, embedding, LangGraph audit, report, alerts | Built and tested (93 tests) |
 | Dashboard (Next.js 16, Clerk) in [web/](web) | Built; 7 Playwright e2e tests against a mock API; verified locally against Neon. Deployed to Vercel at <https://compliance-sentinel-web.vercel.app> with Clerk keys set; signed-in pages not yet checked in production |
 | Federal Register API source | Verified against the live API |
 | EUR-Lex Playwright source | Verified against the live site (GDPR: 99 articles, plus its corrigendum) |
@@ -85,6 +85,7 @@ The dashboard in [web/](web) is a separate Next.js app, deployed to Vercel. Its 
 | `/runs` | The 20 most recent runs with status, duration, violations and cost |
 | `/runs/[id]` | Every finding in a run, filterable by verdict and severity, each with its regulation citation and `file:line` evidence |
 | `/rules` | Tracked regulations, their source, last change and last audit |
+| `POST /inbox/agentmail` | AgentMail webhook for mail sent to the app's inbox (signature-authenticated, no token) |
 
 Run it locally next to the API:
 
@@ -109,7 +110,7 @@ To deploy, import the repo into Vercel with **Root Directory** set to `web` ([we
 5. **Retrieve evidence.** Per obligation, keyword search over the indexed files is combined with vector similarity.
 6. **Assess.** The model judges the obligation against the evidence. A verdict needs at least one regulation chunk and one code location, otherwise it must answer `needs_review`.
 7. **Verify citations.** With no model involved, every cited chunk must exist and belong to the rule, and every `file:line` range must exist in the indexed snapshot. Failures are dropped; a verdict left without both kinds of support is downgraded to `needs_review`.
-8. **Report and alert.** Findings are deduplicated, rendered to PDF, stored, and a critical violation triggers Slack and email.
+8. **Report and alert.** Findings are deduplicated, rendered to PDF, stored, and a critical violation triggers Slack and email. Email goes out from the app's own [AgentMail](https://agentmail.to) inbox with the PDF attached. Mail sent to that inbox is delivered to `POST /inbox/agentmail` (Svix-signed); when an alert recipient asks to "run audit" (or "run the demo audit"), a run is queued and the inbox replies in the thread. Anything else is logged and ignored.
 
 Guardrails: a per-run cost cap (`MAX_RUN_COST_USD`), retries with backoff on every node, and graph state checkpointed to Postgres after each step. A run that fails marks its rules as unaudited so the job retry, or the next day's run, picks them up again. Resuming a crashed run from its checkpoint is not wired up yet: a retry starts a fresh run.
 
@@ -152,7 +153,7 @@ fly storage create                          # Tigris bucket; prints the bucket n
 fly secrets set \
   DATABASE_URL='postgresql://...neon.tech/neondb?sslmode=verify-full' \
   REDIS_URL=... ANTHROPIC_API_KEY=... VOYAGE_API_KEY=... \
-  SLACK_WEBHOOK_URL=... RESEND_API_KEY=... ALERT_EMAIL_TO=... \
+  SLACK_WEBHOOK_URL=... AGENTMAIL_API_KEY=... AGENTMAIL_INBOX_ID=... ALERT_EMAIL_TO=... \
   TIGRIS_BUCKET=... TIGRIS_ACCESS_KEY_ID=... TIGRIS_SECRET_ACCESS_KEY=... \
   RUN_TRIGGER_TOKEN=$(openssl rand -hex 24)
 
@@ -227,7 +228,7 @@ src/
   graph/      state.ts, graph.ts, nodes/, controls.ts, evidence.ts
   llm/        claudeAnalyst.ts, offlineAnalyst.ts
   report/     template.html, render.ts, upload.ts
-  notify/     slack.ts, email.ts
+  notify/     slack.ts, email.ts, agentmail.ts
   queue/      queue.ts, worker.ts, schedule.ts
   web/        server.ts         the API the dashboard reads
   pipeline/   run.ts            scrape -> diff -> embed -> graph, one function
