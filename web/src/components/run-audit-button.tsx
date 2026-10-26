@@ -51,9 +51,10 @@ export function RunAuditButton({ latestRun = null }: { latestRun?: LatestRun }) 
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ demo }),
       });
-      const body = (await res.json().catch(() => ({}))) as { jobId?: string; error?: string };
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
       if (res.ok) {
-        setResult({ tone: "ok", text: `Audit queued (job ${body.jobId}). It appears under Runs once the worker picks it up.` });
+        // No job id: it is a queue id, not the run number, and users went looking for a run by it.
+        setResult({ tone: "ok", text: "Audit queued. It appears under Runs as soon as the worker starts it." });
         setWaiting({ afterId: latestRun?.id ?? 0, since: Date.now() });
         router.refresh();
       } else {

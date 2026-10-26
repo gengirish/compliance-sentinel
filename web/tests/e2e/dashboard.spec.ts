@@ -53,7 +53,9 @@ test("runs and rules tables render", async ({ page }) => {
 test("run audit button queues a job", async ({ page }) => {
   await page.goto("/overview");
   await page.getByRole("button", { name: "Run audit" }).click();
-  await expect(page.getByRole("status")).toContainText("Audit queued (job e2e-job)");
+  await expect(page.getByRole("status")).toContainText("Audit queued.");
+  // The queue's job id is not a run number, so it must not be shown as one.
+  await expect(page.getByRole("status")).not.toContainText("e2e-job");
 });
 
 test("a triggered audit reaches Completed on the runs list without a reload", async ({ page }) => {
