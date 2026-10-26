@@ -7,7 +7,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: { default: "Compliance Sentinel", template: "%s · Compliance Sentinel" },
-  description: "Regulatory change monitoring and codebase compliance audits, by IntelliForge AI.",
+  description: "Maps regulations to your codebase, obligation by obligation, with the regulation section and file:line cited. By IntelliForge AI.",
   robots: { index: false, follow: false },
 };
 

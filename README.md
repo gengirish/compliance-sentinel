@@ -1,8 +1,8 @@
 # Compliance Sentinel
 
-An agent that watches regulatory portals, works out what new rules require of software, audits a codebase against them, and produces a cited report with alerts for critical findings.
+When a regulation with a deadline applies to you, an auditor or regulator wants proof of where your code meets each requirement. Today an engineer and a compliance person build that mapping by hand, one requirement at a time, in a spreadsheet. Compliance Sentinel builds it from the rule text and the repository: every obligation tied to a `file:line`, with the regulation section cited, in an audit-ready report.
 
-Each day it checks two sources for new or amended rules. When something changed, it embeds the rule text, extracts the obligations a software team would have to implement, searches the target repository for evidence, and judges each obligation as compliant, a violation, or needing human review. Every finding cites the regulation section and the exact `file:line` in the code. Critical violations go to Slack and email.
+Give it a rule (or let it pick up new and amended rules from two regulatory sources each day). It embeds the rule text, extracts the obligations a software team would have to implement, searches the target repository for evidence, and judges each obligation as compliant, a violation, or needing human review. Citations are checked mechanically: a cited chunk must belong to the rule and a cited `file:line` must exist, or the verdict is downgraded. Critical violations go to Slack and email.
 
 > This is decision support, not legal advice. It does not guarantee compliance or complete coverage of any regulation.
 

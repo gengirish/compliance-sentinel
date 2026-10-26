@@ -17,9 +17,9 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = {
-  title: { absolute: "Compliance Sentinel · Regulatory change, audited against your code" },
+  title: { absolute: "Compliance Sentinel · Prove where your code meets each requirement" },
   description:
-    "Watches regulatory portals, extracts what new rules require of software, audits your codebase against them and reports every finding with the regulation section and the exact file:line.",
+    "Maps a regulation to your codebase obligation by obligation. Every finding cites the regulation section and the exact file:line, with citations checked mechanically, in an audit-ready report.",
   robots: { index: true, follow: true },
 };
 
@@ -107,14 +107,15 @@ export default function LandingPage() {
           />
           <div className="relative mx-auto grid max-w-6xl items-center gap-12 px-4 py-20 lg:grid-cols-2 lg:py-28">
             <div>
-              <p className="text-sm font-medium text-accent">Regulatory change monitoring for engineering teams</p>
+              <p className="text-sm font-medium text-accent">Audit evidence for engineering teams</p>
               <h1 className="mt-4 text-4xl font-bold tracking-tight text-balance sm:text-5xl">
-                New rules, checked against your code. <span className="gradient-text">Down to the line.</span>
+                Prove where your code meets each requirement. <span className="gradient-text">Down to the line.</span>
               </h1>
               <p className="mt-6 max-w-xl text-lg text-muted text-pretty">
-                Compliance Sentinel watches regulatory portals, works out what each new or amended rule requires of
-                software, and audits your repository against it. Every finding cites the regulation section and the
-                exact <code className="font-mono text-foreground">file:line</code>.
+                A rule with a deadline applies to you, and an auditor wants the mapping from each requirement to the
+                code. Compliance Sentinel builds it from the rule text and your repository, and keeps it current as rules
+                change. Every finding cites the regulation section and the exact{" "}
+                <code className="font-mono text-foreground">file:line</code>.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link href="/overview" className={buttonVariants()}>

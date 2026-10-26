@@ -155,7 +155,7 @@ Guardrails: per-run token budget; `max_retries` with backoff per node; checkpoin
 
 ## 7. Loom demo script (3–5 min)
 
-1. 20s: problem statement and the 40+ hrs/week claim framed as "manual regulatory monitoring + code review".
+1. 20s: problem statement. A rule with a deadline applies to you and an auditor wants proof of where the code meets each requirement. Today an engineer and a compliance person build that mapping by hand in a spreadsheet (Regology 2026: 81% of compliance teams run obligations on manual workflows and spreadsheets). No hours-per-week number: the only measured figure is AscentAI 2026, 1 in 5 teams spend 41+ hours a *month* on all regulatory change work, and it does not isolate mapping.
 2. 40s: architecture diagram walkthrough.
 3. 60s: trigger a manual run on Fly; show logs: scrape → 2 new rules → embed → graph fan-out.
 4. 60s: open the generated PDF; walk one critical finding from regulation section to `file:line`.
