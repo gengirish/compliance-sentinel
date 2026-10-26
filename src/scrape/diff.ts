@@ -102,8 +102,9 @@ export async function persistChanges(
           effectiveDate: values.effectiveDate,
           url: values.url,
           contentHash: values.contentHash,
-          // The stored row's text (not EXCLUDED's) becomes the previous version.
-          previousRawText: sql`${rules.rawText}`,
+          // The stored row's text (not EXCLUDED's) becomes the previous version, but only
+          // when the text really changed: a forced demo re-run must not look like an amendment.
+          previousRawText: sql`CASE WHEN ${rules.contentHash} = EXCLUDED.content_hash THEN ${rules.previousRawText} ELSE ${rules.rawText} END`,
           rawText: values.rawText,
           lastChangedAt: sql`now()`,
         },

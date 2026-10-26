@@ -2,7 +2,7 @@
 
 When a regulation with a deadline applies to you, an auditor or regulator wants proof of where your code meets each requirement. Today an engineer and a compliance person build that mapping by hand, one requirement at a time, in a spreadsheet. Compliance Sentinel builds it from the rule text and the repository: every obligation tied to a `file:line`, with the regulation section cited, in an audit-ready report.
 
-Give it a rule (or let it pick up new and amended rules from five regulatory sources each day). It embeds the rule text, extracts the obligations a software team would have to implement, searches the target repository for evidence, and judges each obligation as compliant, a violation, or needing human review. Citations are checked mechanically: a cited chunk must belong to the rule and a cited `file:line` must exist, or the verdict is downgraded. Critical violations go to Slack and email, and the email inbox is two-way: reply "run audit" and a run is queued.
+Give it a rule (or let it pick up new and amended rules from eight regulatory sources each day). It embeds the rule text, extracts the obligations a software team would have to implement, searches the target repository for evidence, and judges each obligation as compliant, a violation, or needing human review. Citations are checked mechanically: a cited chunk must belong to the rule and a cited `file:line` must exist, or the verdict is downgraded. Critical violations go to Slack and email, and the email inbox is two-way: reply "run audit" and a run is queued.
 
 > This is decision support, not legal advice. It does not guarantee compliance or complete coverage of any regulation.
 
@@ -10,13 +10,15 @@ Give it a rule (or let it pick up new and amended rules from five regulatory sou
 
 | Part | State |
 |---|---|
-| Scrape, change detection, embedding, LangGraph audit, report, alerts | Built and tested (93 tests) |
+| Scrape, change detection, embedding, LangGraph audit, report, alerts | Built and tested (112 tests) |
 | Dashboard (Next.js 16, Clerk) in [web/](web) | Built; 7 Playwright e2e tests against a mock API; verified locally against Neon. Deployed to Vercel at <https://compliance-sentinel-web.vercel.app> with Clerk keys set; signed-in pages not yet checked in production |
 | Federal Register API source | Verified against the live API |
 | EUR-Lex Playwright source | Verified against the live site (GDPR: 99 articles, plus its corrigendum) |
 | SEC source (Federal Register API filtered to the SEC) | Verified against the live API (fetches SEC final rules with full regulatory text) |
 | FCA publications RSS source | Verified against the live feed (publication pages fetched and reduced to body text) |
 | MAS circulars source (Playwright + pdftotext) | Verified locally against the live site (2 circulars, page text plus PDF text); **not yet run inside the Docker image**. Off by default (`SCRAPE_MAS=true`) |
+| ESMA news, FINRA notices, ASIC regulatory tracker sources | Verified against the live sites (ESMA and FINRA items with page text; ASIC regulatory guides with page and PDF text, capped at `ASIC_MAX_CHARS`) |
+| Regulatory change digest (graph node) and weekly digest delivery | Verified against Neon: `pnpm digest:run --demo` digested the 5 demo rules (run 14) and the weekly digest covered 17 rule changes, reusing stored digests; delivery not yet sent live (needs the AgentMail key). Offline baseline digests until `ANTHROPIC_API_KEY` is set |
 | Full run on live sources, then a second run that correctly skips | Verified locally |
 | Neon Postgres with pgvector, including the Postgres checkpointer | Verified: migrations and a demo audit ran against Neon |
 | Audit with Claude (`claude-sonnet-5-5`, `claude-haiku-5-5`) and Voyage `voyage-law-2` | Implemented, **not yet run**: needs API keys |
@@ -45,7 +47,7 @@ flowchart TD
     manual["POST /runs<br/>(token, optional ?demo=1)"] --> scrape
 
     subgraph ing [Ingest]
-        scrape["Scrape<br/>Federal Register, SEC, FCA (HTTP) + EUR-Lex, MAS (Playwright)"] --> diff{"Content hash<br/>changed?"}
+        scrape["Scrape<br/>Federal Register, SEC, FINRA, FCA, ESMA, ASIC (HTTP) + EUR-Lex, MAS (Playwright)"] --> diff{"Content hash<br/>changed?"}
         diff -- no --> skip["Log and exit<br/>(no model cost)"]
         diff -- yes --> embed["Chunk by section, embed<br/>Neon Postgres + pgvector"]
     end
@@ -103,7 +105,7 @@ To deploy, import the repo into Vercel with **Root Directory** set to `web` ([we
 
 ## How it works
 
-1. **Scrape.** The Federal Register's JSON API returns recent final rules; the binding regulatory text is separated from the preamble commentary. EUR-Lex is scraped with Playwright because it renders through JavaScript; the base act and the acts that amend or correct it are collected. SEC final rules come from the same Federal Register API filtered to the SEC (EDGAR holds company filings, not rulemaking). FCA policy statements, consultation papers and guidance come from the FCA publications RSS feed, with the text of each publication page. MAS circulars are listed by a JavaScript search page behind a WAF, so Playwright opens the listing and each circular, and the circular's PDF is converted with pdftotext; this source is off by default (`SCRAPE_MAS=true`) because it needs Chromium and poppler-utils, both of which the Docker image has.
+1. **Scrape.** The Federal Register's JSON API returns recent final rules; the binding regulatory text is separated from the preamble commentary. EUR-Lex is scraped with Playwright because it renders through JavaScript; the base act and the acts that amend or correct it are collected. SEC final rules come from the same Federal Register API filtered to the SEC (EDGAR holds company filings, not rulemaking). FCA policy statements, consultation papers and guidance come from the FCA publications RSS feed, with the text of each publication page. MAS circulars are listed by a JavaScript search page behind a WAF, so Playwright opens the listing and each circular, and the circular's PDF is converted with pdftotext; this source is off by default (`SCRAPE_MAS=true`) because it needs Chromium and poppler-utils, both of which the Docker image has. ESMA news comes from the site-wide RSS feed (the news-page feed URL answers with HTML), FINRA notices from the notices RSS feed with the full notice text from each page, and ASIC documents from the regulatory tracker, a server-rendered table per year of new and reissued regulatory guides, information sheets and reports, with each guide's PDF converted by pdftotext.
 2. **Diff.** Rule text is normalised and hashed. Only rules that are new or whose hash changed go further, so a quiet day costs nothing.
 3. **Embed.** Rules are split on article and section headings so each chunk maps to a citable unit, then embedded into pgvector. The target repository is indexed in line windows at a recorded snapshot.
 4. **Extract obligations.** For each rule the model lists the duties software must implement, with the chunk ids that state each one and search keywords for the codebase. Chunk ids the model was not shown are discarded.
@@ -111,6 +113,8 @@ To deploy, import the repo into Vercel with **Root Directory** set to `web` ([we
 6. **Assess.** The model judges the obligation against the evidence. A verdict needs at least one regulation chunk and one code location, otherwise it must answer `needs_review`.
 7. **Verify citations.** With no model involved, every cited chunk must exist and belong to the rule, and every `file:line` range must exist in the indexed snapshot. Failures are dropped; a verdict left without both kinds of support is downgraded to `needs_review`.
 8. **Report and alert.** Findings are deduplicated, rendered to PDF, stored, and a critical violation triggers Slack and email. Email goes out from the app's own [AgentMail](https://agentmail.to) inbox with the PDF attached. Mail sent to that inbox is delivered to `POST /inbox/agentmail` (Svix-signed); when an alert recipient asks to "run audit" (or "run the demo audit"), a run is queued and the inbox replies in the thread. Anything else is logged and ignored.
+
+**Digest mode.** The graph has a second output mode. With `mode: "digest"` the run goes from `START` to `digest_rules` instead of `extract_obligations`: each rule in scope gets a plain-language digest (summary, what changed versus the previous text, effective date, who it applies to, key obligations) stored once per rule version in `rule_digests`, and no code is audited. `pnpm digest:run --demo` shows it on the bundled rules. The **weekly digest** (`DIGEST_CRON`, Monday 07:00 UTC) takes every rule whose text changed in the last `DIGEST_DAYS` days, whether or not the daily audit judged it relevant, reuses stored digests, and sends one round-up by email and Slack. It costs no retrieval and no code audit, only a short Haiku call per new rule version; `pnpm digest:run [--days 7] [--send]` runs it by hand.
 
 Guardrails: a per-run cost cap (`MAX_RUN_COST_USD`), retries with backoff on every node, and graph state checkpointed to Postgres after each step. A run that fails marks its rules as unaudited so the job retry, or the next day's run, picks them up again. Resuming a crashed run from its checkpoint is not wired up yet: a retry starts a fresh run.
 
@@ -133,6 +137,8 @@ Other commands:
 | Command | What it does |
 |---|---|
 | `pnpm audit:run --rules 1,2` | Audit rules already in the store, without scraping |
+| `pnpm digest:run [--days 7] [--send]` | Build (and optionally send) the digest of rule changes in the window |
+| `pnpm digest:run --demo` | Run the graph in digest mode on the bundled demo rules |
 | `pnpm eval:golden` | Score a demo audit against the planted violations |
 | `pnpm eval:retrieval` | Print top-k rule and code chunks for ten hand-written queries |
 | `pnpm db:migrate` | Apply migrations |
@@ -201,11 +207,12 @@ See [.env.example](.env.example) for the full list with defaults. The main ones:
 
 - **Not legal advice.** A "compliant" result means supporting code was found, not that the obligation is fully met.
 - **Code only.** Controls that live in infrastructure, vendor systems or policy documents are invisible to the audit.
-- **Five sources, narrow queries.** Coverage is whatever the Federal Register and SEC search terms, the configured FCA publication types, the latest MAS circulars and one EUR-Lex act return.
+- **Eight sources, narrow queries.** Coverage is whatever the Federal Register and SEC search terms, the configured FCA publication types and FINRA notice kinds, the latest ESMA news, MAS circulars and ASIC tracker entries, and one EUR-Lex act return. ESMA and FINRA items are news and notices, not consolidated rulebooks.
 - **Reports only.** It does not fix code or open pull requests.
 - **Single tenant.** One target repository. Every signed-in dashboard user sees every run; there are no roles.
 - **Citations can go stale.** Findings store rule chunk ids without a foreign key, and re-embedding a rule replaces its chunks, so an older run's citations stop resolving. The dashboard says so; the PDF report keeps the text it was rendered with.
-- **Long rules are capped.** Text beyond `FEDREG_MAX_CHARS`, `SEC_MAX_CHARS`, `FCA_MAX_CHARS` or `MAS_MAX_CHARS` is cut, with a warning in the logs.
+- **Long rules are capped.** Text beyond each source's `*_MAX_CHARS` is cut, with a warning in the logs.
+- **Digests are summaries.** A digest is the model's reading of the rule text (or, without an API key, a keyword baseline), not a legal analysis.
 - **Scrapers break.** A source that fails or returns nothing is logged and skipped; the other sources still run.
 
 ## Where the build differs from the plan
@@ -222,10 +229,11 @@ See [.env.example](.env.example) for the full list with defaults. The main ones:
 
 ```
 src/
-  scrape/     federalRegister.ts, secRules.ts, fcaPublications.ts, eurLex.playwright.ts,
-              masCirculars.playwright.ts, http.ts, diff.ts
+  scrape/     federalRegister.ts, secRules.ts, finraNotices.ts, fcaPublications.ts, esmaNews.ts,
+              asicTracker.ts, eurLex.playwright.ts, masCirculars.playwright.ts, rss.ts, html.ts, pdf.ts, http.ts, diff.ts
+  digest/     digestRule.ts, weekly.ts, deliver.ts, textDiff.ts   the digest output mode and the weekly round-up
   rag/        chunker.ts, embed.ts, retrieve.ts, indexRepo.ts
-  graph/      state.ts, graph.ts, nodes/, controls.ts, evidence.ts
+  graph/      state.ts, graph.ts, nodes/ (incl. digest.ts), controls.ts, evidence.ts
   llm/        claudeAnalyst.ts, offlineAnalyst.ts
   report/     template.html, render.ts, upload.ts
   notify/     slack.ts, email.ts, agentmail.ts

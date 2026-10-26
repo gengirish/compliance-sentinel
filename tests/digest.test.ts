@@ -17,7 +17,8 @@ describe("text diff helpers", () => {
     const diff = changedLines("a\nb\nc\nc", "a\nB\nc\nd\nd");
     expect(diff).toEqual({ added: ["B", "d"], removed: ["b"] });
     expect(formatChangedLines(diff)).toBe("- b\n+ B\n+ d");
-    expect(formatChangedLines(diff, 8)).toBe("- b\n… 2 more changed line(s) omitted");
+    expect(formatChangedLines(diff, 8)).toBe("- b\n+ B\n… 1 more changed line(s) omitted");
+    expect(formatChangedLines(diff, 4)).toBe("- b\n… 2 more changed line(s) omitted");
     expect(changedLines("same  text", "same text")).toEqual({ added: [], removed: [] });
   });
 
