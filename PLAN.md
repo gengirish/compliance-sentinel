@@ -42,7 +42,9 @@ One-liner: a LangGraph agent scrapes regulatory portals daily, embeds new rules 
 | Embeddings | Voyage `voyage-law-2` (legal-tuned) with a fallback to a general model | Legal text retrieval quality matters more than anything else here. |
 | Database | Neon Postgres with `pgvector`, schema via Drizzle | One DB for rules, chunks, audit runs, findings, and the LangGraph checkpointer. |
 | Queue | BullMQ on Upstash Redis (Fly Redis). `maxmemory-policy=noeviction` | Repeatable jobs with cron + retries + backoff out of the box. |
-| Regulatory sources (v1) | **Federal Register** (official JSON API, no scraping fragility) and **EUR-Lex / GDPR amendments page** (Playwright, JS-rendered) | One API source proves the pipeline reliably; one Playwright source proves the scraping requirement. |
+| Regulatory sources | Six over plain HTTP: **Federal Register** (JSON API), **SEC** (the same API filtered to the SEC agency), **FINRA** notices (RSS + page text), **FCA** publications (RSS + page text), **ESMA** news (site-wide RSS), **ASIC** regulatory tracker (server-rendered table, guide PDFs via pdftotext). Two with Playwright: **EUR-Lex** (GDPR and its amending acts, JS-rendered) and **MAS** circulars (JS listing behind a WAF, PDFs via pdftotext; off by default). | The API and RSS sources keep the pipeline reliable; the Playwright sources cover portals that only render in a browser. Each source is isolated, so one failing is logged and skipped. |
+| Email | **AgentMail**: the app owns an inbox, sends alerts from it with the PDF attached, and receives replies through a Svix-signed webhook (`POST /inbox/agentmail`). "run audit" from an alert recipient queues a run. | Two-way mail with no extra service; replaced the Resend one-way plan. |
+| Dashboard | **Next.js 16 App Router + Clerk** in `web/`, deployed to Vercel with Root Directory `web`. Server components call the Hono API with the token; the browser never sees it. | Separate app and lockfile so the API image and CI are unaffected. |
 | Target codebase | A seeded fixture repo `demo-target-app/` with planted violations (PII in logs, no data-retention job, plaintext secrets, missing consent capture, no breach-notification hook) | Makes the Loom demo deterministic and the findings verifiable. |
 | Report storage | Fly Tigris (S3-compatible) bucket; local `./reports` in dev | Signed download link in the Slack alert. |
 | Audit trigger | Only when the diff step finds new rule content (content hash changed) | Keeps daily LLM cost near zero on quiet days. |
@@ -54,7 +56,7 @@ One-liner: a LangGraph agent scrapes regulatory portals daily, embeds new rules 
 ```
             +---------------- BullMQ cron (daily 06:00 UTC) ----------------+
             |                                                                |
-  Playwright / Federal Register API                                          |
+  FedReg, SEC, FINRA, FCA, ESMA, ASIC (HTTP) + EUR-Lex, MAS (Playwright)     |
             |                                                                |
             v                                                                |
    [1] scrape --> [2] diff (content hash) --> new rules? --no--> log + exit  |
@@ -78,20 +80,25 @@ One-liner: a LangGraph agent scrapes regulatory portals daily, embeds new rules 
                       upload to Tigris                     if any critical)   |
 ```
 
+The graph has a second output mode, `digest`: `START -> digest_rules` writes a plain-language digest per rule version (summary, what changed, effective date, who it applies to, key obligations) and audits no code. The weekly digest job reuses those digests and sends one round-up by email and Slack.
+
 **Services on Fly.io** (one app, two process groups):
 
-- `web`: tiny Hono/Express server. `GET /health`, `GET /reports/:id` (signed redirect), `POST /runs` (manual trigger, token-protected). Fly machines can autostop.
-- `worker`: BullMQ worker + scheduler registration for the repeatable job. Always on, 1 machine.
+- `web`: Hono server. `GET /health`, `POST /runs` (manual trigger, token-protected), `GET /runs`, `GET /runs/:id`, `GET /runs/:id/findings`, `GET /rules`, `GET /stats`, `GET /reports/:id` (signed redirect), `POST /inbox/agentmail` (Svix-signed webhook, no token). Fly machines can autostop.
+- `worker`: BullMQ worker + scheduler registration for the daily audit (`AUDIT_CRON`, 06:00 UTC) and the weekly digest (`DIGEST_CRON`, Monday 07:00 UTC). Always on, 1 machine.
+
+**Dashboard on Vercel**: the Next.js app in `web/` reads the API above with `SENTINEL_API_TOKEN` and signs users in with Clerk. Pages: `/` (public landing), `/overview`, `/runs`, `/runs/[id]`, `/rules`.
 
 ---
 
 ## 4. Data model (Drizzle, Postgres)
 
-- `sources` — id, name, kind (`api` | `playwright`), url, last_checked_at.
-- `rules` — id, source_id, external_id, title, effective_date, url, content_hash, raw_text, first_seen_at, last_changed_at.
+- `sources` — id, name, kind (`api` | `playwright` | `fixture`), url, last_checked_at.
+- `rules` — id, source_id, external_id, title, effective_date, url, content_hash, raw_text, previous_raw_text (so a digest can say what changed), first_seen_at, last_changed_at.
+- `rule_digests` — id, rule_id, content_hash, kind (`new` | `amended`), digest jsonb, analyst, cost_usd, created_at. One row per rule version.
 - `rule_chunks` — id, rule_id, ordinal, section_ref, text, embedding `vector(1024)`, metadata jsonb. HNSW index.
 - `code_chunks` — id, repo, path, start_line, end_line, text, embedding. Re-indexed when repo commit SHA changes.
-- `audit_runs` — id, started_at, finished_at, status, trigger (`cron` | `manual`), rules_in_scope int[], report_url, cost_usd.
+- `audit_runs` — id, started_at, finished_at, status, trigger (`cron` | `manual`), rules_in_scope int[], report_url, cost_usd, error, note.
 - `findings` — id, run_id, rule_id, obligation, status (`compliant` | `violation` | `needs_review`), severity (`critical` | `high` | `medium` | `low`), evidence jsonb (`{path, start_line, end_line, excerpt}[]`), citation_chunk_ids int[], rationale.
 - LangGraph `PostgresSaver` tables for checkpoints.
 
@@ -111,9 +118,10 @@ Nodes:
 6. **aggregate** — merge, dedupe findings by (rule, path), compute summary counts.
 7. **severity_gate** — conditional edge: any `critical` → `notify` branch after render.
 8. **render_report** — Handlebars/EJS HTML → WeasyPrint → PDF → Tigris upload.
-9. **notify** — Slack Block Kit message + Resend email with summary and signed link.
+9. **notify** — Slack Block Kit message + AgentMail email (PDF attached) with summary and signed link.
+10. **digest_rules** — the `digest` output mode: one plain-language digest per rule version, stored in `rule_digests`, no retrieval and no code audit. Reached from `START` instead of `extract_obligations` when the run is started with `mode: "digest"`.
 
-Guardrails: per-run token budget; `max_retries` with backoff per node; checkpointer so a crash mid-fan-out resumes instead of restarting; `interrupt_before` hook left in place for an optional human review stage (not wired in v1).
+Guardrails: per-run cost cap (`MAX_RUN_COST_USD`); retries with backoff per node; graph state checkpointed to Postgres after each step. Resuming a crashed run from its checkpoint is not wired up: a retry starts a fresh run. `interrupt_before` hook left in place for an optional human review stage (not wired in v1).
 
 ---
 
@@ -139,7 +147,7 @@ Guardrails: per-run token budget; `max_retries` with backoff per node; checkpoin
 **Day 4 — Report + alerts**
 - HTML template: cover, executive summary table, findings grouped by severity, each with regulation citation (title, section, URL, effective date) and code evidence block, appendix of rules in scope, methodology + disclaimer page.
 - WeasyPrint render; page numbers, headers; verify with `pdftoppm` snapshot.
-- Slack webhook + Resend email; dry-run mode when env vars are missing.
+- Slack webhook + email (planned as Resend, shipped as AgentMail); dry-run mode when env vars are missing.
 
 **Day 5 — Queue + Fly.io**
 - BullMQ queue `compliance`, repeatable job `daily-audit` (cron `0 6 * * *`), job `manual-audit`. Worker with concurrency 1, exponential backoff, dead-letter logging.
@@ -186,17 +194,24 @@ Guardrails: per-run token budget; `max_retries` with backoff per node; checkpoin
 ```
 compliance-sentinel/
 ├─ src/
-│  ├─ scrape/        federalRegister.ts, eurLex.playwright.ts, diff.ts
+│  ├─ scrape/        federalRegister.ts, secRules.ts, finraNotices.ts, fcaPublications.ts, esmaNews.ts,
+│  │                 asicTracker.ts, eurLex.playwright.ts, masCirculars.playwright.ts, rss.ts, html.ts, pdf.ts, http.ts, diff.ts
+│  ├─ digest/        digestRule.ts, weekly.ts, deliver.ts, textDiff.ts
 │  ├─ rag/           chunker.ts, embed.ts, retrieve.ts, indexRepo.ts
-│  ├─ graph/         state.ts, nodes/*.ts, graph.ts
+│  ├─ graph/         state.ts, nodes/*.ts (incl. digest.ts), graph.ts, controls.ts, evidence.ts
+│  ├─ llm/           claudeAnalyst.ts, offlineAnalyst.ts
 │  ├─ report/        template.html, render.ts (WeasyPrint), upload.ts
-│  ├─ notify/        slack.ts, email.ts
+│  ├─ notify/        slack.ts, email.ts, agentmail.ts
 │  ├─ queue/         queue.ts, worker.ts, schedule.ts
-│  ├─ web/           server.ts
-│  └─ db/            schema.ts, migrations/
+│  ├─ web/           server.ts, schemas.ts
+│  ├─ pipeline/      run.ts, watchdog.ts
+│  ├─ cli/           auditRun, digestRun, evalGolden, evalRetrieval, indexRepo, migrate
+│  └─ db/            schema.ts, client.ts, migrations/
+├─ web/              Next.js dashboard (own package.json and lockfile), deployed to Vercel
 ├─ demo-target-app/  seeded Express app with planted violations
-├─ samples/          report-example.pdf
-├─ tests/            diff, chunker, verify_citations, golden audit
+├─ samples/          report-example.pdf, report-example.html
+├─ docs/             architecture.json (Archify source), architecture.html, architecture.png
+├─ tests/            diff, chunker, verify_citations, golden audit, scrapers against fixtures, digest
 ├─ Dockerfile  docker-compose.yml  fly.toml  .env.example  README.md
 ```
 
@@ -204,7 +219,7 @@ compliance-sentinel/
 
 ## 10. Environment variables
 
-`DATABASE_URL`, `REDIS_URL`, `ANTHROPIC_API_KEY`, `VOYAGE_API_KEY`, `SLACK_WEBHOOK_URL`, `RESEND_API_KEY`, `ALERT_EMAIL_TO`, `TIGRIS_*` (bucket, key, secret, endpoint), `TARGET_REPO_PATH` or `TARGET_REPO_URL`, `RUN_TRIGGER_TOKEN`, `AUDIT_CRON` (default `0 6 * * *`), `MAX_RUN_COST_USD`.
+`DATABASE_URL`, `REDIS_URL`, `ANTHROPIC_API_KEY`, `VOYAGE_API_KEY`, `SLACK_WEBHOOK_URL`, `AGENTMAIL_API_KEY`, `AGENTMAIL_INBOX_ID`, `AGENTMAIL_WEBHOOK_SECRET`, `ALERT_EMAIL_TO`, `TIGRIS_*` (bucket, key, secret, endpoint), `TARGET_REPO_PATH` or `TARGET_REPO_URL`, `RUN_TRIGGER_TOKEN`, `AUDIT_CRON` (default `0 6 * * *`), `DIGEST_CRON` (default `0 7 * * 1`), `DIGEST_DAYS`, `MAX_RUN_COST_USD`, and one `SCRAPE_*` switch plus query and cap settings per source. The dashboard adds `SENTINEL_API_URL`, `SENTINEL_API_TOKEN` and the Clerk keys. `.env.example` has the full list with defaults.
 
 ---
 

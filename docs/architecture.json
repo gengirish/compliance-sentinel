@@ -8,44 +8,445 @@
     "repository": {
       "url": "https://github.com/gengirish/compliance-sentinel",
       "provider": "github",
-      "revision": "415e3713016942e4a8b418bf2c4210829307e062"
+      "revision": "495418372f75aa3230c57d16bc1795838fc04fb4"
     },
     "views": [
-      { "id": "trigger-path", "label": "Trigger to audit", "focus": ["operator", "web", "queue", "worker"], "note": "A manual POST /runs or the daily 06:00 UTC schedule puts one audit job on the queue." },
-      { "id": "audit-inputs", "label": "What the audit reads", "focus": ["portals", "voyage", "claude", "worker", "store"], "note": "Changed rules are embedded, then Claude extracts obligations and assesses them against indexed code." },
-      { "id": "audit-outputs", "label": "What the audit produces", "focus": ["worker", "store", "bucket", "alerts", "web"], "note": "Findings and run status go to Postgres, the PDF to Tigris, and critical violations to Slack and email." }
+      {
+        "id": "trigger-path",
+        "label": "Trigger to audit",
+        "focus": [
+          "operator",
+          "dashboard",
+          "web",
+          "queue",
+          "worker"
+        ],
+        "note": "POST /runs, the dashboard Run audit button, a \"run audit\" email or the 06:00 UTC schedule puts one audit job on the queue."
+      },
+      {
+        "id": "audit-inputs",
+        "label": "What the audit reads",
+        "focus": [
+          "portals",
+          "voyage",
+          "claude",
+          "worker",
+          "store"
+        ],
+        "note": "Rules from eight regulators are hashed; only changed rules are embedded, then Claude extracts and assesses obligations against code."
+      },
+      {
+        "id": "audit-outputs",
+        "label": "What the audit produces",
+        "focus": [
+          "worker",
+          "store",
+          "bucket",
+          "alerts",
+          "web",
+          "dashboard"
+        ],
+        "note": "Findings and run status go to Postgres, the PDF to Tigris, critical violations to Slack and AgentMail; the dashboard reads via the API."
+      }
     ]
   },
   "components": [
-    { "id": "operator", "type": "external", "label": "Operator", "sublabel": "curl + bearer token", "pos": [40, 270], "size": [150, 64] },
-    { "id": "web", "type": "frontend", "label": "web", "sublabel": "Hono :8080", "tag": "scales to zero", "pos": [290, 270], "size": [150, 64], "sources": [{ "path": "src/web/server.ts", "line": 29, "label": "createApp" }] },
-    { "id": "queue", "type": "messagebus", "label": "Redis", "sublabel": "BullMQ queue + cron", "tag": "noeviction", "brand": "redis", "pos": [540, 270], "size": [150, 64], "sources": [{ "path": "src/queue/queue.ts", "line": 25, "label": "createQueue" }, { "path": "src/queue/schedule.ts", "line": 10, "label": "registerDailyAudit" }] },
-    { "id": "worker", "type": "backend", "label": "worker", "sublabel": "pipeline + LangGraph audit", "tag": "always on, concurrency 1", "pos": [790, 262], "size": [170, 80], "sources": [{ "path": "src/queue/worker.ts", "line": 26, "label": "startWorker" }, { "path": "src/pipeline/run.ts", "line": 161, "label": "runPipeline" }, { "path": "src/graph/graph.ts", "line": 35, "label": "buildAuditGraph" }] },
-    { "id": "voyage", "type": "external", "label": "Voyage AI", "sublabel": "voyage-law-2, 1024-dim", "pos": [540, 70], "size": [150, 64], "sources": [{ "path": "src/rag/embed.ts", "line": 17 }] },
-    { "id": "portals", "type": "external", "label": "Regulatory portals", "sublabel": "FedReg, SEC, FCA, EUR-Lex, MAS", "pos": [790, 70], "size": [170, 64], "sources": [{ "path": "src/scrape/federalRegister.ts" }, { "path": "src/scrape/secRules.ts" }, { "path": "src/scrape/fcaPublications.ts" }, { "path": "src/scrape/eurLex.playwright.ts" }, { "path": "src/scrape/masCirculars.playwright.ts" }] },
-    { "id": "claude", "type": "external", "label": "Claude API", "sublabel": "sonnet-5-5 + haiku-5-5", "brand": "anthropic", "pos": [1060, 70], "size": [150, 64], "sources": [{ "path": "src/llm/claudeAnalyst.ts", "line": 13 }] },
-    { "id": "bucket", "type": "cloud", "label": "Tigris bucket", "sublabel": "report PDFs (S3 API)", "pos": [1060, 270], "size": [150, 64], "sources": [{ "path": "src/report/upload.ts" }] },
-    { "id": "store", "type": "database", "label": "PostgreSQL", "sublabel": "pgvector + checkpoints", "brand": "postgresql", "pos": [540, 480], "size": [150, 64], "sources": [{ "path": "src/db/migrations/0001_init.sql" }, { "path": "src/db/client.ts" }] },
-    { "id": "alerts", "type": "external", "label": "Slack + Resend", "sublabel": "critical findings only", "pos": [1060, 480], "size": [150, 64], "sources": [{ "path": "src/notify/slack.ts" }, { "path": "src/notify/email.ts" }] }
+    {
+      "id": "operator",
+      "type": "external",
+      "label": "Operator",
+      "sublabel": "curl + bearer token",
+      "pos": [
+        40,
+        270
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "dashboard",
+      "type": "frontend",
+      "label": "Dashboard",
+      "sublabel": "Next.js 16 + Clerk",
+      "tag": "Vercel",
+      "brand": "next-js",
+      "pos": [
+        290,
+        70
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "web/src/app/(dashboard)/overview/page.tsx"
+        },
+        {
+          "path": "web/src/lib/api.ts"
+        }
+      ]
+    },
+    {
+      "id": "web",
+      "type": "frontend",
+      "label": "web",
+      "sublabel": "Hono :8080",
+      "tag": "scales to zero",
+      "pos": [
+        290,
+        270
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "src/web/server.ts",
+          "line": 91,
+          "label": "createApp"
+        }
+      ]
+    },
+    {
+      "id": "queue",
+      "type": "messagebus",
+      "label": "Redis",
+      "sublabel": "BullMQ queue + cron",
+      "tag": "noeviction",
+      "brand": "redis",
+      "pos": [
+        540,
+        270
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "src/queue/queue.ts",
+          "line": 28,
+          "label": "createQueue"
+        },
+        {
+          "path": "src/queue/schedule.ts",
+          "line": 10,
+          "label": "registerDailyAudit"
+        },
+        {
+          "path": "src/queue/schedule.ts",
+          "line": 22,
+          "label": "registerWeeklyDigest"
+        }
+      ]
+    },
+    {
+      "id": "worker",
+      "type": "backend",
+      "label": "worker",
+      "sublabel": "pipeline + LangGraph audit",
+      "tag": "always on, concurrency 1",
+      "pos": [
+        790,
+        262
+      ],
+      "size": [
+        170,
+        80
+      ],
+      "sources": [
+        {
+          "path": "src/queue/worker.ts",
+          "line": 40,
+          "label": "startWorker"
+        },
+        {
+          "path": "src/pipeline/run.ts",
+          "line": 181,
+          "label": "runPipeline"
+        },
+        {
+          "path": "src/graph/graph.ts",
+          "line": 36,
+          "label": "buildAuditGraph"
+        }
+      ]
+    },
+    {
+      "id": "voyage",
+      "type": "external",
+      "label": "Voyage AI",
+      "sublabel": "voyage-law-2, 1024-dim",
+      "pos": [
+        540,
+        70
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "src/rag/embed.ts",
+          "line": 18,
+          "label": "VoyageEmbedder"
+        }
+      ]
+    },
+    {
+      "id": "portals",
+      "type": "external",
+      "label": "Regulatory portals",
+      "sublabel": "8 regulators: US, UK, EU, AU, SG",
+      "pos": [
+        790,
+        70
+      ],
+      "size": [
+        170,
+        64
+      ],
+      "sources": [
+        {
+          "path": "src/pipeline/run.ts",
+          "line": 99,
+          "label": "defaultSources (8)"
+        },
+        {
+          "path": "src/scrape/federalRegister.ts",
+          "label": "HTTP sources"
+        },
+        {
+          "path": "src/scrape/eurLex.playwright.ts",
+          "label": "Playwright sources"
+        }
+      ]
+    },
+    {
+      "id": "claude",
+      "type": "external",
+      "label": "Claude API",
+      "sublabel": "sonnet-5-5 + haiku-5-5",
+      "brand": "anthropic",
+      "pos": [
+        1060,
+        70
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "src/llm/claudeAnalyst.ts",
+          "line": 43,
+          "label": "ClaudeAnalyst"
+        }
+      ]
+    },
+    {
+      "id": "bucket",
+      "type": "cloud",
+      "label": "Tigris bucket",
+      "sublabel": "report PDFs (S3 API)",
+      "pos": [
+        1060,
+        270
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "src/report/upload.ts"
+        }
+      ]
+    },
+    {
+      "id": "store",
+      "type": "database",
+      "label": "PostgreSQL",
+      "sublabel": "pgvector + checkpoints",
+      "brand": "postgresql",
+      "pos": [
+        540,
+        480
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "src/db/schema.ts"
+        },
+        {
+          "path": "src/db/migrations/0001_init.sql"
+        },
+        {
+          "path": "src/db/client.ts"
+        }
+      ]
+    },
+    {
+      "id": "alerts",
+      "type": "external",
+      "label": "Slack + AgentMail",
+      "sublabel": "alerts out, mail in",
+      "pos": [
+        1060,
+        480
+      ],
+      "size": [
+        150,
+        64
+      ],
+      "sources": [
+        {
+          "path": "src/notify/slack.ts"
+        },
+        {
+          "path": "src/notify/email.ts",
+          "label": "AgentMail send"
+        },
+        {
+          "path": "src/web/server.ts",
+          "line": 102,
+          "label": "inbox webhook"
+        }
+      ]
+    }
   ],
   "boundaries": [
-    { "kind": "region", "label": "Fly.io app compliance-sentinel (iad): one image, two process groups", "wraps": ["web", "queue", "worker", "store"] }
+    {
+      "kind": "region",
+      "label": "Fly.io app compliance-sentinel (iad): one image, two process groups",
+      "wraps": [
+        "web",
+        "queue",
+        "worker",
+        "store"
+      ]
+    }
   ],
   "connections": [
-    { "id": "trigger-run", "from": "operator", "to": "web", "label": "POST /runs", "variant": "emphasis" },
-    { "id": "enqueue-audit", "from": "web", "to": "queue", "label": "enqueue", "variant": "emphasis" },
-    { "id": "consume-job", "from": "queue", "to": "worker", "label": "audit job", "variant": "emphasis" },
-    { "id": "scrape-rules", "from": "worker", "to": "portals", "label": "scrape + hash diff", "fromSide": "top", "toSide": "bottom", "labelDy": -72 },
-    { "id": "embed-chunks", "from": "worker", "to": "voyage", "label": "embed", "variant": "dashed", "fromSide": "top", "toSide": "bottom" },
-    { "id": "judge-obligations", "from": "worker", "to": "claude", "label": "extract + assess", "fromSide": "top", "toSide": "bottom" },
-    { "id": "upload-report", "from": "worker", "to": "bucket", "label": "PDF" },
-    { "id": "send-alerts", "from": "worker", "to": "alerts", "label": "notify", "variant": "security" },
-    { "id": "persist-audit", "from": "worker", "to": "store", "label": "rules, vectors, findings" },
-    { "id": "read-runs", "from": "web", "to": "store", "label": "read runs", "variant": "dashed" }
+    {
+      "id": "trigger-run",
+      "from": "operator",
+      "to": "web",
+      "label": "POST /runs",
+      "variant": "emphasis"
+    },
+    {
+      "id": "dashboard-reads",
+      "from": "dashboard",
+      "to": "web",
+      "label": "API reads (token)",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "id": "enqueue-audit",
+      "from": "web",
+      "to": "queue",
+      "label": "enqueue",
+      "variant": "emphasis"
+    },
+    {
+      "id": "consume-job",
+      "from": "queue",
+      "to": "worker",
+      "label": "audit or digest job",
+      "variant": "emphasis"
+    },
+    {
+      "id": "scrape-rules",
+      "from": "worker",
+      "to": "portals",
+      "label": "scrape + hash diff",
+      "fromSide": "top",
+      "toSide": "bottom",
+      "labelDy": -72
+    },
+    {
+      "id": "embed-chunks",
+      "from": "worker",
+      "to": "voyage",
+      "label": "embed",
+      "variant": "dashed",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "judge-obligations",
+      "from": "worker",
+      "to": "claude",
+      "label": "extract, assess, digest",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "upload-report",
+      "from": "worker",
+      "to": "bucket",
+      "label": "PDF"
+    },
+    {
+      "id": "send-alerts",
+      "from": "worker",
+      "to": "alerts",
+      "label": "notify",
+      "variant": "security"
+    },
+    {
+      "id": "persist-audit",
+      "from": "worker",
+      "to": "store",
+      "label": "rules, vectors, findings, digests"
+    },
+    {
+      "id": "read-runs",
+      "from": "web",
+      "to": "store",
+      "label": "read runs",
+      "variant": "dashed"
+    }
   ],
   "cards": [
-    { "dot": "cyan", "title": "Runtime", "items": ["TypeScript on Node 22, one Docker image", "web: /health, /runs, /reports/:id", "worker: cron 06:00 UTC, 3 attempts"] },
-    { "dot": "emerald", "title": "Audit graph", "items": ["Fan-out per obligation, max 4 parallel", "retrieve, assess, verify_citations", "Unverified citations: needs_review"] },
-    { "dot": "amber", "title": "Guardrails", "items": ["Unchanged rules: run skipped, no cost", "Cost cap per run: $2 by default", "No API keys: offline analyst"] }
+    {
+      "dot": "cyan",
+      "title": "Runtime",
+      "items": [
+        "TypeScript on Node 22, one Docker image",
+        "web: /health, /runs, /rules, /stats, /reports/:id, /inbox/agentmail",
+        "worker: audit daily 06:00 UTC, digest Monday 07:00 UTC"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Audit graph",
+      "items": [
+        "Fan-out per obligation, max 4 parallel",
+        "retrieve, assess, verify_citations",
+        "Unverified citations: needs_review",
+        "Digest mode: summaries only, no code audit"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Guardrails",
+      "items": [
+        "Unchanged rules: run skipped, no cost",
+        "Cost cap per run: $2 by default",
+        "No API keys: offline analyst",
+        "Inbox: only alert recipients can queue a run"
+      ]
+    }
   ]
 }

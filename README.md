@@ -241,7 +241,7 @@ src/
   web/        server.ts         the API the dashboard reads
   pipeline/   run.ts            scrape -> diff -> embed -> graph, one function
   db/         schema.ts, client.ts, migrations/
-  cli/        auditRun, evalGolden, evalRetrieval, indexRepo, migrate
+  cli/        auditRun, digestRun, evalGolden, evalRetrieval, failStaleRuns, indexRepo, migrate
 demo-target-app/   seeded Express app with planted violations
 fixtures/rules/    abridged GDPR and FTC Safeguards Rule excerpts for demo runs
 tests/             diff, chunker, citation checks, golden audit, scrapers, outputs
