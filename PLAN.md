@@ -4,26 +4,29 @@
 
 One-liner: a LangGraph agent scrapes regulatory portals daily, embeds new rules into a Legal RAG store, audits a target codebase against them, and emits an audit-ready PDF report with citations plus Slack/email alerts for critical findings. Runs as a BullMQ cron worker on Fly.io. Shipped as a public GitHub repo plus a Loom demo.
 
+> Revised 2026-10-26 to match what shipped. The original plan covered two sources, a Resend email alert and a bare API. The build grew to eight sources, a two-way AgentMail inbox, a Next.js dashboard and a weekly digest; the sections below describe that state. The README's "Where the build differs from the plan" section lists the smaller implementation deviations.
+
 ---
 
 ## 1. Scope and definition of done
 
 **In scope (must ship)**
 
-1. Daily scrape of 2 regulatory sources with change detection (new or amended rules only).
+1. Daily scrape of eight regulatory sources with change detection (new or amended rules only): Federal Register, SEC, FINRA, FCA, ESMA, ASIC, EUR-Lex and MAS (MAS off by default, `SCRAPE_MAS=true`). Each source has its own `SCRAPE_*` switch.
 2. Legal RAG store: chunked regulation text with embeddings in Postgres + pgvector.
 3. LangGraph audit graph that maps obligations in new rules to evidence in a target codebase.
 4. PDF report (WeasyPrint) with findings, severity, regulation citations, and `file:line` code citations.
-5. Slack webhook + email alert when any finding is `critical`.
-6. BullMQ repeatable job (cron) running the pipeline daily on Fly.io, plus an on-demand trigger for demos.
+5. Slack webhook + email alert when any finding is `critical`. Email goes out from the app's own AgentMail inbox, and a reply of "run audit" to that inbox queues a run.
+6. BullMQ repeatable jobs (cron) on Fly.io: the daily audit, a weekly "what changed" digest, plus an on-demand trigger for demos.
 7. Public GitHub repo with README, architecture diagram, `.env.example`, Dockerfile, `fly.toml`, and a sample report committed.
-8. Loom demo (3–5 min).
+8. Next.js dashboard (Clerk sign-in) on Vercel: overview, runs, findings per run, tracked rules, and a **Run audit** button.
+9. Loom demo (3–5 min).
 
 **Out of scope (say so in README)**
 
 - Legal advice or guaranteed coverage. The report is decision support, not a legal opinion.
 - Auto-remediation of code. The agent reports; it does not open PRs (stretch goal only).
-- Multi-tenant SaaS UI. A single health/report endpoint is enough.
+- Multi-tenant SaaS. One target repository; every signed-in dashboard user sees every run, there are no roles.
 
 **Definition of done**: a fresh clone + `fly deploy` + one manual trigger produces a PDF with at least 3 correct findings against the seeded demo repo, and the critical alert lands in Slack. Cron fires on schedule in Fly logs.
 

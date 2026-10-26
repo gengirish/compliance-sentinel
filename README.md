@@ -201,7 +201,7 @@ The test suite additionally checks that a model returning invented citations end
 
 ## Environment variables
 
-See [.env.example](.env.example) for the full list with defaults. The main ones: `DATABASE_URL`, `REDIS_URL`, `ANTHROPIC_API_KEY`, `VOYAGE_API_KEY`, `SLACK_WEBHOOK_URL`, `RESEND_API_KEY`, `ALERT_EMAIL_TO`, `TIGRIS_*`, `TARGET_REPO_PATH` or `TARGET_REPO_URL`, `RUN_TRIGGER_TOKEN`, `AUDIT_CRON`, `MAX_RUN_COST_USD`.
+See [.env.example](.env.example) for the full list with defaults. The main ones: `DATABASE_URL`, `REDIS_URL`, `ANTHROPIC_API_KEY`, `VOYAGE_API_KEY`, `SLACK_WEBHOOK_URL`, `AGENTMAIL_API_KEY`, `AGENTMAIL_INBOX_ID`, `AGENTMAIL_WEBHOOK_SECRET`, `ALERT_EMAIL_TO`, `TIGRIS_*`, `TARGET_REPO_PATH` or `TARGET_REPO_URL`, `RUN_TRIGGER_TOKEN`, `AUDIT_CRON`, `DIGEST_CRON`, `MAX_RUN_COST_USD`, and the per-source `SCRAPE_*` switches.
 
 ## Limitations
 
