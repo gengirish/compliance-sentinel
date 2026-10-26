@@ -67,6 +67,7 @@ test("a triggered audit reaches Completed on the runs list without a reload", as
   await expect(page.getByRole("status")).toContainText("Audit queued");
   // The new run appears and finishes with no page.reload(): the page polls while it is in progress.
   await expect(newest.getByRole("link").first()).not.toHaveText(before!);
+  await expect(newest.getByText("Running")).toBeVisible();
   await expect(newest.getByText("Completed")).toBeVisible({ timeout: 25_000 });
   await expect(page.getByRole("status")).toBeEmpty();
 });
@@ -77,9 +78,25 @@ test("report link streams the report without exposing the token", async ({ reque
   expect(await res.text()).toContain("Demo report");
 });
 
-test("unknown run shows not found", async ({ page }) => {
-  await page.goto("/runs/999");
-  await expect(page.getByText("doesn't exist")).toBeVisible();
+test("unknown run shows not found, without a title naming the run", async ({ page }) => {
+  for (const path of ["/runs/999", "/runs/abc"]) {
+    // The status stays 200: the (dashboard) loading boundary streams before notFound() runs.
+    await page.goto(path);
+    await expect(page.getByText("doesn't exist")).toBeVisible();
+    await expect(page).toHaveTitle("Run not found · Compliance Sentinel");
+  }
+});
+
+test("every dashboard page has its own title", async ({ page }) => {
+  for (const [path, title] of [
+    ["/overview", "Overview"],
+    ["/runs", "Runs"],
+    ["/runs/1", "Run #1"],
+    ["/rules", "Rules"],
+  ]) {
+    await page.goto(path);
+    await expect(page).toHaveTitle(`${title} · Compliance Sentinel`);
+  }
 });
 
 test("a run the watchdog timed out shows as failed with its reason", async ({ page }) => {

@@ -118,6 +118,8 @@ async function getJson<T>(path: string, schema: z.ZodType<T>): Promise<T> {
 export const api = {
   stats: () => getJson("/stats", Stats),
   runs: () => getJson("/runs?counts=1", z.array(Run)),
+  /** Just id and status of the recent runs, for cheap polling. */
+  runStatuses: async () => (await getJson("/runs", z.array(Run))).map(({ id, status }) => ({ id, status })),
   run: (id: number) => getJson(`/runs/${id}`, Run),
   findings: (id: number, filter: { status?: string[]; severity?: string[] } = {}) => {
     const q = new URLSearchParams();

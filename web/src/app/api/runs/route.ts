@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { ApiError, apiFetch } from "@/lib/api";
+import { ApiError, api, apiFetch } from "@/lib/api";
 import { unauthorized } from "@/lib/auth";
 
 /** The only input this route accepts. Unknown keys are rejected so a typo does not silently run a real audit. */
@@ -35,5 +35,16 @@ export async function POST(req: Request) {
         ? "The API accepted the request but could not reach the queue. Is Redis running?"
         : (err as Error).message;
     return NextResponse.json({ error: message }, { status: 502 });
+  }
+}
+
+/** Id and status of recent runs. Pages poll this while a run is in progress and re-render only on a change. */
+export async function GET() {
+  const denied = await unauthorized();
+  if (denied) return denied;
+  try {
+    return NextResponse.json({ runs: await api.runStatuses() }, { headers: { "cache-control": "no-store" } });
+  } catch (err) {
+    return NextResponse.json({ error: (err as Error).message }, { status: err instanceof ApiError && err.status ? err.status : 502 });
   }
 }

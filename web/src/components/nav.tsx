@@ -21,6 +21,9 @@ export function Nav() {
           <Link
             key={href}
             href={href}
+            // Every refresh re-prefetched all nav links, the current page included, which raced
+            // the refresh itself and added a server render apiece (DEF-003, DEF-004).
+            prefetch={false}
             aria-current={active ? "page" : undefined}
             aria-label={label}
             className={cn(

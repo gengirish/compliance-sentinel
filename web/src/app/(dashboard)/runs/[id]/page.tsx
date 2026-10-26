@@ -1,10 +1,11 @@
+import { cache } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, FileText } from "lucide-react";
 import { FindingCard } from "@/components/finding-card";
 import { EmptyState, PageHeader } from "@/components/page-header";
-import { RefreshWhile } from "@/components/refresh-while";
+import { RefreshWhileRunning } from "@/components/refresh-while";
 import { RunStatusBadge, STATUS_LABEL } from "@/components/status-badges";
 import { buttonVariants } from "@/components/ui/button";
 import { ApiError, api, FINDING_STATUSES, SEVERITIES, type Run } from "@/lib/api";
@@ -13,8 +14,21 @@ import { cn, formatDateTime, formatDuration, formatUsd } from "@/lib/utils";
 type Params = { id: string };
 type Search = { status?: string; severity?: string };
 
+/** The run, or null when it does not exist. Cached so metadata and the page share one API call. */
+const getRun = cache(async (id: number): Promise<Run | null> => {
+  if (!Number.isInteger(id) || id <= 0) return null;
+  try {
+    return await api.run(id);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
+});
+
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
-  return { title: `Run #${(await params).id}` };
+  // A tab or history entry titled "Run #999" would suggest the run exists.
+  const run = await getRun(Number((await params).id));
+  return { title: run ? `Run #${run.id}` : "Run not found" };
 }
 
 function pick<T extends string>(raw: string | undefined, allowed: readonly T[]): T[] {
@@ -29,18 +43,12 @@ export default async function RunPage({
   searchParams: Promise<Search>;
 }) {
   const id = Number((await params).id);
-  if (!Number.isInteger(id) || id <= 0) notFound();
   const search = await searchParams;
   const status = pick(search.status, FINDING_STATUSES);
   const severity = pick(search.severity, SEVERITIES);
 
-  let run: Run;
-  try {
-    run = await api.run(id);
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 404) notFound();
-    throw err;
-  }
+  const run = await getRun(id);
+  if (!run) notFound();
   const findings = await api.findings(id, { status, severity });
 
   /** Link that toggles one filter value and keeps the rest. */
@@ -60,7 +68,7 @@ export default async function RunPage({
       <Link href="/runs" className="mb-4 inline-flex items-center gap-1 text-sm text-muted hover:text-foreground">
         <ArrowLeft className="size-4" aria-hidden /> All runs
       </Link>
-      <RefreshWhile active={run.status === "running"} />
+      <RefreshWhileRunning runId={run.id} status={run.status} />
       <PageHeader
         title={
           <span className="flex items-center gap-3">

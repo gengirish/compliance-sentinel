@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Play } from "lucide-react";
-import { useRefreshWhile } from "@/components/refresh-while";
+import { useRefreshOnRunChange } from "@/components/refresh-while";
 import { Button } from "@/components/ui/button";
 
 type Result = { tone: "ok" | "error"; text: string } | null;
@@ -20,7 +20,7 @@ const QUEUE_WAIT_MS = 2 * 60 * 1000;
 export function RunAuditButton({ latestRun = null }: { latestRun?: LatestRun }) {
   const router = useRouter();
   const [demo, setDemo] = useState(true);
-  const [pending, startTransition] = useTransition();
+  const [pending, setPending] = useState(false);
   const [result, setResult] = useState<Result>(null);
   // The newest run id at the moment of the trigger, and when the trigger happened.
   const [waiting, setWaiting] = useState<{ afterId: number; since: number } | null>(null);
@@ -29,7 +29,10 @@ export function RunAuditButton({ latestRun = null }: { latestRun?: LatestRun }) 
   const started = waiting !== null && latestRun !== null && latestRun.id > waiting.afterId;
   // Once the triggered run finishes its row tells the story, so the banner goes.
   const finished = started && !running;
-  useRefreshWhile(running || (waiting !== null && !started));
+  useRefreshOnRunChange(running || (waiting !== null && !started), (runs) => {
+    const newest = runs[0];
+    return newest !== undefined && (newest.id !== latestRun?.id || newest.status !== latestRun?.status);
+  });
 
   useEffect(() => {
     if (!waiting || started) return;
@@ -43,9 +46,12 @@ export function RunAuditButton({ latestRun = null }: { latestRun?: LatestRun }) 
     return () => clearTimeout(timer);
   }, [waiting, started]);
 
-  function trigger() {
+  // Plain state rather than useTransition: refreshes started inside an async transition are
+  // entangled with it, and the polling refreshes that followed were held back with them.
+  async function trigger() {
     setResult(null);
-    startTransition(async () => {
+    setPending(true);
+    try {
       const res = await fetch("/api/runs", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -60,7 +66,11 @@ export function RunAuditButton({ latestRun = null }: { latestRun?: LatestRun }) 
       } else {
         setResult({ tone: "error", text: body.error ?? `Request failed (${res.status})` });
       }
-    });
+    } catch (err) {
+      setResult({ tone: "error", text: `Request failed (${(err as Error).message})` });
+    } finally {
+      setPending(false);
+    }
   }
 
   return (
@@ -75,7 +85,7 @@ export function RunAuditButton({ latestRun = null }: { latestRun?: LatestRun }) 
           />
           Demo rules
         </label>
-        <Button onClick={trigger} disabled={pending}>
+        <Button onClick={() => void trigger()} disabled={pending}>
           {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Play className="size-4" aria-hidden />}
           Run audit
         </Button>

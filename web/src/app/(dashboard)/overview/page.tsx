@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, FileText } from "lucide-react";
 import { FindingCard } from "@/components/finding-card";
@@ -8,6 +9,8 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardTitle } from "@/components/ui/card";
 import { api } from "@/lib/api";
 import { cn, formatDateTime, formatDuration, formatUsd } from "@/lib/utils";
+
+export const metadata: Metadata = { title: "Overview" };
 
 const OVERVIEW_LIMIT = 3;
 
