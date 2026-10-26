@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Loader2, Play } from "lucide-react";
-import { useRefreshOnRunChange } from "@/components/refresh-while";
+import { useReloadOnRunChange } from "@/components/refresh-while";
 import { Button } from "@/components/ui/button";
 
 type Result = { tone: "ok" | "error"; text: string } | null;
@@ -13,41 +12,31 @@ type LatestRun = { id: number; status: string } | null;
 const QUEUE_WAIT_MS = 2 * 60 * 1000;
 
 /**
- * `latestRun` is the newest run the page rendered. After a trigger the page polls
- * until a newer run appears and finishes, and it also polls while any run is in progress,
- * so the list never needs a manual reload.
+ * `latestRun` is the newest run the page rendered. While it is in progress, and after a
+ * trigger until the new run appears, the page polls and reloads itself when the run
+ * starts or finishes, so the list never needs a manual reload.
  */
 export function RunAuditButton({ latestRun = null }: { latestRun?: LatestRun }) {
-  const router = useRouter();
   const [demo, setDemo] = useState(true);
   const [pending, setPending] = useState(false);
   const [result, setResult] = useState<Result>(null);
-  // The newest run id at the moment of the trigger, and when the trigger happened.
-  const [waiting, setWaiting] = useState<{ afterId: number; since: number } | null>(null);
+  // Set by a trigger until the new run shows up (the page reloads then).
+  const [waiting, setWaiting] = useState(false);
 
-  const running = latestRun?.status === "running";
-  const started = waiting !== null && latestRun !== null && latestRun.id > waiting.afterId;
-  // Once the triggered run finishes its row tells the story, so the banner goes.
-  const finished = started && !running;
-  useRefreshOnRunChange(running || (waiting !== null && !started), (runs) => {
+  useReloadOnRunChange(latestRun?.status === "running" || waiting, (runs) => {
     const newest = runs[0];
     return newest !== undefined && (newest.id !== latestRun?.id || newest.status !== latestRun?.status);
   });
 
   useEffect(() => {
-    if (!waiting || started) return;
-    const timer = setTimeout(
-      () => {
-        setWaiting(null);
-        setResult({ tone: "error", text: "The worker has not started the audit yet. Check that it is running." });
-      },
-      QUEUE_WAIT_MS - (Date.now() - waiting.since),
-    );
+    if (!waiting) return;
+    const timer = setTimeout(() => {
+      setWaiting(false);
+      setResult({ tone: "error", text: "The worker has not started the audit yet. Check that it is running." });
+    }, QUEUE_WAIT_MS);
     return () => clearTimeout(timer);
-  }, [waiting, started]);
+  }, [waiting]);
 
-  // Plain state rather than useTransition: refreshes started inside an async transition are
-  // entangled with it, and the polling refreshes that followed were held back with them.
   async function trigger() {
     setResult(null);
     setPending(true);
@@ -61,8 +50,7 @@ export function RunAuditButton({ latestRun = null }: { latestRun?: LatestRun }) 
       if (res.ok) {
         // No job id: it is a queue id, not the run number, and users went looking for a run by it.
         setResult({ tone: "ok", text: "Audit queued. It appears under Runs as soon as the worker starts it." });
-        setWaiting({ afterId: latestRun?.id ?? 0, since: Date.now() });
-        router.refresh();
+        setWaiting(true);
       } else {
         setResult({ tone: "error", text: body.error ?? `Request failed (${res.status})` });
       }
@@ -91,7 +79,7 @@ export function RunAuditButton({ latestRun = null }: { latestRun?: LatestRun }) 
         </Button>
       </div>
       <p role="status" aria-live="polite" className={result?.tone === "error" ? "text-sm text-danger" : "text-sm text-success"}>
-        {finished ? null : result?.text}
+        {result?.text}
       </p>
     </div>
   );

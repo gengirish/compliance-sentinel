@@ -65,7 +65,7 @@ test("a triggered audit reaches Completed on the runs list without a reload", as
 
   await page.getByRole("button", { name: "Run audit" }).click();
   await expect(page.getByRole("status")).toContainText("Audit queued");
-  // The new run appears and finishes with no page.reload(): the page polls while it is in progress.
+  // The new run appears and finishes without the user reloading: the page polls while it is in progress.
   await expect(newest.getByRole("link").first()).not.toHaveText(before!);
   await expect(newest.getByText("Running")).toBeVisible();
   await expect(newest.getByText("Completed")).toBeVisible({ timeout: 25_000 });
