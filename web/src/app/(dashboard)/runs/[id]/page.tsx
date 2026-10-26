@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, FileText } from "lucide-react";
 import { FindingCard } from "@/components/finding-card";
 import { EmptyState, PageHeader } from "@/components/page-header";
+import { RefreshWhile } from "@/components/refresh-while";
 import { RunStatusBadge, STATUS_LABEL } from "@/components/status-badges";
 import { buttonVariants } from "@/components/ui/button";
 import { ApiError, api, FINDING_STATUSES, SEVERITIES, type Run } from "@/lib/api";
@@ -59,6 +60,7 @@ export default async function RunPage({
       <Link href="/runs" className="mb-4 inline-flex items-center gap-1 text-sm text-muted hover:text-foreground">
         <ArrowLeft className="size-4" aria-hidden /> All runs
       </Link>
+      <RefreshWhile active={run.status === "running"} />
       <PageHeader
         title={
           <span className="flex items-center gap-3">

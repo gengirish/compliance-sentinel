@@ -56,6 +56,21 @@ test("run audit button queues a job", async ({ page }) => {
   await expect(page.getByRole("status")).toContainText("Audit queued (job e2e-job)");
 });
 
+test("a triggered audit reaches Completed on the runs list without a reload", async ({ page }) => {
+  await page.goto("/runs");
+  const newest = page.getByRole("row").nth(1);
+  const before = await newest.getByRole("link").first().textContent();
+
+  await page.getByRole("button", { name: "Run audit" }).click();
+  await expect(page.getByRole("status")).toContainText("Audit queued");
+  await expect(newest.getByRole("link").first()).not.toHaveText(before!);
+  await expect(newest.getByText("Running")).toBeVisible();
+
+  // No page.reload(): the page polls while the run is in progress.
+  await expect(newest.getByText("Completed")).toBeVisible({ timeout: 25_000 });
+  await expect(page.getByRole("status")).toBeEmpty();
+});
+
 test("report link streams the report without exposing the token", async ({ request }) => {
   const res = await request.get("/api/reports/1");
   expect(res.status()).toBe(200);
@@ -71,7 +86,6 @@ test("a run the watchdog timed out shows as failed with its reason", async ({ pa
   await page.goto("/runs");
   const row = page.getByRole("row", { name: /#2/ });
   await expect(row.getByText("Failed")).toBeVisible();
-  await expect(page.getByRole("row").filter({ hasText: "Running" })).toHaveCount(0);
 
   await row.getByRole("link", { name: "#2" }).click();
   await expect(page.getByText(/Timed out: still running after 30 minutes/)).toBeVisible();

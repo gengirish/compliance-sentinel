@@ -17,7 +17,7 @@ export default async function RunsPage() {
       <PageHeader
         title="Audit runs"
         description="The 20 most recent runs, from the daily schedule and manual triggers."
-        actions={<RunAuditButton />}
+        actions={<RunAuditButton latestRun={runs[0] ?? null} />}
       />
       {runs.length === 0 ? (
         <EmptyState title="No runs yet" />

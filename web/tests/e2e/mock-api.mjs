@@ -38,6 +38,17 @@ const timedOut = {
   counts: noCounts,
 };
 const runs = [timedOut, run];
+
+// A triggered run shows as running, then completes a few seconds later, like the real worker.
+const RUN_SECONDS = 10;
+const queueRun = () => {
+  const startedAt = new Date().toISOString();
+  runs.unshift({ ...run, id: runs[0].id + 1, startedAt, finishedAt: null, status: "running", reportUrl: null, counts: noCounts });
+};
+const live = (r) => {
+  if (r.status !== "running" || Date.now() - Date.parse(r.startedAt) < RUN_SECONDS * 1000) return r;
+  return { ...r, status: "completed", finishedAt: new Date().toISOString(), counts };
+};
 const rule = { id: 1, title: "Demo Safeguards Rule", url: "https://example.com/rule", externalId: "DEMO-1" };
 const finding = (id, status, severity, obligation) => ({
   id,
@@ -59,8 +70,8 @@ const findings = [
 ];
 
 const routes = {
-  "GET /stats": () => ({ latestRun: run, latestCompletedRun: run, totals: { rules: 1, runs: 1 } }),
-  "GET /runs": () => runs,
+  "GET /stats": () => ({ latestRun: live(runs[0]), latestCompletedRun: run, totals: { rules: 1, runs: 1 } }),
+  "GET /runs": () => runs.map(live),
   "GET /rules": () => [
     {
       ...rule,
@@ -71,7 +82,10 @@ const routes = {
       lastAuditedRunId: 1,
     },
   ],
-  "POST /runs": () => [202, { jobId: "e2e-job", demo: true }],
+  "POST /runs": () => {
+    queueRun();
+    return [202, { jobId: "e2e-job", demo: true }];
+  },
 };
 
 createServer((req, res) => {
@@ -86,7 +100,7 @@ createServer((req, res) => {
   const runMatch = url.pathname.match(/^\/runs\/(\d+)$/);
   if (req.method === "GET" && runMatch) {
     const found = runs.find((r) => r.id === Number(runMatch[1]));
-    return found ? send(200, found) : send(404, { error: "run not found" });
+    return found ? send(200, live(found)) : send(404, { error: "run not found" });
   }
   if (req.method === "GET" && /^\/runs\/\d+\/findings$/.test(url.pathname) && url.pathname !== "/runs/1/findings") {
     return send(200, []);

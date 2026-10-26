@@ -29,7 +29,7 @@ export default async function OverviewPage() {
       <PageHeader
         title="Overview"
         description={`${stats.totals.rules} rules tracked across ${stats.totals.runs} audit runs.`}
-        actions={<RunAuditButton />}
+        actions={<RunAuditButton latestRun={stats.latestRun} />}
       />
 
       {!latest ? (
