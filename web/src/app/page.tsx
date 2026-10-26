@@ -30,7 +30,7 @@ const STEPS = [
   {
     icon: Radar,
     title: "Watch",
-    body: "Each day it checks the Federal Register API and EUR-Lex. Rule text is hashed, so only new or amended rules go further and a quiet day costs nothing.",
+    body: "Each day it checks the Federal Register and SEC (US), the FCA (UK), EUR-Lex (EU) and MAS (Singapore). Rule text is hashed, so only new or amended rules go further and a quiet day costs nothing.",
   },
   {
     icon: Landmark,

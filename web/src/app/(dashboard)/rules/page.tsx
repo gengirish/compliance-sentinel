@@ -15,7 +15,7 @@ export default async function RulesPage() {
     <>
       <PageHeader
         title="Tracked rules"
-        description="Regulations collected from the Federal Register and EUR-Lex. A rule is re-audited when its text changes."
+        description="Regulations collected from the Federal Register, the SEC, the FCA, EUR-Lex and MAS. A rule is re-audited when its text changes."
       />
       {rules.length === 0 ? (
         <EmptyState title="No rules collected yet" />
