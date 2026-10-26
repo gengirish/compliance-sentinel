@@ -66,3 +66,13 @@ test("unknown run shows not found", async ({ page }) => {
   await page.goto("/runs/999");
   await expect(page.getByText("doesn't exist")).toBeVisible();
 });
+
+test("a run the watchdog timed out shows as failed with its reason", async ({ page }) => {
+  await page.goto("/runs");
+  const row = page.getByRole("row", { name: /#2/ });
+  await expect(row.getByText("Failed")).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: "Running" })).toHaveCount(0);
+
+  await row.getByRole("link", { name: "#2" }).click();
+  await expect(page.getByText(/Timed out: still running after 30 minutes/)).toBeVisible();
+});

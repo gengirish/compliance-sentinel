@@ -12,6 +12,7 @@ import { openMigratedDb, type Db } from "../db/client.js";
 import { auditRuns, findings, ruleChunks, rules, sources } from "../db/schema.js";
 import type { Severity, Status } from "../graph/types.js";
 import { errorMessage, log } from "../log.js";
+import { failStaleRuns } from "../pipeline/watchdog.js";
 import { createQueue, enqueueManualAudit, type AuditJobData } from "../queue/queue.js";
 import { signReportUrl } from "../report/upload.js";
 import { describeIssues, FindingsQuery, ListRunsQuery, RunIdParams, TriggerRunQuery } from "./schemas.js";
@@ -21,7 +22,12 @@ export type AppDeps = {
   /** Lazily created so `/health` works even when Redis is down. */
   getQueue: () => Queue<AuditJobData>;
   token?: string;
+  /** When set, reads of run status first mark runs stuck longer than this as failed. */
+  runTimeoutMinutes?: number;
 };
+
+/** Run reads sweep for orphaned runs at most this often, so the dashboard never shows one as live. */
+const SWEEP_EVERY_MS = 60_000;
 
 type FindingCounts = {
   total: number;
@@ -81,6 +87,19 @@ export function createApp(deps: AppDeps): Hono {
     if (c.req.path === "/health") return next();
     if (!deps.token) return c.json({ error: "RUN_TRIGGER_TOKEN is not configured" }, 503);
     if (!tokenMatches(deps.token, c.req.header("authorization"))) return c.json({ error: "unauthorized" }, 401);
+    return next();
+  });
+
+  // The worker sweeps too, but if it is down a stuck run would otherwise read as live forever.
+  let lastSweep = 0;
+  app.use("*", async (c, next) => {
+    const readsRuns = c.req.method === "GET" && (c.req.path === "/stats" || c.req.path.startsWith("/runs"));
+    if (readsRuns && deps.runTimeoutMinutes && Date.now() - lastSweep > SWEEP_EVERY_MS) {
+      lastSweep = Date.now();
+      await failStaleRuns(deps.db, { maxAgeMinutes: deps.runTimeoutMinutes }).catch((err) =>
+        log.warn("stale run sweep failed", { error: errorMessage(err) }),
+      );
+    }
     return next();
   });
 
@@ -232,6 +251,7 @@ async function main() {
     db: handle.db,
     getQueue: () => (queue ??= createQueue()),
     token: config.RUN_TRIGGER_TOKEN,
+    runTimeoutMinutes: config.RUN_TIMEOUT_MINUTES,
   });
   serve({ fetch: app.fetch, port: config.PORT, hostname: "0.0.0.0" }, (info) => {
     log.info("web listening", { port: info.port });

@@ -17,6 +17,7 @@
     "audit:run": "tsx src/cli/auditRun.ts",
     "eval:retrieval": "tsx src/cli/evalRetrieval.ts",
     "eval:golden": "tsx src/cli/evalGolden.ts",
+    "runs:fail-stale": "tsx src/cli/failStaleRuns.ts",
     "dev:web": "tsx watch src/web/server.ts",
     "dev:worker": "tsx watch src/queue/worker.ts",
     "dev:dashboard": "pnpm --dir web dev",

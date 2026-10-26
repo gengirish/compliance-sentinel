@@ -1,9 +1,14 @@
 import { pathToFileURL } from "node:url";
 import { Worker, type ConnectionOptions, type Job } from "bullmq";
+import { config } from "../config.js";
+import { openMigratedDb } from "../db/client.js";
 import { errorMessage, log } from "../log.js";
 import { runPipeline, type PipelineResult } from "../pipeline/run.js";
+import { failStaleRuns } from "../pipeline/watchdog.js";
 import { QUEUE_NAME, createConnection, createQueue, type AuditJobData } from "./queue.js";
 import { registerDailyAudit } from "./schedule.js";
+
+const SWEEP_INTERVAL_MS = 5 * 60 * 1000;
 
 export type JobSummary = Pick<PipelineResult, "runId" | "status" | "summary" | "reportUrl" | "costUsd" | "notified">;
 
@@ -63,13 +68,25 @@ export function startWorker(connection: ConnectionOptions = createConnection()):
 async function main() {
   const queue = createQueue();
   await registerDailyAudit(queue);
+
+  // Reap runs orphaned by a previous crash or redeploy, then keep sweeping.
+  const handle = await openMigratedDb();
+  const sweep = () =>
+    failStaleRuns(handle.db, { maxAgeMinutes: config.RUN_TIMEOUT_MINUTES }).catch((err) =>
+      log.warn("stale run sweep failed", { error: errorMessage(err) }),
+    );
+  await sweep();
+  const sweeper = setInterval(() => void sweep(), SWEEP_INTERVAL_MS);
+
   const worker = startWorker();
   log.info("worker ready", { queue: QUEUE_NAME });
 
   const shutdown = async (signal: string) => {
     log.info("worker shutting down", { signal });
+    clearInterval(sweeper);
     await worker.close();
     await queue.close();
+    await handle.close();
     process.exit(0);
   };
   process.on("SIGTERM", () => void shutdown("SIGTERM"));

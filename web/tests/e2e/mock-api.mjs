@@ -22,6 +22,22 @@ const run = {
   error: null,
   counts,
 };
+const noCounts = {
+  total: 0,
+  byStatus: { compliant: 0, violation: 0, needs_review: 0 },
+  bySeverity: { critical: 0, high: 0, medium: 0, low: 0 },
+  criticalViolations: 0,
+};
+// A run the stale-run watchdog marked failed after the worker died mid-run.
+const timedOut = {
+  ...run,
+  id: 2,
+  status: "failed",
+  reportUrl: null,
+  error: "Timed out: still running after 30 minutes. The worker most likely restarted or crashed mid-run.",
+  counts: noCounts,
+};
+const runs = [timedOut, run];
 const rule = { id: 1, title: "Demo Safeguards Rule", url: "https://example.com/rule", externalId: "DEMO-1" };
 const finding = (id, status, severity, obligation) => ({
   id,
@@ -44,8 +60,7 @@ const findings = [
 
 const routes = {
   "GET /stats": () => ({ latestRun: run, latestCompletedRun: run, totals: { rules: 1, runs: 1 } }),
-  "GET /runs": () => [run],
-  "GET /runs/1": () => run,
+  "GET /runs": () => runs,
   "GET /rules": () => [
     {
       ...rule,
@@ -68,6 +83,14 @@ createServer((req, res) => {
   if (url.pathname === "/health") return send(200, { ok: true });
   if (req.headers.authorization !== `Bearer ${TOKEN}`) return send(401, { error: "unauthorized" });
 
+  const runMatch = url.pathname.match(/^\/runs\/(\d+)$/);
+  if (req.method === "GET" && runMatch) {
+    const found = runs.find((r) => r.id === Number(runMatch[1]));
+    return found ? send(200, found) : send(404, { error: "run not found" });
+  }
+  if (req.method === "GET" && /^\/runs\/\d+\/findings$/.test(url.pathname) && url.pathname !== "/runs/1/findings") {
+    return send(200, []);
+  }
   if (req.method === "GET" && url.pathname === "/runs/1/findings") {
     const status = url.searchParams.get("status")?.split(",");
     const severity = url.searchParams.get("severity")?.split(",");
