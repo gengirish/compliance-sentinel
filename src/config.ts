@@ -33,6 +33,8 @@ const EnvSchema = z.object({
   AUDIT_CRON: z.string().default("0 6 * * *"),
   MAX_RUN_COST_USD: z.coerce.number().positive().default(2),
   AUDIT_CONCURRENCY: z.coerce.number().int().positive().default(4),
+  /** A run still "running" after this long is presumed orphaned and marked failed. */
+  RUN_TIMEOUT_MINUTES: z.coerce.number().int().positive().default(30),
   PORT: z.coerce.number().int().default(8080),
   REPORTS_DIR: z.string().default("reports"),
   PGLITE_DIR: z.string().default(".data/pglite"),
