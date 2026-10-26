@@ -2,21 +2,30 @@ import { pathToFileURL } from "node:url";
 import { Worker, type ConnectionOptions, type Job } from "bullmq";
 import { config } from "../config.js";
 import { openMigratedDb } from "../db/client.js";
+import { runWeeklyDigest } from "../digest/weekly.js";
 import { errorMessage, log } from "../log.js";
 import { runPipeline, type PipelineResult } from "../pipeline/run.js";
 import { failStaleRuns } from "../pipeline/watchdog.js";
 import { QUEUE_NAME, createConnection, createQueue, type AuditJobData } from "./queue.js";
-import { registerDailyAudit } from "./schedule.js";
+import { registerDailyAudit, registerWeeklyDigest } from "./schedule.js";
 
 const SWEEP_INTERVAL_MS = 5 * 60 * 1000;
 
-export type JobSummary = Pick<PipelineResult, "runId" | "status" | "summary" | "reportUrl" | "costUsd" | "notified">;
+export type JobSummary = Pick<PipelineResult, "runId" | "status" | "summary" | "reportUrl" | "costUsd" | "notified"> & {
+  /** Rules summarised, for digest jobs (which have no audit run). */
+  digested?: number;
+};
 
 /** The job handler, separate from the Worker so it can be tested without Redis. */
 export async function processAuditJob(
   data: AuditJobData,
   runner: typeof runPipeline = runPipeline,
+  digestRunner: typeof runWeeklyDigest = runWeeklyDigest,
 ): Promise<JobSummary> {
+  if (data.kind === "digest") {
+    const digest = await digestRunner({ days: config.DIGEST_DAYS, send: true });
+    return { runId: 0, status: "completed", summary: null, reportUrl: null, costUsd: digest.costUsd, notified: digest.notified, digested: digest.records.length };
+  }
   const result = await runner({ trigger: data.trigger, demo: data.demo, ruleIds: data.ruleIds });
   return {
     runId: result.runId,
@@ -68,6 +77,7 @@ export function startWorker(connection: ConnectionOptions = createConnection()):
 async function main() {
   const queue = createQueue();
   await registerDailyAudit(queue);
+  await registerWeeklyDigest(queue);
 
   // Reap runs orphaned by a previous crash or redeploy, then keep sweeping.
   const handle = await openMigratedDb();

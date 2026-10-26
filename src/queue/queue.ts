@@ -5,9 +5,12 @@ import { config } from "../config.js";
 export const QUEUE_NAME = "compliance";
 export const DAILY_JOB = "daily-audit";
 export const MANUAL_JOB = "manual-audit";
+export const DIGEST_JOB = "weekly-digest";
 
 export type AuditJobData = {
   trigger: "cron" | "manual";
+  /** "audit" (default) runs the pipeline; "digest" sends the weekly round-up of rule changes. */
+  kind?: "audit" | "digest";
   demo?: boolean;
   ruleIds?: number[];
 };

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" version="2.0" xml:base="https://www.esma.europa.eu/">
+  <channel>
+    <title>European Securities and Markets Authority</title>
+    <link>https://www.esma.europa.eu/</link>
+    <description/>
+    <language>en</language>
+<item>
+  <title>ESMA finalises guidelines on test data retention</title>
+  <link>https://www.esma.europa.eu/press-news/esma-news/esma-finalises-guidelines-test-data-retention</link>
+  <description>&lt;span class="field field--name-title field--type-string field--label-hidden"&gt;ESMA finalises guidelines on test data retention&lt;/span&gt;
+&lt;span class="field field--name-created field--type-created field--label-hidden"&gt;&lt;time datetime="2026-10-22T16:51:53+02:00" title="Thursday, October 22, 2026 - 16:51" class="datetime"&gt;22 October 2026&lt;/time&gt;
+&lt;/span&gt;
+      &lt;div class="field field--name-field-news-section field--type-entity-reference field--label-hidden field__items"&gt;
+              &lt;div class="field__item"&gt;Market Abuse&lt;/div&gt;
+              &lt;div class="field__item"&gt;MiFID - Secondary Markets&lt;/div&gt;
+          &lt;/div&gt;
+            &lt;div class="clearfix text-formatted field field--name-field-news-introduction field--type-text-long field--label-hidden field__item"&gt;&lt;p&gt;&lt;span&gt;ESMA has published final guidelines requiring firms to retain order records for five years.&lt;/span&gt;&lt;/p&gt;&lt;/div&gt;
+            &lt;div class="clearfix text-formatted field field--name-field-news-body field--type-text-long field--label-hidden field__item"&gt;&lt;p&gt;The guidelines apply from 1 January 2027.&lt;/p&gt;&lt;/div&gt;
+      </description>
+    <dc:creator> </dc:creator>
+<guid isPermaLink="false">900101</guid>
+    </item>
+<item>
+  <title>ESMA publishes its 2027 work programme</title>
+  <link>https://www.esma.europa.eu/press-news/esma-news/esma-publishes-its-2027-work-programme</link>
+  <description>&lt;div class="field field--name-field-news-section field__items"&gt;&lt;div class="field__item"&gt;Corporate Information&lt;/div&gt;&lt;/div&gt;&lt;p&gt;Plain summary without a date.&lt;/p&gt;</description>
+<guid isPermaLink="false">900102</guid>
+    </item>
+  </channel>
+</rss>

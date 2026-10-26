@@ -102,6 +102,8 @@ export async function persistChanges(
           effectiveDate: values.effectiveDate,
           url: values.url,
           contentHash: values.contentHash,
+          // The stored row's text (not EXCLUDED's) becomes the previous version.
+          previousRawText: sql`${rules.rawText}`,
           rawText: values.rawText,
           lastChangedAt: sql`now()`,
         },

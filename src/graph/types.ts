@@ -55,6 +55,25 @@ export const RelevanceSchema = z.object({
   reason: z.string(),
 });
 
+/** A plain-language digest of one rule version, for people rather than for the code audit. */
+export const RuleDigestSchema = z.object({
+  summary: z
+    .string()
+    .describe("Two or three plain sentences a compliance officer can read in ten seconds: what this is and why it matters."),
+  what_changed: z
+    .string()
+    .describe("For an amended rule: what changed versus the previous text. For a new rule: 'New rule.' followed by what it introduces."),
+  effective_date: z
+    .string()
+    .nullable()
+    .describe("When the rule starts to apply: YYYY-MM-DD when stated, otherwise the date phrase from the text, or null if not stated."),
+  applies_to: z.string().describe("Who the rule applies to, e.g. 'UK-authorised firms offering retail investment products'."),
+  key_obligations: z
+    .array(z.string())
+    .describe("Three to eight one-sentence duties, each concrete enough to assign to a team. Fewer when the text has fewer."),
+});
+export type RuleDigest = z.infer<typeof RuleDigestSchema>;
+
 export type RuleChunkRef = { id: number; ruleId: number; sectionRef: string | null; text: string };
 
 /** A slice of the audited repository shown to the analyst. Lines are 1-based and inclusive. */

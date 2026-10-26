@@ -3,7 +3,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 import { parseAmendmentCelexIds, parseEurLexDocument } from "../src/scrape/eurLex.playwright.js";
+import { fetchAsicRules, parseAsicDate, parseAsicDocumentPage, parseAsicTracker } from "../src/scrape/asicTracker.js";
+import { extractEsmaPageText, fetchEsmaRules, parseEsmaFeed } from "../src/scrape/esmaNews.js";
 import { extractFcaPageText, fcaExternalId, fetchFcaRules, normalizeFcaType, parseFcaFeed } from "../src/scrape/fcaPublications.js";
+import { fetchFinraRules, parseFinraFeed, parseFinraNoticePage } from "../src/scrape/finraNotices.js";
 import { buildSearchUrl, extractRuleText, fetchFederalRegisterRules } from "../src/scrape/federalRegister.js";
 import { masExternalId, parseMasCircularPage, parseMasDate, parseMasListing } from "../src/scrape/masCirculars.playwright.js";
 import { buildSecSearchUrl, fetchSecRules, SEC_SOURCE } from "../src/scrape/secRules.js";
@@ -245,5 +248,133 @@ describe("MAS circulars parsing", () => {
     expect(parseMasDate("Published 04 September 2026")).toBe("2026-09-04");
     expect(parseMasDate("Date withheld")).toBeNull();
     expect(parseMasDate(undefined)).toBeNull();
+  });
+});
+
+describe("ESMA news feed", () => {
+  it("reads the date, topics and introduction out of the item HTML", () => {
+    const items = parseEsmaFeed(fixture("esma-rss.xml"));
+    expect(items).toHaveLength(2);
+    expect(items[0]).toEqual({
+      title: "ESMA finalises guidelines on test data retention",
+      link: "https://www.esma.europa.eu/press-news/esma-news/esma-finalises-guidelines-test-data-retention",
+      date: "2026-10-22",
+      topics: ["Market Abuse", "MiFID - Secondary Markets"],
+      summary: "ESMA has published final guidelines requiring firms to retain order records for five years.",
+    });
+    expect(items[1]).toMatchObject({ date: null, topics: ["Corporate Information"], summary: "Plain summary without a date." });
+  });
+
+  it("extracts the news body and drops the press-contact block, related items and footer", () => {
+    const lines = extractEsmaPageText(fixture("esma-page.html")).split("\n");
+    expect(lines).toContain("ESMA has published final guidelines requiring firms to retain order records for five years.");
+    expect(lines).toContain("Firms must retain order records for five years.");
+    expect(lines).toContain("Key requirements");
+    for (const noise of ["Market Abuse", "Related news: something else entirely", "ESMA 2026. Legal notice.", "Senior Communications Officer press@esma.europa.eu", "Press Officer"]) {
+      expect(lines).not.toContain(noise);
+    }
+  });
+
+  it("filters by topic, reads each page and falls back to the summary", async () => {
+    const fetchImpl = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.endsWith("/rss.xml")) return new Response(fixture("esma-rss.xml"));
+      if (url.includes("test-data-retention")) return new Response(fixture("esma-page.html"));
+      return new Response("gone", { status: 404 });
+    }) as unknown as typeof fetch;
+    const all = await fetchEsmaRules({ fetchImpl, topics: [] });
+    expect(all.map((r) => r.externalId)).toEqual(["esma-finalises-guidelines-test-data-retention", "esma-publishes-its-2027-work-programme"]);
+    expect(all[0]).toMatchObject({ effectiveDate: "2026-10-22", url: "https://www.esma.europa.eu/press-news/esma-news/esma-finalises-guidelines-test-data-retention" });
+    expect(all[0]?.rawText).toContain("Records must be made available");
+    expect(all[1]?.rawText).toBe("Plain summary without a date.");
+    const filtered = await fetchEsmaRules({ fetchImpl, topics: ["market abuse"] });
+    expect(filtered.map((r) => r.externalId)).toEqual(["esma-finalises-guidelines-test-data-retention"]);
+  });
+});
+
+describe("FINRA notices feed", () => {
+  it("reads the notice kind from the title and the date from pubDate", () => {
+    const items = parseFinraFeed(fixture("finra-rss.xml"));
+    expect(items.map((i) => i.type)).toEqual(["Regulatory Notice", "Election Notice", "Regulatory Notice", "Information Notice"]);
+    expect(items[0]).toMatchObject({ title: "Regulatory Notice 99-21", date: "2026-10-26", summary: "Summary FINRA has adopted amendments to address test options." });
+    expect(items[3]?.date).toBeNull();
+  });
+
+  it("reads a notice page: headline, type, body and the notice PDF", () => {
+    const page = parseFinraNoticePage(fixture("finra-page.html"), "https://www.finra.org/rules-guidance/notices/99-21");
+    expect(page.headline).toBe("FINRA Amends Rules to Address Test Options");
+    expect(page.noticeType).toBe("Rule Amendment");
+    expect(page.pdfUrl).toBe("https://www.finra.org/sites/default/files/2026-10/Regulatory-Notice-99-21.pdf");
+    const lines = page.text.split("\n");
+    expect(lines).toContain("Effective Date");
+    expect(lines).toContain("Members must retain records of each transaction for six years.");
+    expect(lines).not.toContain("Related notices: 98-01");
+    expect(lines).not.toContain("FINRA footer text.");
+  });
+
+  it("keeps the configured kinds once each, with the headline folded into the title", async () => {
+    const fetchImpl = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.endsWith("/notices/rss")) return new Response(fixture("finra-rss.xml"));
+      if (url.endsWith("/99-21")) return new Response(fixture("finra-page.html"));
+      return new Response("gone", { status: 404 });
+    }) as unknown as typeof fetch;
+    const rules = await fetchFinraRules({ fetchImpl, types: ["regulatory notice", "Information Notice"] });
+    expect(rules.map((r) => r.externalId)).toEqual(["99-21", "information-notice-101526"]);
+    expect(rules[0]).toMatchObject({ title: "Regulatory Notice 99-21: FINRA Amends Rules to Address Test Options", effectiveDate: "2026-10-26" });
+    expect(rules[0]?.rawText).toContain("written supervisory procedures");
+    // Its page 404s, so the feed summary stands in.
+    expect(rules[1]?.rawText).toBe("Cybersecurity advisory.");
+  });
+});
+
+describe("ASIC regulatory tracker", () => {
+  it("reads rows that point at an ASIC document, once each, skipping instrument-only rows", () => {
+    const items = parseAsicTracker(fixture("asic-tracker.html"));
+    expect(items).toHaveLength(2);
+    expect(items[0]).toEqual({
+      title: "RG 166 AFS licensing: Financial requirements",
+      url: "https://www.asic.gov.au/regulatory-resources/find-a-document/regulatory-guides/rg-166-afs-licensing-financial-requirements",
+      date: "2026-10-21",
+      description: "Updates financial requirements for responsible entities. It raises net tangible assets thresholds. RG 166 has been updated to reflect the upcoming changes.",
+      note: "reissued",
+    });
+    expect(items[1]).toMatchObject({ title: "INFO 999 Test information sheet", date: "2026-10-01", note: "new" });
+    expect(parseAsicDate("1/2/2026")).toBe("2026-02-01");
+  });
+
+  it("reads a document page: title, body and the PDF on download.asic.gov.au", () => {
+    const page = parseAsicDocumentPage(fixture("asic-rg-page.html"), "https://www.asic.gov.au/x/rg-166");
+    expect(page.title).toBe("RG 166 AFS licensing: Financial requirements");
+    expect(page.pdfUrl).toBe("https://download.asic.gov.au/media/gxrjl02q/rg166-published-21-october-2026.pdf");
+    const lines = page.text.split("\n");
+    expect(lines).toContain("Licensees must hold net tangible assets of at least $150,000.");
+    expect(lines).not.toContain("Other guides");
+    expect(lines).not.toContain("ASIC footer.");
+  });
+
+  it("combines the tracker description, the page text and the PDF text", async () => {
+    const fetchImpl = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.endsWith("/regulatory-tracker-2026")) return new Response(fixture("asic-tracker.html"));
+      if (url.endsWith("/rg-166-afs-licensing-financial-requirements")) return new Response(fixture("asic-rg-page.html"));
+      if (url.endsWith(".pdf")) return new Response(new Uint8Array([0x25, 0x50, 0x44, 0x46]));
+      return new Response("gone", { status: 404 });
+    }) as unknown as typeof fetch;
+    const pdfToTextImpl = vi.fn(async () => "RG 166.1 A licensee must lodge audited accounts within three months of year end.");
+
+    const rules = await fetchAsicRules({ fetchImpl, pdfToTextImpl, year: 2026 });
+    expect(rules.map((r) => r.externalId)).toEqual(["rg-166-afs-licensing-financial-requirements", "info-999-test-sheet"]);
+    expect(rules[0]).toMatchObject({ title: "RG 166 AFS licensing: Financial requirements (reissued)", effectiveDate: "2026-10-21" });
+    expect(rules[0]?.rawText.startsWith("Updates financial requirements for responsible entities.")).toBe(true);
+    expect(rules[0]?.rawText).toContain("Licensees must prepare cash-flow projections every quarter.");
+    expect(rules[0]?.rawText.endsWith("within three months of year end.")).toBe(true);
+    expect(pdfToTextImpl).toHaveBeenCalledTimes(1);
+    // The information sheet's page 404s, so the tracker description stands in.
+    expect(rules[1]?.rawText).toBe("Explains how test entities report incidents.");
+
+    const noPdf = await fetchAsicRules({ fetchImpl, pdfToTextImpl, year: 2026, includePdf: false, maxItems: 1 });
+    expect(noPdf).toHaveLength(1);
+    expect(noPdf[0]?.rawText).not.toContain("RG 166.1");
   });
 });

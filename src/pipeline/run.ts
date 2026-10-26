@@ -8,6 +8,7 @@ import { z } from "zod";
 import { config, resolveFromRoot, ROOT_DIR, targetRepoPath } from "../config.js";
 import { openMigratedDb, type DbHandle } from "../db/client.js";
 import { auditRuns, rules as rulesTable, type Rule } from "../db/schema.js";
+import type { RuleDigestRecord } from "../digest/digestRule.js";
 import { buildAuditGraph, runAuditGraph } from "../graph/graph.js";
 import type { AuditStateType, GraphDeps } from "../graph/state.js";
 import type { FindingSummary } from "../graph/types.js";
@@ -20,10 +21,13 @@ import { createEmbedder, type Embedder } from "../rag/embed.js";
 import { indexRepo } from "../rag/indexRepo.js";
 import { embedRule, getRulesByIds } from "../rag/retrieve.js";
 import { renderReport } from "../report/render.js";
+import { ASIC_SOURCE, fetchAsicRules } from "../scrape/asicTracker.js";
 import { persistChanges, upsertSource, type ScrapedRule, type SourceDef } from "../scrape/diff.js";
+import { ESMA_SOURCE, fetchEsmaRules } from "../scrape/esmaNews.js";
 import { EUR_LEX_SOURCE, scrapeEurLex } from "../scrape/eurLex.playwright.js";
 import { FCA_SOURCE, fetchFcaRules } from "../scrape/fcaPublications.js";
 import { FEDERAL_REGISTER_SOURCE, fetchFederalRegisterRules } from "../scrape/federalRegister.js";
+import { fetchFinraRules, FINRA_SOURCE } from "../scrape/finraNotices.js";
 import { MAS_SOURCE, scrapeMasCirculars } from "../scrape/masCirculars.playwright.js";
 import { fetchSecRules, SEC_SOURCE } from "../scrape/secRules.js";
 
@@ -31,6 +35,8 @@ const run = promisify(execFile);
 
 export type PipelineOptions = {
   trigger: "cron" | "manual";
+  /** "audit" (default) maps obligations to code; "digest" only summarises the rules in scope. */
+  mode?: "audit" | "digest";
   /** Force the bundled demo rules through, regardless of content hashes. */
   demo?: boolean;
   /** Audit these stored rules instead of scraping. */
@@ -45,11 +51,14 @@ export type PipelineOptions = {
 };
 
 export const SKIP_NOTE = "No new or amended rules since the last check, so there was nothing to audit.";
+export const DIGEST_NOTE = "Digest run: the rules in scope were summarised for people, not audited against code.";
 
 export type PipelineResult = {
   runId: number;
   status: "completed" | "skipped";
   rulesInScope: number[];
+  /** Filled in digest mode. */
+  digests: RuleDigestRecord[];
   summary: FindingSummary | null;
   reportUrl: string | null;
   reportPath: string | null;
@@ -92,7 +101,10 @@ export function defaultSources(): NonNullable<PipelineOptions["sources"]> {
     { def: FEDERAL_REGISTER_SOURCE, fetch: () => fetchFederalRegisterRules() },
   ];
   if (config.SCRAPE_SEC) sources.push({ def: SEC_SOURCE, fetch: () => fetchSecRules() });
+  if (config.SCRAPE_FINRA) sources.push({ def: FINRA_SOURCE, fetch: () => fetchFinraRules() });
   if (config.SCRAPE_FCA) sources.push({ def: FCA_SOURCE, fetch: () => fetchFcaRules() });
+  if (config.SCRAPE_ESMA) sources.push({ def: ESMA_SOURCE, fetch: () => fetchEsmaRules() });
+  if (config.SCRAPE_ASIC) sources.push({ def: ASIC_SOURCE, fetch: () => fetchAsicRules() });
   if (config.SCRAPE_EURLEX) sources.push({ def: EUR_LEX_SOURCE, fetch: () => scrapeEurLex() });
   if (config.SCRAPE_MAS) sources.push({ def: MAS_SOURCE, fetch: () => scrapeMasCirculars() });
   return sources;
@@ -189,6 +201,7 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
         runId: row!.id,
         status: "skipped",
         rulesInScope: [],
+        digests: [],
         summary: null,
         reportUrl: null,
         reportPath: null,
@@ -205,14 +218,21 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
     runId = row!.id;
     log.info("audit run started", { runId, rules: rulesInScope.length, trigger: opts.trigger });
 
+    const mode = opts.mode ?? "audit";
     const embedder = opts.embedder ?? createEmbedder(db);
     const analyst = opts.analyst ?? createAnalyst();
-    for (const rule of changedRules) {
-      const chunks = await embedRule(db, embedder, rule);
-      log.info("rule embedded", { ruleId: rule.id, chunks });
+    let repo = "";
+    let commitSha = "";
+    if (mode === "audit") {
+      for (const rule of changedRules) {
+        const chunks = await embedRule(db, embedder, rule);
+        log.info("rule embedded", { ruleId: rule.id, chunks });
+      }
+      const repoPath = await resolveTargetRepo(opts.repoPath);
+      const index = await indexRepo(db, embedder, repoPath);
+      repo = index.repo;
+      commitSha = index.commitSha;
     }
-    const repoPath = await resolveTargetRepo(opts.repoPath);
-    const index = await indexRepo(db, embedder, repoPath);
 
     checkpointer = await createCheckpointer(handle);
     const deps: GraphDeps = {
@@ -226,7 +246,7 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
     const graph = buildAuditGraph(deps, { checkpointer: checkpointer.saver });
     const state = await runAuditGraph(
       graph,
-      { runId, trigger: opts.trigger, ruleIds: rulesInScope, repo: index.repo, commitSha: index.commitSha },
+      { runId, trigger: opts.trigger, mode, ruleIds: rulesInScope, repo, commitSha },
       { concurrency: config.AUDIT_CONCURRENCY },
     );
 
@@ -238,14 +258,16 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
         reportUrl: state.reportPath,
         costUsd: state.costUsd,
         error: state.errors.length ? state.errors.join("\n").slice(0, 4_000) : null,
+        ...(mode === "digest" ? { note: DIGEST_NOTE } : {}),
       })
       .where(eq(auditRuns.id, runId));
-    log.info("audit run completed", { runId, costUsd: state.costUsd, ...state.summary });
+    log.info("audit run completed", { runId, mode, costUsd: state.costUsd, digests: state.digests.length, ...state.summary });
 
     return {
       runId,
       status: "completed",
       rulesInScope,
+      digests: state.digests,
       summary: state.summary,
       reportUrl: state.reportUrl,
       reportPath: state.reportPath,

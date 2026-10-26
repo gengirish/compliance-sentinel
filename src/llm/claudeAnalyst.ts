@@ -2,13 +2,15 @@ import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import type { z } from "zod";
 import type { Rule } from "../db/schema.js";
+import { changedLines, formatChangedLines } from "../digest/textDiff.js";
 import {
   AssessmentSchema,
   ObligationListSchema,
   RelevanceSchema,
+  RuleDigestSchema,
   type RuleChunkRef,
 } from "../graph/types.js";
-import { type Analyst, type AssessInput, formatEvidence, formatRuleChunks } from "./analyst.js";
+import { type Analyst, type AssessInput, type DigestInput, formatEvidence, formatRuleChunks } from "./analyst.js";
 
 export const SMART_MODEL = "claude-sonnet-5-5";
 export const FAST_MODEL = "claude-haiku-5-5";
@@ -113,6 +115,28 @@ Effective: ${rule.effectiveDate ?? "not stated"}
 ${formatRuleChunks(chunks)}`,
     });
     return { obligations: data.obligations, costUsd };
+  }
+
+  async digest(input: DigestInput) {
+    const diff =
+      input.kind === "amended" && input.previousText
+        ? formatChangedLines(changedLines(input.previousText, input.rule.rawText))
+        : null;
+    const { data, costUsd } = await this.structured({
+      model: FAST_MODEL,
+      effort: "low",
+      schema: RuleDigestSchema,
+      maxTokens: 2_000,
+      prompt: `Write a regulatory change digest for a compliance team. Plain language, no legal citations needed, nothing that is not in the text below.
+
+Rule: ${input.rule.title}
+Status: ${input.kind === "amended" ? "amended (the previous version was already tracked)" : "new to the tracker"}
+Effective date stated by the source: ${input.rule.effectiveDate ?? "not stated"}
+${diff ? `\nLines that changed versus the previous version:\n${diff}\n` : ""}
+Rule text${input.rule.rawText.length > 24_000 ? " (opening part)" : ""}:
+${input.rule.rawText.slice(0, 24_000)}`,
+    });
+    return { digest: data, costUsd };
   }
 
   async assess(input: AssessInput) {

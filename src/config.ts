@@ -42,6 +42,9 @@ const EnvSchema = z.object({
   RUN_TRIGGER_TOKEN: optional,
   PUBLIC_BASE_URL: optional,
   AUDIT_CRON: z.string().default("0 6 * * *"),
+  /** The weekly "what changed" digest: Monday 07:00 UTC, covering the last DIGEST_DAYS days. */
+  DIGEST_CRON: z.string().default("0 7 * * 1"),
+  DIGEST_DAYS: z.coerce.number().int().positive().default(7),
   MAX_RUN_COST_USD: z.coerce.number().positive().default(2),
   AUDIT_CONCURRENCY: z.coerce.number().int().positive().default(4),
   /** A run still "running" after this long is presumed orphaned and marked failed. */
@@ -71,6 +74,24 @@ const EnvSchema = z.object({
   MAS_MAX_CHARS: z.coerce.number().int().positive().default(80_000),
   PDFTOTEXT_BIN: z.string().default("pdftotext"),
   SCRAPE_MAS: flag("false"),
+  /** ESMA news topics to keep (comma-separated, as the site files them). Empty: everything. */
+  ESMA_TOPICS: z.string().default(""),
+  ESMA_MAX_ITEMS: z.coerce.number().int().positive().default(10),
+  ESMA_MAX_CHARS: z.coerce.number().int().positive().default(80_000),
+  SCRAPE_ESMA: flag("true"),
+  /** FINRA notice kinds to keep, by title prefix. */
+  FINRA_TYPES: z.string().default("Regulatory Notice"),
+  FINRA_MAX_ITEMS: z.coerce.number().int().positive().default(10),
+  FINRA_MAX_CHARS: z.coerce.number().int().positive().default(80_000),
+  SCRAPE_FINRA: flag("true"),
+  /** ASIC regulatory tracker year to read; unset: the current year. */
+  ASIC_YEAR: optional,
+  ASIC_MAX_ITEMS: z.coerce.number().int().positive().default(10),
+  /** Regulatory guides run to a hundred pages; keep more than for a news item. */
+  ASIC_MAX_CHARS: z.coerce.number().int().positive().default(120_000),
+  /** Convert the guide's PDF with pdftotext (poppler-utils); off keeps only the guide page text. */
+  ASIC_INCLUDE_PDF: flag("true"),
+  SCRAPE_ASIC: flag("true"),
 });
 
 export type Config = z.infer<typeof EnvSchema>;

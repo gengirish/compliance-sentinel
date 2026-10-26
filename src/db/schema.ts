@@ -44,11 +44,40 @@ export const rules = pgTable(
     url: text("url").notNull(),
     contentHash: text("content_hash").notNull(),
     rawText: text("raw_text").notNull(),
+    /** The text before the latest amendment, so a digest can say what changed. Null for a rule seen once. */
+    previousRawText: text("previous_raw_text"),
     firstSeenAt: ts("first_seen_at").notNull().defaultNow(),
     lastChangedAt: ts("last_changed_at").notNull().defaultNow(),
   },
   (t) => [uniqueIndex("rules_source_external_idx").on(t.sourceId, t.externalId)],
 );
+
+/** A plain-language summary of one version of a rule (see `RuleDigest` in graph/types). */
+export const ruleDigests = pgTable(
+  "rule_digests",
+  {
+    id: id(),
+    ruleId: bigint("rule_id", { mode: "number" })
+      .notNull()
+      .references(() => rules.id, { onDelete: "cascade" }),
+    contentHash: text("content_hash").notNull(),
+    kind: text("kind", { enum: ["new", "amended"] }).notNull(),
+    digest: jsonb("digest").$type<RuleDigestJson>().notNull(),
+    analyst: text("analyst").notNull(),
+    costUsd: doublePrecision("cost_usd").notNull().default(0),
+    createdAt: ts("created_at").notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("rule_digests_rule_hash_idx").on(t.ruleId, t.contentHash), index("rule_digests_rule_id_idx").on(t.ruleId)],
+);
+
+export type RuleDigestJson = {
+  summary: string;
+  what_changed: string;
+  effective_date: string | null;
+  applies_to: string;
+  key_obligations: string[];
+};
+export type RuleDigestRow = typeof ruleDigests.$inferSelect;
 
 export const ruleChunks = pgTable(
   "rule_chunks",

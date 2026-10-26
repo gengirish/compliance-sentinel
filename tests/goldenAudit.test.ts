@@ -131,6 +131,7 @@ describe("pipeline guards", () => {
       name: "hallucinating-stub",
       isRelevant: (rule, chunks) => offline.isRelevant(rule, chunks),
       extractObligations: (rule, chunks) => offline.extractObligations(rule, chunks),
+      digest: (input) => offline.digest(input),
       assess: async () => ({
         assessment: {
           status: "violation",
@@ -174,6 +175,9 @@ describe("pipeline guards", () => {
     const liar: Analyst = {
       name: "liar-stub",
       isRelevant: async () => ({ relevant: true, reason: "", costUsd: 0 }),
+      digest: async () => {
+        throw new Error("not used in this test");
+      },
       extractObligations: async () => ({
         obligations: [
           { obligation: "Made-up duty.", applies_to: "everything", technical_controls: ["foo"], source_chunk_ids: [424_242] },

@@ -1,14 +1,12 @@
-import { execFile } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
-import os from "node:os";
+import { mkdirSync } from "node:fs";
 import path from "node:path";
-import { promisify } from "node:util";
 import * as cheerio from "cheerio";
 import { config, resolveFromRoot } from "../config.js";
 import { log } from "../log.js";
 import type { ScrapedRule, SourceDef } from "./diff.js";
+import { pdfToText } from "./pdf.js";
 
-const run = promisify(execFile);
+export { pdfToText };
 
 const BASE = "https://www.mas.gov.sg";
 /** /regulation/circulars redirects here; the list itself is filled in by JavaScript from a search API behind a WAF. */
@@ -103,22 +101,6 @@ export function parseMasCircularPage(html: string, pageUrl: string): MasCircular
   const text = lines.length ? lines.join("\n") : root.text().replace(/\s+/g, " ").trim();
   const refNo = text.match(/\b(?:Circular|Notice)\s+No\.?\s*:?\s*([A-Z]{1,8}[\s-]?[\w/-]*\d[\w/-]*)/i)?.[1]?.trim() ?? null;
   return { title, text, pdfUrl, refNo };
-}
-
-/** Text of a PDF via poppler's pdftotext (the `PDFTOTEXT_BIN` binary), through a temp file. */
-export async function pdfToText(pdf: Buffer, bin = config.PDFTOTEXT_BIN): Promise<string> {
-  const dir = mkdtempSync(path.join(os.tmpdir(), "mas-circular-"));
-  const file = path.join(dir, "circular.pdf");
-  try {
-    writeFileSync(file, pdf);
-    const { stdout } = await run(bin, ["-nopgbrk", "-enc", "UTF-8", file, "-"], {
-      maxBuffer: 64 * 1024 * 1024,
-      timeout: 120_000,
-    });
-    return stdout.replace(/[ \t]+\n/g, "\n").trim();
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
 }
 
 /**

@@ -1,4 +1,5 @@
 import { Annotation } from "@langchain/langgraph";
+import type { RuleDigestRecord } from "../digest/digestRule.js";
 import type { Analyst, Budget } from "../llm/analyst.js";
 import type { Db } from "../db/client.js";
 import type { Embedder } from "../rag/embed.js";
@@ -11,10 +12,14 @@ const sum = (left: number, right: number): number => left + right;
 export const AuditState = Annotation.Root({
   runId: Annotation<number>,
   trigger: Annotation<"cron" | "manual">,
+  /** "audit" maps obligations to code; "digest" only summarises the rules for people. */
+  mode: Annotation<"audit" | "digest">({ reducer: (_, next) => next, default: () => "audit" }),
   /** Ids of the new or amended rules in scope. */
   ruleIds: Annotation<number[]>,
   repo: Annotation<string>,
   commitSha: Annotation<string>,
+  /** Produced by `digest_rules` in digest mode. */
+  digests: Annotation<RuleDigestRecord[]>({ reducer: (_, next) => next, default: () => [] }),
   obligations: Annotation<Obligation[]>({ reducer: (_, next) => next, default: () => [] }),
   /** Raw per-obligation findings, appended by the parallel branches. */
   findings: Annotation<Finding[]>({ reducer: concat, default: () => [] }),

@@ -1,6 +1,7 @@
 import { END, MemorySaver, Send, START, StateGraph, type BaseCheckpointSaver } from "@langchain/langgraph";
 import { aggregateNode } from "./nodes/aggregate.js";
 import { assessNode } from "./nodes/assess.js";
+import { digestRulesNode, routeMode } from "./nodes/digest.js";
 import { extractObligationsNode } from "./nodes/extractObligations.js";
 import { notifyNode, severityGate } from "./nodes/notify.js";
 import { renderReportNode } from "./nodes/renderReport.js";
@@ -35,11 +36,14 @@ function fanOut(state: AuditStateType): Send[] | "aggregate" {
 export function buildAuditGraph(deps: GraphDeps, opts: { checkpointer?: BaseCheckpointSaver } = {}) {
   return new StateGraph(AuditState)
     .addNode("extract_obligations", extractObligationsNode(deps), { retryPolicy: RETRY })
+    .addNode("digest_rules", digestRulesNode(deps), { retryPolicy: RETRY })
     .addNode("assess_obligation", buildObligationGraph(deps))
     .addNode("aggregate", aggregateNode(deps), { retryPolicy: RETRY })
     .addNode("render_report", renderReportNode(deps), { retryPolicy: RETRY })
     .addNode("notify", notifyNode(deps))
-    .addEdge(START, "extract_obligations")
+    // mode: the audit path, or the digest that only summarises the rules.
+    .addConditionalEdges(START, routeMode, ["extract_obligations", "digest_rules"])
+    .addEdge("digest_rules", END)
     .addConditionalEdges("extract_obligations", fanOut, ["assess_obligation", "aggregate"])
     .addEdge("assess_obligation", "aggregate")
     .addEdge("aggregate", "render_report")
@@ -55,7 +59,9 @@ export function buildAuditGraph(deps: GraphDeps, opts: { checkpointer?: BaseChec
 
 export type AuditGraph = ReturnType<typeof buildAuditGraph>;
 
-export type AuditInput = Pick<AuditStateType, "runId" | "trigger" | "ruleIds" | "repo" | "commitSha">;
+export type AuditInput = Pick<AuditStateType, "runId" | "trigger" | "ruleIds" | "repo" | "commitSha"> & {
+  mode?: AuditStateType["mode"];
+};
 
 export async function runAuditGraph(
   graph: AuditGraph,

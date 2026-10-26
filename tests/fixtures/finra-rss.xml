@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" version="2.0" xml:base="https://www.finra.org/">
+  <channel>
+    <title>Notices</title>
+    <link>https://www.finra.org/</link>
+    <description>FINRA Notices RSS Feed</description>
+    <language>en</language>
+    <item>
+  <title>Regulatory Notice 99-21</title>
+  <link>https://www.finra.org/rules-guidance/notices/99-21</link>
+  <description>&lt;h2&gt;Summary&amp;nbsp;&lt;/h2&gt;&lt;p&gt;FINRA has adopted amendments to address test options.&lt;/p&gt;</description>
+  <pubDate>Oct 26, 2026</pubDate>
+    <dc:creator>Regulatory Notice 99-21</dc:creator>
+    <guid isPermaLink="true">https://www.finra.org/rules-guidance/notices/99-21</guid>
+    </item>
+<item>
+  <title>Election Notice – 10/20/26</title>
+  <link>https://www.finra.org/rules-guidance/notices/election-notice-102026</link>
+  <description>&lt;p&gt;Nominees for the Board.&lt;/p&gt;</description>
+  <pubDate>Oct 20, 2026</pubDate>
+    <guid isPermaLink="true">https://www.finra.org/rules-guidance/notices/election-notice-102026</guid>
+    </item>
+<item>
+  <title>Regulatory Notice 99-21</title>
+  <link>https://www.finra.org/rules-guidance/notices/99-21</link>
+  <description>&lt;p&gt;Duplicate entry of the same notice.&lt;/p&gt;</description>
+  <pubDate>Oct 26, 2026</pubDate>
+    <guid isPermaLink="true">https://www.finra.org/rules-guidance/notices/99-21</guid>
+    </item>
+<item>
+  <title>Information Notice – 10/15/26</title>
+  <link>https://www.finra.org/rules-guidance/notices/information-notice-101526</link>
+  <description>&lt;p&gt;Cybersecurity advisory.&lt;/p&gt;</description>
+  <pubDate>not a date</pubDate>
+    <guid isPermaLink="true">https://www.finra.org/rules-guidance/notices/information-notice-101526</guid>
+    </item>
+  </channel>
+</rss>

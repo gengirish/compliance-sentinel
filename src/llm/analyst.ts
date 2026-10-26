@@ -1,11 +1,18 @@
 import type { Rule } from "../db/schema.js";
-import type { Assessment, EvidenceSnippet, Obligation, ObligationDraft, RuleChunkRef } from "../graph/types.js";
+import type { Assessment, EvidenceSnippet, Obligation, ObligationDraft, RuleChunkRef, RuleDigest } from "../graph/types.js";
 
 export type AssessInput = {
   rule: Rule;
   obligation: Obligation;
   ruleChunks: RuleChunkRef[];
   evidence: EvidenceSnippet[];
+};
+
+export type DigestInput = {
+  rule: Rule;
+  kind: "new" | "amended";
+  /** The text before the amendment, when the rule was seen before. */
+  previousText: string | null;
 };
 
 /**
@@ -21,6 +28,8 @@ export interface Analyst {
     chunks: RuleChunkRef[],
   ): Promise<{ obligations: (ObligationDraft & { controlId?: string })[]; costUsd: number }>;
   assess(input: AssessInput): Promise<{ assessment: Assessment; costUsd: number }>;
+  /** The alternative output: a human-readable summary of a rule change, with no code involved. */
+  digest(input: DigestInput): Promise<{ digest: RuleDigest; costUsd: number }>;
 }
 
 /** Tracks spend against the per-run cap shared by every node in a run. */

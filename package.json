@@ -15,6 +15,7 @@
     "db:migrate": "tsx src/cli/migrate.ts",
     "index:repo": "tsx src/cli/indexRepo.ts",
     "audit:run": "tsx src/cli/auditRun.ts",
+    "digest:run": "tsx src/cli/digestRun.ts",
     "eval:retrieval": "tsx src/cli/evalRetrieval.ts",
     "eval:golden": "tsx src/cli/evalGolden.ts",
     "runs:fail-stale": "tsx src/cli/failStaleRuns.ts",

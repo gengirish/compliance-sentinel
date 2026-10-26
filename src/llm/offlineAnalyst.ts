@@ -1,7 +1,12 @@
 import type { Rule } from "../db/schema.js";
+import { changedLines, sentences } from "../digest/textDiff.js";
 import { CONTROLS, controlById, controlsForText, type Control } from "../graph/controls.js";
-import type { Assessment, RuleChunkRef } from "../graph/types.js";
-import type { Analyst, AssessInput } from "./analyst.js";
+import type { Assessment, RuleChunkRef, RuleDigest } from "../graph/types.js";
+import type { Analyst, AssessInput, DigestInput } from "./analyst.js";
+
+const DATE_PHRASE = /\b(\d{4}-\d{2}-\d{2}|\d{1,2} [A-Z][a-z]+ \d{4}|[A-Z][a-z]+ \d{1,2}, \d{4})\b/;
+const DUTY = /\b(must|shall|is required to|are required to|may not|must not|shall not|is prohibited|should)\b/i;
+const SKIP = /^(abridged|consult the official|this is decision support)/i;
 
 type LineHit = { path: string; line: number };
 
@@ -37,6 +42,34 @@ function toRanges(hits: LineHit[], limit = 6): Assessment["evidence"] {
  */
 export class OfflineAnalyst implements Analyst {
   readonly name = "offline-keyword-baseline";
+
+  /**
+   * A digest by pattern matching: the opening sentences, duty-shaped sentences
+   * as obligations, and the first date phrase near "effective" or "apply".
+   */
+  async digest(input: DigestInput): Promise<{ digest: RuleDigest; costUsd: number }> {
+    const text = input.rule.rawText;
+    const all = sentences(text).filter((s) => !SKIP.test(s));
+    const duties = [...new Set(all.filter((s) => DUTY.test(s) && s.length > 25))].slice(0, 8).map((s) => (s.length > 220 ? `${s.slice(0, 217)}…` : s));
+    const effectiveMatch = text.match(new RegExp(`(?:effective|applies?|apply|in force|takes effect|compliance date)[^.\\n]{0,60}?${DATE_PHRASE.source}`, "i"));
+    const appliesMatch = all.find((s) => /\b(applies to|apply to|relevant to|is for|covered institution|relevant entity|a firm must)\b/i.test(s));
+    let whatChanged = `New rule. ${all[0] ?? input.rule.title}`;
+    if (input.kind === "amended") {
+      const diff = input.previousText ? changedLines(input.previousText, text) : { added: [], removed: [] };
+      const sample = diff.added[0] ?? diff.removed[0];
+      whatChanged = `Amended: ${diff.added.length} line(s) added and ${diff.removed.length} removed since the previous version.${sample ? ` For example: "${sample.slice(0, 160)}"` : ""}`;
+    }
+    return {
+      digest: {
+        summary: all.slice(0, 2).join(" ").slice(0, 400) || input.rule.title,
+        what_changed: whatChanged,
+        effective_date: input.rule.effectiveDate ?? effectiveMatch?.[1] ?? null,
+        applies_to: appliesMatch ? appliesMatch.slice(0, 200) : "Not stated in the text (offline baseline).",
+        key_obligations: duties,
+      },
+      costUsd: 0,
+    };
+  }
 
   async isRelevant(_rule: Rule, chunks: RuleChunkRef[]) {
     const relevant = chunks.some((chunk) => controlsForText(chunk.text).length > 0);
