@@ -16,7 +16,7 @@ Give it a rule (or let it pick up new and amended rules from five regulatory sou
 | EUR-Lex Playwright source | Verified against the live site (GDPR: 99 articles, plus its corrigendum) |
 | SEC source (Federal Register API filtered to the SEC) | Verified against the live API (fetches SEC final rules with full regulatory text) |
 | FCA publications RSS source | Verified against the live feed (publication pages fetched and reduced to body text) |
-| MAS circulars source (Playwright + pdftotext) | Implemented with unit-tested parsers; **not yet verified live**: MAS served its maintenance page to the browser during development. Off by default (`SCRAPE_MAS=true`) |
+| MAS circulars source (Playwright + pdftotext) | Verified locally against the live site (2 circulars, page text plus PDF text); **not yet run inside the Docker image**. Off by default (`SCRAPE_MAS=true`) |
 | Full run on live sources, then a second run that correctly skips | Verified locally |
 | Neon Postgres with pgvector, including the Postgres checkpointer | Verified: migrations and a demo audit ran against Neon |
 | Audit with Claude (`claude-sonnet-5-5`, `claude-haiku-5-5`) and Voyage `voyage-law-2` | Implemented, **not yet run**: needs API keys |
