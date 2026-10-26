@@ -7,6 +7,13 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 /** Repo root in dev (src/..) and in the built image (dist/..). */
 export const ROOT_DIR = path.resolve(here, "..");
 
+/** "true"/"false"/"0" style switches. */
+const flag = (def: "true" | "false") =>
+  z
+    .string()
+    .default(def)
+    .transform((v) => v !== "false" && v !== "0");
+
 const optional = z
   .string()
   .optional()
@@ -44,10 +51,22 @@ const EnvSchema = z.object({
   FEDREG_PER_PAGE: z.coerce.number().int().positive().max(50).default(5),
   FEDREG_MAX_CHARS: z.coerce.number().int().positive().default(120_000),
   EURLEX_CELEX: z.string().default("32016R0679"),
-  SCRAPE_EURLEX: z
-    .string()
-    .default("true")
-    .transform((v) => v !== "false" && v !== "0"),
+  SCRAPE_EURLEX: flag("true"),
+  /** SEC final rules, from the Federal Register API filtered to the SEC (EDGAR holds company filings, not rulemaking). */
+  SEC_TERM: z.string().default("cybersecurity customer information safeguards"),
+  SEC_PER_PAGE: z.coerce.number().int().positive().max(50).default(5),
+  SEC_MAX_CHARS: z.coerce.number().int().positive().default(80_000),
+  SCRAPE_SEC: flag("true"),
+  /** FCA publication types to keep from the publications RSS feed, comma-separated; plural and case do not matter. */
+  FCA_TYPES: z.string().default("Policy statements,Consultation papers,Finalised guidance,Multi-firm reviews"),
+  FCA_MAX_ITEMS: z.coerce.number().int().positive().default(10),
+  FCA_MAX_CHARS: z.coerce.number().int().positive().default(80_000),
+  SCRAPE_FCA: flag("true"),
+  /** MAS circulars need Chromium and pdftotext (poppler-utils), so they are off unless asked for. */
+  MAS_MAX_ITEMS: z.coerce.number().int().positive().default(5),
+  MAS_MAX_CHARS: z.coerce.number().int().positive().default(80_000),
+  PDFTOTEXT_BIN: z.string().default("pdftotext"),
+  SCRAPE_MAS: flag("false"),
 });
 
 export type Config = z.infer<typeof EnvSchema>;

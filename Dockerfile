@@ -19,11 +19,12 @@ ENV NODE_ENV=production \
     PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 # WeasyPrint from Debian brings Pango, Cairo and HarfBuzz with it; DejaVu is the report font.
-# git lets the worker clone TARGET_REPO_URL.
+# poppler-utils provides pdftotext for MAS circulars. git lets the worker clone TARGET_REPO_URL.
 RUN apt-get update \
- && apt-get install -y --no-install-recommends weasyprint fonts-dejavu-core git ca-certificates \
+ && apt-get install -y --no-install-recommends weasyprint poppler-utils fonts-dejavu-core git ca-certificates \
  && rm -rf /var/lib/apt/lists/* \
- && weasyprint --version
+ && weasyprint --version \
+ && pdftotext -v
 
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist

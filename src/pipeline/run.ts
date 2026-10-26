@@ -22,7 +22,10 @@ import { embedRule, getRulesByIds } from "../rag/retrieve.js";
 import { renderReport } from "../report/render.js";
 import { persistChanges, upsertSource, type ScrapedRule, type SourceDef } from "../scrape/diff.js";
 import { EUR_LEX_SOURCE, scrapeEurLex } from "../scrape/eurLex.playwright.js";
+import { FCA_SOURCE, fetchFcaRules } from "../scrape/fcaPublications.js";
 import { FEDERAL_REGISTER_SOURCE, fetchFederalRegisterRules } from "../scrape/federalRegister.js";
+import { MAS_SOURCE, scrapeMasCirculars } from "../scrape/masCirculars.playwright.js";
+import { fetchSecRules, SEC_SOURCE } from "../scrape/secRules.js";
 
 const run = promisify(execFile);
 
@@ -88,7 +91,10 @@ export function defaultSources(): NonNullable<PipelineOptions["sources"]> {
   const sources: NonNullable<PipelineOptions["sources"]> = [
     { def: FEDERAL_REGISTER_SOURCE, fetch: () => fetchFederalRegisterRules() },
   ];
+  if (config.SCRAPE_SEC) sources.push({ def: SEC_SOURCE, fetch: () => fetchSecRules() });
+  if (config.SCRAPE_FCA) sources.push({ def: FCA_SOURCE, fetch: () => fetchFcaRules() });
   if (config.SCRAPE_EURLEX) sources.push({ def: EUR_LEX_SOURCE, fetch: () => scrapeEurLex() });
+  if (config.SCRAPE_MAS) sources.push({ def: MAS_SOURCE, fetch: () => scrapeMasCirculars() });
   return sources;
 }
 

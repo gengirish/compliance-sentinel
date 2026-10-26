@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" version="2.0" xml:base="https://www.fca.org.uk/">
+  <channel>
+    <title>Financial Conduct Authority (FCA)</title>
+    <link>https://www.fca.org.uk/</link>
+    <description/>
+    <language>en</language>
+
+    <item>
+  <title>PS99/1: Operational resilience for test firms</title>
+  <link>https://www.fca.org.uk/publications/policy-statements/ps99-1-operational-resilience-test-firms</link>
+  <description>
+We set out final rules requiring test firms to identify important business services.
+</description>
+      <category>Policy statements</category>
+    <pubDate>Friday, October 23, 2026 - 11:30</pubDate>
+    <dc:creator> </dc:creator>
+<guid isPermaLink="false">900001</guid>
+    </item>
+<item>
+  <title>CP99/2:   Financial crime guide
+  updates</title>
+  <link>https://www.fca.org.uk/publications/consultation-papers/cp99-2-financial-crime-guide-updates</link>
+  <description>We are consulting on changes to the guide.</description>
+      <category>Consultation papers</category>
+    <pubDate>Thu, 22 Oct 2026 10:00:00 +0100</pubDate>
+    <dc:creator> </dc:creator>
+<guid isPermaLink="false">900002</guid>
+    </item>
+<item>
+  <title>Access to cash coverage in the UK 2026 H1</title>
+  <link>https://www.fca.org.uk/data/access-cash-coverage-uk-2026-h1/</link>
+  <description>Quarterly data on access to cash.</description>
+      <category>Data</category>
+    <pubDate>not a date</pubDate>
+    <dc:creator> </dc:creator>
+<guid isPermaLink="false">900003</guid>
+    </item>
+<item>
+  <title>Untitled item without a link</title>
+  <link></link>
+  <description>Should be ignored.</description>
+      <category>Policy statements</category>
+    </item>
+  </channel>
+</rss>

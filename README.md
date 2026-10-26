@@ -2,7 +2,7 @@
 
 When a regulation with a deadline applies to you, an auditor or regulator wants proof of where your code meets each requirement. Today an engineer and a compliance person build that mapping by hand, one requirement at a time, in a spreadsheet. Compliance Sentinel builds it from the rule text and the repository: every obligation tied to a `file:line`, with the regulation section cited, in an audit-ready report.
 
-Give it a rule (or let it pick up new and amended rules from two regulatory sources each day). It embeds the rule text, extracts the obligations a software team would have to implement, searches the target repository for evidence, and judges each obligation as compliant, a violation, or needing human review. Citations are checked mechanically: a cited chunk must belong to the rule and a cited `file:line` must exist, or the verdict is downgraded. Critical violations go to Slack and email.
+Give it a rule (or let it pick up new and amended rules from five regulatory sources each day). It embeds the rule text, extracts the obligations a software team would have to implement, searches the target repository for evidence, and judges each obligation as compliant, a violation, or needing human review. Citations are checked mechanically: a cited chunk must belong to the rule and a cited `file:line` must exist, or the verdict is downgraded. Critical violations go to Slack and email.
 
 > This is decision support, not legal advice. It does not guarantee compliance or complete coverage of any regulation.
 
@@ -10,10 +10,13 @@ Give it a rule (or let it pick up new and amended rules from two regulatory sour
 
 | Part | State |
 |---|---|
-| Scrape, change detection, embedding, LangGraph audit, report, alerts | Built and tested (68 tests) |
+| Scrape, change detection, embedding, LangGraph audit, report, alerts | Built and tested (81 tests) |
 | Dashboard (Next.js 16, Clerk) in [web/](web) | Built; 7 Playwright e2e tests against a mock API; verified locally against Neon. Deployed to Vercel at <https://compliance-sentinel-web.vercel.app> with Clerk keys set; signed-in pages not yet checked in production |
 | Federal Register API source | Verified against the live API |
 | EUR-Lex Playwright source | Verified against the live site (GDPR: 99 articles, plus its corrigendum) |
+| SEC source (Federal Register API filtered to the SEC) | Verified against the live API (fetches SEC final rules with full regulatory text) |
+| FCA publications RSS source | Verified against the live feed (publication pages fetched and reduced to body text) |
+| MAS circulars source (Playwright + pdftotext) | Implemented with unit-tested parsers; **not yet verified live**: MAS served its maintenance page to the browser during development. Off by default (`SCRAPE_MAS=true`) |
 | Full run on live sources, then a second run that correctly skips | Verified locally |
 | Neon Postgres with pgvector, including the Postgres checkpointer | Verified: migrations and a demo audit ran against Neon |
 | Audit with Claude (`claude-sonnet-5-5`, `claude-haiku-5-5`) and Voyage `voyage-law-2` | Implemented, **not yet run**: needs API keys |
@@ -42,7 +45,7 @@ flowchart TD
     manual["POST /runs<br/>(token, optional ?demo=1)"] --> scrape
 
     subgraph ing [Ingest]
-        scrape["Scrape<br/>Federal Register API + EUR-Lex (Playwright)"] --> diff{"Content hash<br/>changed?"}
+        scrape["Scrape<br/>Federal Register, SEC, FCA (HTTP) + EUR-Lex, MAS (Playwright)"] --> diff{"Content hash<br/>changed?"}
         diff -- no --> skip["Log and exit<br/>(no model cost)"]
         diff -- yes --> embed["Chunk by section, embed<br/>Neon Postgres + pgvector"]
     end
@@ -99,7 +102,7 @@ To deploy, import the repo into Vercel with **Root Directory** set to `web` ([we
 
 ## How it works
 
-1. **Scrape.** The Federal Register's JSON API returns recent final rules; the binding regulatory text is separated from the preamble commentary. EUR-Lex is scraped with Playwright because it renders through JavaScript; the base act and the acts that amend or correct it are collected.
+1. **Scrape.** The Federal Register's JSON API returns recent final rules; the binding regulatory text is separated from the preamble commentary. EUR-Lex is scraped with Playwright because it renders through JavaScript; the base act and the acts that amend or correct it are collected. SEC final rules come from the same Federal Register API filtered to the SEC (EDGAR holds company filings, not rulemaking). FCA policy statements, consultation papers and guidance come from the FCA publications RSS feed, with the text of each publication page. MAS circulars are listed by a JavaScript search page behind a WAF, so Playwright opens the listing and each circular, and the circular's PDF is converted with pdftotext; this source is off by default (`SCRAPE_MAS=true`) because it needs Chromium and poppler-utils, both of which the Docker image has.
 2. **Diff.** Rule text is normalised and hashed. Only rules that are new or whose hash changed go further, so a quiet day costs nothing.
 3. **Embed.** Rules are split on article and section headings so each chunk maps to a citable unit, then embedded into pgvector. The target repository is indexed in line windows at a recorded snapshot.
 4. **Extract obligations.** For each rule the model lists the duties software must implement, with the chunk ids that state each one and search keywords for the codebase. Chunk ids the model was not shown are discarded.
@@ -122,7 +125,7 @@ pnpm audit:run --demo         # audit the demo app against the bundled demo rule
 pnpm test
 ```
 
-`pnpm audit:run` (no flag) scrapes the live sources instead; it needs `npx playwright install chromium` once, or `SCRAPE_EURLEX=false`.
+`pnpm audit:run` (no flag) scrapes the live sources instead; it needs `npx playwright install chromium` once, or `SCRAPE_EURLEX=false`. `SCRAPE_SEC` and `SCRAPE_FCA` default to on and need no browser; `SCRAPE_MAS` defaults to off and needs the browser plus `pdftotext`.
 
 Other commands:
 
@@ -197,12 +200,12 @@ See [.env.example](.env.example) for the full list with defaults. The main ones:
 
 - **Not legal advice.** A "compliant" result means supporting code was found, not that the obligation is fully met.
 - **Code only.** Controls that live in infrastructure, vendor systems or policy documents are invisible to the audit.
-- **Two sources.** Coverage is whatever the Federal Register search terms and one EUR-Lex act return.
+- **Five sources, narrow queries.** Coverage is whatever the Federal Register and SEC search terms, the configured FCA publication types, the latest MAS circulars and one EUR-Lex act return.
 - **Reports only.** It does not fix code or open pull requests.
 - **Single tenant.** One target repository. Every signed-in dashboard user sees every run; there are no roles.
 - **Citations can go stale.** Findings store rule chunk ids without a foreign key, and re-embedding a rule replaces its chunks, so an older run's citations stop resolving. The dashboard says so; the PDF report keeps the text it was rendered with.
-- **Long rules are capped.** Federal Register text beyond `FEDREG_MAX_CHARS` is cut, with a warning in the logs.
-- **Scrapers break.** A source that fails or returns nothing is logged and skipped; the other source still runs.
+- **Long rules are capped.** Text beyond `FEDREG_MAX_CHARS`, `SEC_MAX_CHARS`, `FCA_MAX_CHARS` or `MAS_MAX_CHARS` is cut, with a warning in the logs.
+- **Scrapers break.** A source that fails or returns nothing is logged and skipped; the other sources still run.
 
 ## Where the build differs from the plan
 
@@ -218,7 +221,8 @@ See [.env.example](.env.example) for the full list with defaults. The main ones:
 
 ```
 src/
-  scrape/     federalRegister.ts, eurLex.playwright.ts, diff.ts
+  scrape/     federalRegister.ts, secRules.ts, fcaPublications.ts, eurLex.playwright.ts,
+              masCirculars.playwright.ts, http.ts, diff.ts
   rag/        chunker.ts, embed.ts, retrieve.ts, indexRepo.ts
   graph/      state.ts, graph.ts, nodes/, controls.ts, evidence.ts
   llm/        claudeAnalyst.ts, offlineAnalyst.ts

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { config } from "../config.js";
 import { log } from "../log.js";
 import type { ScrapedRule, SourceDef } from "./diff.js";
+import { fetchWithRetry } from "./http.js";
 
 const API = "https://www.federalregister.gov/api/v1/documents.json";
 
@@ -40,27 +41,6 @@ export function buildSearchUrl(opts: { term: string; agencies: string[]; perPage
   for (const agency of opts.agencies) params.append("conditions[agencies][]", agency);
   for (const field of Object.keys(DocumentSchema.shape)) params.append("fields[]", field);
   return `${API}?${params.toString()}`;
-}
-
-async function fetchWithRetry(fetchImpl: typeof fetch, url: string, attempts = 3): Promise<Response> {
-  let lastError: unknown;
-  for (let attempt = 1; attempt <= attempts; attempt++) {
-    try {
-      const res = await fetchImpl(url, {
-        headers: { "user-agent": "compliance-sentinel/0.1 (+https://github.com/gengirish/compliance-sentinel)" },
-        signal: AbortSignal.timeout(30_000),
-      });
-      if (res.ok) return res;
-      // 4xx other than 429 will not get better on retry.
-      if (res.status < 500 && res.status !== 429) throw new Error(`HTTP ${res.status} for ${url}`);
-      lastError = new Error(`HTTP ${res.status} for ${url}`);
-    } catch (err) {
-      lastError = err;
-      if (err instanceof Error && /^HTTP 4/.test(err.message)) throw err;
-    }
-    await new Promise((r) => setTimeout(r, 500 * 2 ** (attempt - 1)));
-  }
-  throw lastError;
 }
 
 /**

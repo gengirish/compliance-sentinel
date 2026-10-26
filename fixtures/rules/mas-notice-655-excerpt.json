@@ -1,0 +1,11 @@
+{
+  "source": {
+    "name": "mas",
+    "url": "https://www.mas.gov.sg/regulation/regulations-and-guidance?content_type=Circulars"
+  },
+  "externalId": "DEMO-MAS-NOTICE-655",
+  "title": "MAS Notice 655: Notice on Cyber Hygiene - abridged demo excerpt",
+  "effectiveDate": "2020-08-06",
+  "url": "https://www.mas.gov.sg/regulation/notices/notice-655",
+  "rawText": "Abridged, paraphrased excerpt of MAS Notice 655 (Notice on Cyber Hygiene) prepared for demonstration. Consult the official notice on the MAS website before relying on it.\n\n4 Requirements\n4.1 Administrative accounts. A relevant entity must ensure that every administrative account in respect of any operating system, database, application, security appliance or network device is secured to prevent any unauthorised access to or use of such account.\n4.2 Security patches. A relevant entity must ensure that security patches are applied to address vulnerabilities to every system, and apply such security patches within a timeframe that is commensurate with the risks posed by each vulnerability.\n4.3 Security standards. A relevant entity must ensure that there is a written set of security standards for every system; ensure that every system conforms to the set of security standards; and, where a system is unable to conform to the set of security standards, ensure that the deviation is assessed, the risk is mitigated and the deviation is approved by the relevant authority within the entity.\n4.4 Network perimeter defence. A relevant entity must implement controls at its network perimeter to restrict all unauthorised network traffic.\n4.5 Malware protection. A relevant entity must ensure that one or more malware protection measures are implemented on every system, to mitigate the risk of malware infection, where such malware protection measures are available and can be implemented.\n4.6 Multi-factor authentication. A relevant entity must ensure that multi-factor authentication is implemented for (a) all administrative accounts in respect of any operating system, database, application, security appliance or network device that is a critical system; and (b) all accounts on any system used by the relevant entity to access customer information through the internet.\n\n5 Effective date\n5.1 This Notice takes effect on 6 August 2020."
+}
