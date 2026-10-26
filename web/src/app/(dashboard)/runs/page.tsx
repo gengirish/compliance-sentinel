@@ -47,13 +47,18 @@ export default async function RunsPage() {
                     </Link>
                     <span className="ml-2 text-xs text-muted">{run.trigger}</span>
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3" title={run.note ?? run.error ?? undefined}>
                     <RunStatusBadge status={run.status} />
                   </td>
                   <td className="px-4 py-3 text-muted">{formatDateTime(run.startedAt)}</td>
                   <td className="px-4 py-3 text-muted">{formatDuration(run.startedAt, run.finishedAt)}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">{run.counts?.byStatus.violation ?? 0}</td>
-                  <td className="px-4 py-3 text-right tabular-nums text-danger">{run.counts?.criticalViolations || ""}</td>
+                  {/* Only a completed run has counts worth showing; a zero from a skipped or failed run would mislead. */}
+                  <td className="px-4 py-3 text-right tabular-nums">
+                    {run.status === "completed" ? (run.counts?.byStatus.violation ?? 0) : <NoValue />}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums text-danger">
+                    {run.status === "completed" && run.counts?.criticalViolations ? run.counts.criticalViolations : <NoValue />}
+                  </td>
                   <td className="px-4 py-3 text-right tabular-nums text-muted">{formatUsd(run.costUsd)}</td>
                   <td className="px-4 py-3 text-right">
                     {run.reportUrl && (
@@ -75,5 +80,13 @@ export default async function RunsPage() {
         </div>
       )}
     </>
+  );
+}
+
+function NoValue() {
+  return (
+    <span className="text-muted" aria-label="none">
+      —
+    </span>
   );
 }

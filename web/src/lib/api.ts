@@ -29,6 +29,8 @@ const Run = z.object({
   reportUrl: z.string().nullable(),
   costUsd: z.number(),
   error: z.string().nullable(),
+  // Optional so the dashboard keeps working against an API deployed before the column existed.
+  note: z.string().nullable().optional(),
   counts: Counts.optional(),
 });
 

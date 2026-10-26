@@ -97,6 +97,8 @@ export const auditRuns = pgTable("audit_runs", {
   reportUrl: text("report_url"),
   costUsd: doublePrecision("cost_usd").notNull().default(0),
   error: text("error"),
+  /** Why a run ended without auditing anything, e.g. a skip. Shown on the dashboard. */
+  note: text("note"),
 });
 
 export const findings = pgTable(

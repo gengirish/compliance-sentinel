@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { openMigratedDb, type DbHandle } from "../src/db/client.js";
 import { auditRuns, findings as findingsTable } from "../src/db/schema.js";
@@ -5,7 +6,7 @@ import { COMPLIANT_AREAS, PLANTED_VIOLATIONS, scoreGolden } from "../src/eval/go
 import type { NotifyInput } from "../src/graph/state.js";
 import type { Analyst } from "../src/llm/analyst.js";
 import { OfflineAnalyst } from "../src/llm/offlineAnalyst.js";
-import { runPipeline, type PipelineResult } from "../src/pipeline/run.js";
+import { runPipeline, SKIP_NOTE, type PipelineResult } from "../src/pipeline/run.js";
 import { LocalHashEmbedder } from "../src/rag/embed.js";
 
 /**
@@ -116,6 +117,8 @@ describe("pipeline guards", () => {
       const second = await runPipeline(common);
       expect(second.status).toBe("skipped");
       expect(second.rulesInScope).toEqual([]);
+      const [skipped] = await handle.db.select().from(auditRuns).where(eq(auditRuns.id, second.runId));
+      expect(skipped!.note).toBe(SKIP_NOTE);
     } finally {
       await handle.close();
     }

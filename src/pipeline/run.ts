@@ -41,6 +41,8 @@ export type PipelineOptions = {
   repoPath?: string;
 };
 
+export const SKIP_NOTE = "No new or amended rules since the last check, so there was nothing to audit.";
+
 export type PipelineResult = {
   runId: number;
   status: "completed" | "skipped";
@@ -174,7 +176,7 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
     if (changedRules.length === 0) {
       const [row] = await db
         .insert(auditRuns)
-        .values({ status: "skipped", trigger: opts.trigger, finishedAt: sql`now()` })
+        .values({ status: "skipped", trigger: opts.trigger, finishedAt: sql`now()`, note: SKIP_NOTE })
         .returning({ id: auditRuns.id });
       log.info("no new or amended rules; audit skipped", { runId: row!.id });
       return {

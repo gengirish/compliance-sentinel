@@ -37,7 +37,16 @@ const timedOut = {
   error: "Timed out: still running after 30 minutes. The worker most likely restarted or crashed mid-run.",
   counts: noCounts,
 };
-const runs = [timedOut, run];
+const skipped = {
+  ...run,
+  id: 3,
+  status: "skipped",
+  rulesInScope: [],
+  reportUrl: null,
+  note: "No new or amended rules since the last check, so there was nothing to audit.",
+  counts: noCounts,
+};
+const runs = [skipped, timedOut, run];
 
 // A triggered run shows as running, then completes a few seconds later, like the real worker.
 const RUN_SECONDS = 10;

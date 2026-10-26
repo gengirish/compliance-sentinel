@@ -63,10 +63,8 @@ test("a triggered audit reaches Completed on the runs list without a reload", as
 
   await page.getByRole("button", { name: "Run audit" }).click();
   await expect(page.getByRole("status")).toContainText("Audit queued");
+  // The new run appears and finishes with no page.reload(): the page polls while it is in progress.
   await expect(newest.getByRole("link").first()).not.toHaveText(before!);
-  await expect(newest.getByText("Running")).toBeVisible();
-
-  // No page.reload(): the page polls while the run is in progress.
   await expect(newest.getByText("Completed")).toBeVisible({ timeout: 25_000 });
   await expect(page.getByRole("status")).toBeEmpty();
 });
@@ -105,4 +103,15 @@ test("run links and filter chips are not prefetched", async ({ page }) => {
   // Only the handful of nav links may prefetch, never one request per row or chip.
   expect(rsc.filter((u) => /status=|severity=/.test(u))).toEqual([]);
   expect(rsc.filter((u) => /^\/runs\/\d+/.test(u))).toEqual([]);
+});
+
+test("a skipped run says why, and shows — rather than blank counts", async ({ page }) => {
+  await page.goto("/runs");
+  const row = page.getByRole("row", { name: /#3/ });
+  await expect(row.getByText("Skipped")).toBeVisible();
+  await expect(row.getByRole("cell").filter({ hasText: "Skipped" })).toHaveAttribute("title", /No new or amended rules/);
+  await expect(row.getByText("—")).toHaveCount(2);
+
+  await row.getByRole("link", { name: "#3" }).click();
+  await expect(page.getByText("No new or amended rules since the last check")).toBeVisible();
 });

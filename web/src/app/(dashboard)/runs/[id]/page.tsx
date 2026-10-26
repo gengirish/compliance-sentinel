@@ -82,6 +82,9 @@ export default async function RunPage({
         }
       />
 
+      {run.note && (
+        <p className="mb-6 rounded-lg border border-border bg-surface px-4 py-3 text-sm text-muted">{run.note}</p>
+      )}
       {run.error && (
         <p className="mb-6 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">{run.error}</p>
       )}
