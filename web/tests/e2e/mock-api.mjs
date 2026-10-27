@@ -87,30 +87,69 @@ const findings = [
   finding(3, "compliant", "medium", "Log access to customer records"),
 ];
 
+const mockRules = [
+  {
+    ...rule,
+    effectiveDate: "2026-01-01",
+    firstSeenAt: run.startedAt,
+    lastChangedAt: run.startedAt,
+    source: { name: "fixture-demo", kind: "fixture" },
+    lastAuditedRunId: 1,
+  },
+  {
+    id: 2,
+    title: "Books and Records Retention",
+    url: "https://example.com/17a-4",
+    externalId: "SEC-17A-4",
+    effectiveDate: null,
+    firstSeenAt: "2026-09-01T00:00:00.000Z",
+    lastChangedAt: "2026-09-01T00:00:00.000Z",
+    source: { name: "sec", kind: "rss" },
+    lastAuditedRunId: null,
+  },
+];
+
+/** A page of `items` as `[status, body, headers]`; `optional` lists return everything when unpaged. */
+const paged = (items, params, defaultLimit, optional) => {
+  const headers = { "x-total-count": String(items.length) };
+  if (optional && !params.has("page") && !params.has("limit")) return [200, items];
+  const page = Number(params.get("page") ?? 1);
+  const limit = Number(params.get("limit") ?? defaultLimit);
+  if (!Number.isInteger(page) || page < 1 || !Number.isInteger(limit) || limit < 1) return [400, { error: "bad page or limit" }];
+  return [200, items.slice((page - 1) * limit, page * limit), headers];
+};
+
 const routes = {
   "GET /settings/sources": () => sources,
   "GET /stats": () => ({ latestRun: live(runs[0]), latestCompletedRun: withRepo(run), totals: { rules: 1, runs: 1 } }),
-  "GET /runs": () => runs.map(live),
-  "GET /rules": () => [
-    {
-      ...rule,
-      effectiveDate: "2026-01-01",
-      firstSeenAt: run.startedAt,
-      lastChangedAt: run.startedAt,
-      source: { name: "fixture-demo", kind: "fixture" },
-      lastAuditedRunId: 1,
-    },
-  ],
+  // Paged like the real API: `page`/`limit` (default 20) and an `x-total-count` header.
+  "GET /runs": (url) => paged(runs.map(live), url.searchParams, 20, false),
+  // `q` over title and external id, `source` names; paged only when `page` or `limit` is given.
+  "GET /rules": (url) => {
+    const q = (url.searchParams.get("q") ?? "").trim().toLowerCase();
+    const names = (url.searchParams.get("source") ?? "").split(",").filter(Boolean);
+    const matches = mockRules.filter(
+      (r) =>
+        (!q || r.title.toLowerCase().includes(q) || r.externalId.toLowerCase().includes(q)) &&
+        (!names.length || names.includes(r.source.name)),
+    );
+    return paged(matches, url.searchParams, 50, true);
+  },
   "POST /runs": () => {
     queueRun();
     return [202, { jobId: "e2e-job", demo: true }];
+  },
+  // Test-only: drop every queued run, back to the three fixtures, so a paging test can clean up.
+  "DELETE /runs": () => {
+    runs.splice(0, runs.length - 3);
+    return [200, { runs: runs.length }];
   },
 };
 
 createServer((req, res) => {
   const url = new URL(req.url, "http://localhost");
-  const send = (status, body) => {
-    res.writeHead(status, { "content-type": "application/json" });
+  const send = (status, body, headers = {}) => {
+    res.writeHead(status, { "content-type": "application/json", ...headers });
     res.end(JSON.stringify(body));
   };
   if (url.pathname === "/health") return send(200, { ok: true });
@@ -142,6 +181,6 @@ createServer((req, res) => {
   }
   const handler = routes[`${req.method} ${url.pathname}`];
   if (!handler) return send(404, { error: "not found" });
-  const out = handler();
-  return Array.isArray(out) && typeof out[0] === "number" ? send(out[0], out[1]) : send(200, out);
+  const out = handler(url);
+  return Array.isArray(out) && typeof out[0] === "number" ? send(out[0], out[1], out[2]) : send(200, out);
 }).listen(PORT, "127.0.0.1", () => console.log(`mock api on ${PORT}`));

@@ -162,3 +162,73 @@ test("a code location links to the file on GitHub at the audited commit", async 
   );
   await expect(link).toHaveAttribute("target", "_blank");
 });
+
+const MOCK_API = `http://127.0.0.1:${process.env.MOCK_API_PORT || "8099"}`;
+const MOCK_AUTH = { authorization: "Bearer e2e-token" };
+
+test("the runs list pages to older runs, and each page has its own URL", async ({ page, request }) => {
+  const total = async () => Number((await request.get(`${MOCK_API}/runs`, { headers: MOCK_AUTH })).headers()["x-total-count"]);
+  try {
+    // More than one page of 25: queue runs on the mock, then let them finish so no page polls mid-test.
+    for (let n = await total(); n <= 25; n++) await request.post(`${MOCK_API}/runs`, { headers: MOCK_AUTH });
+    const count = await total();
+    await expect
+      .poll(async () => (await (await request.get(`${MOCK_API}/runs`, { headers: MOCK_AUTH })).json())[0].status, { timeout: 25_000 })
+      .toBe("completed");
+
+    await page.goto("/runs");
+    await expect(page.getByText(`Showing 1–25 of ${count} runs`)).toBeVisible();
+    await expect(page.getByRole("link", { name: "#1", exact: true })).toHaveCount(0);
+
+    await page.getByRole("link", { name: "Older" }).click();
+    await expect(page).toHaveURL(/\/runs\?page=2$/);
+    await expect(page.getByText(`Showing 26–${count} of ${count} runs`)).toBeVisible();
+    await expect(page.getByRole("link", { name: "#1", exact: true })).toBeVisible();
+
+    // A deep link lands on the same page; Newer goes back to the plain URL.
+    await page.goto("/runs?page=2");
+    await expect(page.getByRole("link", { name: "#1", exact: true })).toBeVisible();
+    await page.getByRole("link", { name: "Newer" }).click();
+    await expect(page).toHaveURL(/\/runs$/);
+    await expect(page.getByText(`Showing 1–25 of ${count} runs`)).toBeVisible();
+  } finally {
+    await request.delete(`${MOCK_API}/runs`, { headers: MOCK_AUTH });
+  }
+});
+
+test("rules can be searched by title or id and filtered by source", async ({ page }) => {
+  await page.goto("/rules");
+  const searchBox = page.getByRole("searchbox", { name: "Search" });
+  const submit = page.getByRole("button", { name: "Search", exact: true });
+  await expect(page.getByText("Books and Records Retention")).toBeVisible();
+
+  await searchBox.fill("demo-1");
+  await submit.click();
+  await expect(page).toHaveURL(/q=demo-1/);
+  await expect(page.getByText("Demo Safeguards Rule")).toBeVisible();
+  await expect(page.getByText("Books and Records Retention")).toHaveCount(0);
+
+  await searchBox.fill("no such rule");
+  await submit.click();
+  await expect(page.getByText("No rules match")).toBeVisible();
+  await page.getByRole("link", { name: "Clear", exact: true }).click();
+  await expect(page).toHaveURL(/\/rules$/);
+  await expect(page.getByText("Demo Safeguards Rule")).toBeVisible();
+
+  await page.getByLabel("Source").selectOption("sec");
+  await submit.click();
+  await expect(page).toHaveURL(/source=sec/);
+  await expect(page.getByText("Books and Records Retention")).toBeVisible();
+  await expect(page.getByText("Demo Safeguards Rule")).toHaveCount(0);
+});
+
+test("the runs and rules lists fit a phone screen without sideways scrolling", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 800 });
+  for (const path of ["/runs", "/rules"]) {
+    await page.goto(path);
+    // Rows restyle into cards below `sm`, so the table's scroll box has nothing to scroll.
+    const box = page.locator("table").locator("..");
+    await expect(box).toBeVisible();
+    expect(await box.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0);
+  }
+});

@@ -181,9 +181,13 @@ export type FindingsFilter = {
   order?: "asc" | "desc";
 };
 
+export type RulesFilter = { q?: string; source?: string[]; page?: number; limit?: number };
+
 export const api = {
   stats: () => getJson("/stats", Stats),
-  runs: () => getJson("/runs?counts=1", z.array(Run)),
+  /** A page of runs, newest first, with finding counts; `total` is every run of the tenant. */
+  runs: ({ page, limit }: { page?: number; limit?: number } = {}) =>
+    getList(withQuery("/runs", { counts: 1, page: page && page > 1 ? page : undefined, limit }), Run),
   /** Just id and status of the recent runs, for cheap polling. */
   runStatuses: async () => (await getJson("/runs", z.array(Run))).map(({ id, status }) => ({ id, status })),
   run: (id: number) => getJson(`/runs/${id}`, Run),
@@ -200,7 +204,17 @@ export const api = {
       }),
       z.array(Finding),
     ),
-  rules: () => getJson("/rules", z.array(Rule)),
+  /** A page of rules matching `q` (title or external id) and `source` names; `total` counts every match. */
+  rules: (filter: RulesFilter = {}) =>
+    getList(
+      withQuery("/rules", {
+        q: filter.q,
+        source: filter.source?.join(","),
+        page: filter.page && filter.page > 1 ? filter.page : undefined,
+        limit: filter.limit,
+      }),
+      Rule,
+    ),
   /** The scraper switches. Only the operator may read them; the API answers 403 to anyone else. */
   sources: () => getJson("/settings/sources", z.array(Source)),
 };
