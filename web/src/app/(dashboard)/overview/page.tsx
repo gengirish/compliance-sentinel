@@ -74,7 +74,7 @@ export default async function OverviewPage() {
 
           <div className="grid gap-4 lg:grid-cols-3">
             <Card className="h-fit min-w-0 lg:col-span-1">
-              <CardTitle>Latest audit</CardTitle>
+              <CardTitle as="h2">Latest audit</CardTitle>
               <dl className="mt-4 space-y-3 text-sm">
                 <Row label="Run">
                   <Link href={`/runs/${latest.id}`} prefetch={false} className="font-medium text-accent hover:underline">
