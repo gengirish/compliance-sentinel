@@ -20,11 +20,17 @@ export default async function OverviewPage() {
   const counts = latest?.counts;
   const critical = latest ? await api.findings(latest.id, { status: ["violation"], severity: ["critical"] }) : [];
 
+  // Each tile opens the latest run filtered to what it counts.
   const tiles = [
-    { label: "Violations", value: counts?.byStatus.violation, className: "text-danger" },
-    { label: "Critical violations", value: counts?.criticalViolations, className: "text-danger" },
-    { label: "Needs review", value: counts?.byStatus.needs_review, className: "text-warning" },
-    { label: "Compliant", value: counts?.byStatus.compliant, className: "text-success" },
+    { label: "Violations", value: counts?.byStatus.violation, className: "text-danger", query: "status=violation" },
+    {
+      label: "Critical violations",
+      value: counts?.criticalViolations,
+      className: "text-danger",
+      query: "status=violation&severity=critical",
+    },
+    { label: "Needs review", value: counts?.byStatus.needs_review, className: "text-warning", query: "status=needs_review" },
+    { label: "Compliant", value: counts?.byStatus.compliant, className: "text-success", query: "status=compliant" },
   ];
 
   return (
@@ -37,16 +43,32 @@ export default async function OverviewPage() {
 
       {!latest ? (
         <EmptyState title="No completed audits yet">
-          Click <strong>Run audit</strong>, or run <code className="font-mono">pnpm audit:run --demo</code> in the repo root.
+          {process.env.NODE_ENV === "development" ? (
+            <>
+              Click <strong>Run audit</strong>, or run <code className="font-mono">pnpm audit:run --demo</code> in the repo
+              root.
+            </>
+          ) : (
+            <>
+              Click <strong>Run audit</strong> to start the first one.
+            </>
+          )}
         </EmptyState>
       ) : (
         <div className="space-y-8">
           <section aria-label={`Findings from run ${latest.id}`} className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             {tiles.map((t) => (
-              <Card key={t.label}>
-                <CardTitle>{t.label}</CardTitle>
-                <p className={cn("mt-2 text-3xl font-bold tabular-nums sm:text-4xl", t.className)}>{t.value ?? 0}</p>
-              </Card>
+              <Link
+                key={t.label}
+                href={`/runs/${latest.id}?${t.query}`}
+                prefetch={false}
+                className="group block rounded-xl"
+              >
+                <Card className="h-full transition-colors group-hover:border-accent/50 group-hover:bg-surface-light/60">
+                  <CardTitle className="group-hover:text-foreground">{t.label}</CardTitle>
+                  <p className={cn("mt-2 text-3xl font-bold tabular-nums sm:text-4xl", t.className)}>{t.value ?? 0}</p>
+                </Card>
+              </Link>
             ))}
           </section>
 

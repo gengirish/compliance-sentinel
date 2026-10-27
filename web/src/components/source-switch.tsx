@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -19,15 +19,17 @@ type Props = {
  */
 export function SourceSwitch({ name, label, enabled, defaultEnabled, overridden }: Props) {
   const router = useRouter();
-  const [pending, setPending] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [refreshing, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   // Shown at once, so the switch does not lag the click while the page re-renders.
   const [optimistic, setOptimistic] = useState<boolean | null>(null);
   const on = optimistic ?? enabled;
+  const pending = saving || refreshing;
 
   async function save(next: boolean | null) {
     setError(null);
-    setPending(true);
+    setSaving(true);
     setOptimistic(next ?? defaultEnabled);
     try {
       const res = await fetch(`/api/settings/sources/${name}`, {
@@ -39,12 +41,17 @@ export function SourceSwitch({ name, label, enabled, defaultEnabled, overridden 
         const body = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(body.error ?? `Request failed (${res.status})`);
       }
-      router.refresh();
+      // Cleared inside the transition, so it commits with the refreshed props and the
+      // switch never snaps back to the old value in between.
+      startTransition(() => {
+        setOptimistic(null);
+        router.refresh();
+      });
     } catch (err) {
+      setOptimistic(null);
       setError((err as Error).message);
     } finally {
-      setOptimistic(null);
-      setPending(false);
+      setSaving(false);
     }
   }
 
@@ -56,7 +63,8 @@ export function SourceSwitch({ name, label, enabled, defaultEnabled, overridden 
           <button
             type="button"
             onClick={() => void save(null)}
-            className="text-xs text-muted underline-offset-2 hover:text-foreground hover:underline"
+            // The ::before pads the hit area to 44px tall without moving the row.
+            className="relative text-xs text-muted underline-offset-2 before:absolute before:-inset-x-2 before:-inset-y-3.5 hover:text-foreground hover:underline"
             title={`Use the environment default (${defaultEnabled ? "on" : "off"})`}
           >
             Reset
@@ -71,8 +79,11 @@ export function SourceSwitch({ name, label, enabled, defaultEnabled, overridden 
           onClick={() => void save(!on)}
           className={cn(
             "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors",
+            // Same 44px hit area trick as Reset; the track itself stays 24px.
+            "before:absolute before:inset-x-0 before:-inset-y-2.5",
             "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60",
-            on ? "border-primary bg-primary" : "border-border bg-surface-light",
+            // The off border must reach 3:1 against the card, or the track's edge is invisible.
+            on ? "border-primary bg-primary" : "border-muted/70 bg-surface-light",
           )}
         >
           <span

@@ -75,7 +75,7 @@ export default async function RunPage({
             Run #{run.id} <RunStatusBadge status={run.status} />
           </span>
         }
-        description={`${TRIGGER_LABEL[run.trigger]} · started ${formatDateTime(run.startedAt)} · ${formatDuration(run.startedAt, run.finishedAt)} · ${run.rulesInScope.length} rules · ${formatUsd(run.costUsd)}`}
+        description={`${TRIGGER_LABEL[run.trigger]} · started ${formatDateTime(run.startedAt)} · ${runDuration(run)} · ${run.rulesInScope.length} rules · ${formatUsd(run.costUsd)}`}
         actions={
           run.reportUrl && (
             <a
@@ -111,12 +111,17 @@ export default async function RunPage({
           </FilterChip>
         ))}
         {(status.length > 0 || severity.length > 0) && (
-          <Link href={`/runs/${id}`} prefetch={false} className="ml-1 text-sm text-muted hover:text-foreground">
+          <Link
+            href={`/runs/${id}`}
+            prefetch={false}
+            className="ml-1 inline-flex min-h-11 items-center px-2 text-sm text-muted hover:text-foreground"
+          >
             Clear
           </Link>
         )}
       </div>
 
+      <h2 className="sr-only">Findings</h2>
       {findings.length === 0 ? (
         <EmptyState title={run.counts?.total ? "No findings match these filters" : "This run produced no findings"} />
       ) : (
@@ -136,16 +141,25 @@ function FilterChip({ href, active, children }: { href: string; active: boolean;
       href={href}
       // A run page has seven chips; prefetching each one is a server render apiece (DEF-004).
       prefetch={false}
-      aria-current={active ? "true" : undefined}
       scroll={false}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm",
+        "inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 text-sm",
         active
           ? "border-primary-light/50 bg-primary/20 text-foreground"
           : "border-border text-muted hover:text-foreground",
       )}
     >
       {children}
+      {/* A link cannot be aria-pressed, and aria-current means "this page", so the on state is spoken as text. */}
+      {active && <span className="sr-only"> (filter on)</span>}
     </Link>
   );
+}
+
+/** How long the run took, or for one still going, how long it has been going so far. */
+function runDuration(run: Run): string {
+  if (run.status === "running" && !run.finishedAt) {
+    return `${formatDuration(run.startedAt, new Date().toISOString())} so far`;
+  }
+  return formatDuration(run.startedAt, run.finishedAt);
 }

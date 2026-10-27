@@ -14,6 +14,8 @@
   --muted: #94A3B8;
   --danger: #F87171;
   --warning: #FBBF24;
+  /* Severity "high". Text on its 10% tint over --surface is ~6.7:1. */
+  --orange: #FB923C;
   --success: #34D399;
 }
 
@@ -31,6 +33,7 @@
   --color-muted: var(--muted);
   --color-danger: var(--danger);
   --color-warning: var(--warning);
+  --color-orange: var(--orange);
   --color-success: var(--success);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);

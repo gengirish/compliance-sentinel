@@ -7,16 +7,18 @@ export const STATUS_LABEL: Record<FindingStatus, string> = {
   compliant: "Compliant",
 };
 
+// One mapping shared with src/report/template.html. Status and severity never share a hue
+// except red, which means "violation" / "critical" in both; every badge also carries a text label.
 const STATUS_TONE: Record<FindingStatus, BadgeTone> = {
   violation: "danger",
-  needs_review: "warning",
+  needs_review: "primary",
   compliant: "success",
 };
 
 const SEVERITY_TONE: Record<Severity, BadgeTone> = {
   critical: "danger",
-  high: "warning",
-  medium: "info",
+  high: "orange",
+  medium: "warning",
   low: "neutral",
 };
 

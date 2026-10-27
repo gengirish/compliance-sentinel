@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { Loader2, Play } from "lucide-react";
 import { useReloadOnRunChange } from "@/components/refresh-while";
 import { Button } from "@/components/ui/button";
@@ -18,12 +18,16 @@ const QUEUE_WAIT_MS = 2 * 60 * 1000;
  */
 export function RunAuditButton({ latestRun = null }: { latestRun?: LatestRun }) {
   const [demo, setDemo] = useState(true);
+  const demoHelpId = useId();
   const [pending, setPending] = useState(false);
   const [result, setResult] = useState<Result>(null);
   // Set by a trigger until the new run shows up (the page reloads then).
   const [waiting, setWaiting] = useState(false);
+  const running = latestRun?.status === "running";
+  // A second trigger while one is queued or running would only queue a duplicate audit.
+  const busy = pending || waiting || running;
 
-  useReloadOnRunChange(latestRun?.status === "running" || waiting, (runs) => {
+  useReloadOnRunChange(running || waiting, (runs) => {
     const newest = runs[0];
     return newest !== undefined && (newest.id !== latestRun?.id || newest.status !== latestRun?.status);
   });
@@ -64,20 +68,26 @@ export function RunAuditButton({ latestRun = null }: { latestRun?: LatestRun }) 
   return (
     <div className="flex flex-col items-start gap-2 sm:items-end">
       <div className="flex items-center gap-3">
-        <label className="flex items-center gap-2 text-sm text-muted">
+        <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-muted">
           <input
             type="checkbox"
             checked={demo}
             onChange={(e) => setDemo(e.target.checked)}
+            aria-describedby={demoHelpId}
             className="size-4 accent-primary"
           />
           Demo rules
         </label>
-        <Button onClick={() => void trigger()} disabled={pending}>
-          {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Play className="size-4" aria-hidden />}
-          Run audit
+        <Button onClick={() => void trigger()} disabled={busy}>
+          {busy ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Play className="size-4" aria-hidden />}
+          {busy ? "Audit running…" : "Run audit"}
         </Button>
       </div>
+      <p id={demoHelpId} className="text-xs text-muted">
+        {demo
+          ? "Demo rules: audits against the sample regulations bundled with Sentinel, all re-checked."
+          : "Live: scrapes the enabled regulator sources and audits only new or changed rules."}
+      </p>
       <p role="status" aria-live="polite" className={result?.tone === "error" ? "text-sm text-danger" : "text-sm text-success"}>
         {result?.text}
       </p>

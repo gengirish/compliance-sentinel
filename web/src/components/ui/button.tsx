@@ -13,8 +13,9 @@ export const buttonVariants = cva(
         ghost: "text-muted hover:bg-surface-light hover:text-foreground",
       },
       size: {
-        default: "px-5 py-2.5 text-sm",
-        sm: "px-3 py-1.5 text-xs",
+        // Both sizes keep a 44px minimum hit target; sm only trims padding and type.
+        default: "min-h-11 px-5 py-2.5 text-sm",
+        sm: "min-h-11 px-3.5 py-2 text-xs",
       },
     },
     defaultVariants: {

@@ -18,7 +18,9 @@ export default async function SettingsPage() {
       return (
         <>
           <PageHeader title="Settings" />
-          <EmptyState title="Only the operator can configure sources" />
+          <EmptyState title="Only the operator can configure sources">
+            Ask the operator of this deployment to change which sources are scraped.
+          </EmptyState>
         </>
       );
     }
@@ -37,6 +39,11 @@ export default async function SettingsPage() {
           Every source is off, so scheduled runs will find nothing new and be skipped.
         </p>
       )}
+      <p className="mb-3 text-sm text-muted">
+        <strong className="font-medium text-foreground">Default</strong> means the source follows its SCRAPE_* environment
+        flag. <strong className="font-medium text-foreground">Set here</strong> means a switch saved on this page overrides
+        that flag; <strong className="font-medium text-foreground">Reset</strong> goes back to the default.
+      </p>
       <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
         {sources.map((s) => (
           <li key={s.name} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">

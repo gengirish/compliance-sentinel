@@ -15,7 +15,7 @@ const LINKS = [
 export function Nav() {
   const pathname = usePathname();
   return (
-    <nav aria-label="Main" className="flex gap-1">
+    <nav aria-label="Main" className="flex gap-0.5 sm:gap-1">
       {LINKS.map(({ href, label, icon: Icon }) => {
         const active = pathname.startsWith(href);
         return (
@@ -26,14 +26,14 @@ export function Nav() {
             // the refresh itself and added a server render apiece (DEF-003, DEF-004).
             prefetch={false}
             aria-current={active ? "page" : undefined}
-            aria-label={label}
+            // Below sm the label sits under the icon so all four links stay labelled and fit at 375px.
             className={cn(
-              "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium",
+              "flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-lg px-2 py-1 text-[11px] font-medium leading-none sm:flex-row sm:gap-2 sm:px-3 sm:py-2 sm:text-sm",
               active ? "bg-surface-light text-foreground" : "text-muted hover:text-foreground",
             )}
           >
             <Icon className="size-4" aria-hidden />
-            <span className="hidden sm:inline">{label}</span>
+            <span>{label}</span>
           </Link>
         );
       })}

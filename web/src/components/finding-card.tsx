@@ -2,7 +2,14 @@ import { ExternalLink, FileCode2, Scale } from "lucide-react";
 import { FindingStatusBadge, SeverityBadge } from "@/components/status-badges";
 import type { Finding } from "@/lib/api";
 
-export function FindingCard({ finding }: { finding: Finding }) {
+/**
+ * One finding. `headingLevel` is the level of the obligation heading; the Regulation and
+ * Code evidence headings sit one below it. The default (3) fits a list under an h2.
+ */
+export function FindingCard({ finding, headingLevel = 3 }: { finding: Finding; headingLevel?: 2 | 3 }) {
+  const Title = `h${headingLevel}` as const;
+  const Section = `h${headingLevel + 1}` as "h3" | "h4";
+
   return (
     <article className="min-w-0 rounded-xl border border-border bg-surface p-4 sm:p-5">
       <div className="flex flex-wrap items-center gap-2">
@@ -12,6 +19,7 @@ export function FindingCard({ finding }: { finding: Finding }) {
           href={finding.rule.url}
           target="_blank"
           rel="noreferrer"
+          title={finding.rule.title}
           className="inline-flex min-w-0 max-w-full items-center gap-1 text-xs text-muted hover:text-accent"
         >
           <span className="truncate">{finding.rule.title}</span>
@@ -19,14 +27,14 @@ export function FindingCard({ finding }: { finding: Finding }) {
         </a>
       </div>
 
-      <h3 className="mt-3 font-semibold leading-snug break-words">{finding.obligation}</h3>
+      <Title className="mt-3 font-semibold leading-snug break-words">{finding.obligation}</Title>
       <p className="mt-2 text-sm text-muted">{finding.rationale}</p>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <section className="min-w-0">
-          <h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
+          <Section className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
             <Scale className="size-3.5" aria-hidden /> Regulation
-          </h4>
+          </Section>
           {finding.citations.length === 0 ? (
             <p className="text-sm text-muted">
               {finding.citationChunkIds.length > 0
@@ -35,9 +43,10 @@ export function FindingCard({ finding }: { finding: Finding }) {
             </p>
           ) : (
             <ul className="space-y-2">
-              {finding.citations.map((c) => (
+              {finding.citations.map((c, i) => (
                 <li key={c.id}>
-                  <details className="rounded-lg bg-surface-light/60 px-3 py-2 text-sm">
+                  {/* The evidence is the point of a finding, so the first of each kind starts open. */}
+                  <details open={i === 0} className="rounded-lg bg-surface-light/60 px-3 py-2 text-sm">
                     <summary className="font-medium">{c.sectionRef ?? `Chunk ${c.id}`}</summary>
                     <p className="mt-2 whitespace-pre-line text-muted">{c.excerpt}</p>
                   </details>
@@ -48,23 +57,21 @@ export function FindingCard({ finding }: { finding: Finding }) {
         </section>
 
         <section className="min-w-0">
-          <h4 className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
+          <Section className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
             <FileCode2 className="size-3.5" aria-hidden /> Code evidence
-          </h4>
+          </Section>
           {finding.evidence.length === 0 ? (
             <p className="text-sm text-muted">No code location.</p>
           ) : (
             <ul className="space-y-2">
-              {finding.evidence.map((e) => (
+              {finding.evidence.map((e, i) => (
                 <li key={`${e.path}:${e.start_line}`}>
-                  <details className="rounded-lg bg-surface-light/60 px-3 py-2 text-sm">
+                  <details open={i === 0} className="rounded-lg bg-surface-light/60 px-3 py-2 text-sm">
                     <summary className="break-all font-mono text-xs text-accent">
                       {e.path}:{e.start_line}
                       {e.end_line !== e.start_line && `-${e.end_line}`}
                     </summary>
-                    <pre className="mt-2 overflow-x-auto font-mono text-xs leading-relaxed text-foreground/90">
-                      {e.excerpt}
-                    </pre>
+                    <CodeExcerpt code={e.excerpt} startLine={e.start_line} />
                   </details>
                 </li>
               ))}
@@ -73,5 +80,23 @@ export function FindingCard({ finding }: { finding: Finding }) {
         </section>
       </div>
     </article>
+  );
+}
+
+/** The excerpt with its file line numbers in a gutter that is neither selected nor read out. */
+function CodeExcerpt({ code, startLine }: { code: string; startLine: number }) {
+  const text = code.replace(/\n$/, "");
+  const lineCount = text.split("\n").length;
+  const numbers = Array.from({ length: lineCount }, (_, i) => startLine + i).join("\n");
+
+  return (
+    <div className="mt-2 flex overflow-x-auto font-mono text-xs leading-relaxed">
+      <pre aria-hidden className="shrink-0 select-none pr-3 text-right text-muted/70">
+        {numbers}
+      </pre>
+      <pre className="grow text-foreground/90">
+        <code>{text}</code>
+      </pre>
+    </div>
   );
 }
