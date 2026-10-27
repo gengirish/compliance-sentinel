@@ -84,6 +84,8 @@ const Rule = z.object({
   lastAuditedRunId: z.number().nullable(),
 });
 
+const RuleSource = z.object({ name: z.string(), kind: z.string(), rules: z.number() });
+
 const Source = z.object({
   name: z.string(),
   label: z.string(),
@@ -183,8 +185,6 @@ export type FindingsFilter = {
   order?: "asc" | "desc";
 };
 
-export type RulesFilter = { q?: string; source?: string[]; page?: number; limit?: number };
-
 export const RUN_SORTS = ["started", "duration", "cost", "violations", "critical"] as const;
 export type RunSort = (typeof RUN_SORTS)[number];
 
@@ -238,17 +238,10 @@ export const api = {
       }),
       z.array(Finding),
     ),
-  /** A page of rules matching `q` (title or external id) and `source` names; `total` counts every match. */
-  rules: (filter: RulesFilter = {}) =>
-    getList(
-      withQuery("/rules", {
-        q: filter.q,
-        source: filter.source?.join(","),
-        page: filter.page && filter.page > 1 ? filter.page : undefined,
-        limit: filter.limit,
-      }),
-      Rule,
-    ),
+  /** One page of tracked rules; `query` holds the list parameters of `GET /rules` (see the rules page). */
+  rulesPage: (query: Record<string, string | number | undefined>) => getList(withQuery("/rules", query), Rule),
+  /** The sources that have rules, for the rules page's source filter. */
+  ruleSources: () => getJson("/rules/sources", z.array(RuleSource)),
   /** The scraper switches. Only the operator may read them; the API answers 403 to anyone else. */
   sources: () => getJson("/settings/sources", z.array(Source)),
 };

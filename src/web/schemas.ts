@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { RUN_STATUSES, TRIGGERS } from "../db/schema.js";
 import { SEVERITIES, STATUSES } from "../graph/types.js";
-import { dateQuery, PAGE_LIMITS, pageQuery, searchQuery, sortQuery } from "./listQuery.js";
+import { dateQuery, pageQuery, searchQuery, sortQuery } from "./listQuery.js";
 
 /** Request inputs for the HTTP API. Every route parses its params and query through one of these. */
 
@@ -25,34 +25,6 @@ export function commaList<T extends readonly [string, ...string[]]>(allowed: T) 
 }
 
 export const TriggerRunQuery = z.object({ demo: flag });
-
-const page = z.coerce.number().int().positive({ message: "page must be a positive integer" });
-
-/** `?limit=` from a fixed set; `extra` adds a legacy size a route already served. */
-function pageLimit(extra: readonly number[] = []) {
-  const allowed = [...extra, ...PAGE_LIMITS];
-  return z.coerce.number().refine((n) => allowed.includes(n), { message: `limit must be one of ${allowed.join(", ")}` });
-}
-
-/** `?source=a,b`: source names (the catalog grows, so they are not a fixed enum here). */
-const sourceNames = z
-  .string()
-  .optional()
-  .transform((raw) => [...new Set((raw ?? "").split(",").map((s) => s.trim()).filter(Boolean))])
-  .pipe(z.array(z.string().max(64, { message: "source names are at most 64 characters" })).max(20, { message: "at most 20 sources" }));
-
-export const RULES_PAGE_LIMIT = 50;
-
-/**
- * `GET /rules`: `q` over title and external id, `source` names, and paging. Without `page` or
- * `limit` every rule is returned, as before paging existed.
- */
-export const ListRulesQuery = z.object({
-  q: searchQuery,
-  source: sourceNames,
-  page: page.optional(),
-  limit: pageLimit().optional(),
-});
 
 export const FINDING_SORTS = ["severity", "status", "rule", "path"] as const;
 export const RUN_SORTS = ["started", "duration", "cost", "violations", "critical"] as const;
@@ -89,6 +61,33 @@ export const FindingsQuery = z.object({
   // Severity descending is the worst first: critical, then violation before needs review.
   ...sortQuery(FINDING_SORTS, { sort: "severity", order: "desc" }),
 });
+
+export const RULE_SORTS = ["changed", "first_seen", "effective", "title", "source"] as const;
+
+/**
+ * `?source=a,b` by source name. Checked for shape only, not against the sources table: the set
+ * is open (fixture runs add `<name>-demo` rows), and a link to a source with no rows yet in this
+ * database should show an empty list rather than an error. An unknown name matches nothing.
+ */
+const sourceList = z
+  .string()
+  .optional()
+  .transform((raw) => [...new Set((raw ?? "").split(",").filter(Boolean))])
+  .pipe(z.array(z.string().regex(/^[a-z0-9-]{1,64}$/, { message: "source names are lowercase letters, digits and dashes" })));
+
+export const ListRulesQuery = z
+  .object({
+    q: searchQuery,
+    source: sourceList,
+    audited: z.enum(["yes", "no"], { message: "audited must be yes or no" }).optional(),
+    /** Last changed within this many days. */
+    changed: z.enum(["7", "30", "90"], { message: "changed must be 7, 30 or 90" }).optional().transform((v) => (v ? Number(v) : undefined)),
+    from: dateQuery,
+    to: dateQuery,
+    ...sortQuery(RULE_SORTS, { sort: "changed", order: "desc" }),
+    ...pageQuery(50),
+  })
+  .refine((v) => !v.from || !v.to || v.from <= v.to, { message: "from must not be after to", path: ["to"] });
 
 /** `true`/`false` switches the source; `null` hands it back to its SCRAPE_* flag. */
 export const SourceSettingBody = z.strictObject({ enabled: z.boolean().nullable() });

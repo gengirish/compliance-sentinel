@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 import { routeFindings } from "./mock-findings.mjs";
 import { sources } from "./mock-sources.mjs";
 import { listRuns, olderRuns } from "./mock-runs.mjs";
+import { handleRules } from "./mock-rules.mjs";
 
 const PORT = Number(process.env.MOCK_API_PORT ?? 8099);
 const TOKEN = "e2e-token";
@@ -88,52 +89,9 @@ const findings = [
   finding(3, "compliant", "medium", "Log access to customer records"),
 ];
 
-const mockRules = [
-  {
-    ...rule,
-    effectiveDate: "2026-01-01",
-    firstSeenAt: run.startedAt,
-    lastChangedAt: run.startedAt,
-    source: { name: "fixture-demo", kind: "fixture" },
-    lastAuditedRunId: 1,
-  },
-  {
-    id: 2,
-    title: "Books and Records Retention",
-    url: "https://example.com/17a-4",
-    externalId: "SEC-17A-4",
-    effectiveDate: null,
-    firstSeenAt: "2026-09-01T00:00:00.000Z",
-    lastChangedAt: "2026-09-01T00:00:00.000Z",
-    source: { name: "sec", kind: "rss" },
-    lastAuditedRunId: null,
-  },
-];
-
-/** A page of `items` as `[status, body, headers]`; `optional` lists return everything when unpaged. */
-const paged = (items, params, defaultLimit, optional) => {
-  const headers = { "x-total-count": String(items.length) };
-  if (optional && !params.has("page") && !params.has("limit")) return [200, items];
-  const page = Number(params.get("page") ?? 1);
-  const limit = Number(params.get("limit") ?? defaultLimit);
-  if (!Number.isInteger(page) || page < 1 || !Number.isInteger(limit) || limit < 1) return [400, { error: "bad page or limit" }];
-  return [200, items.slice((page - 1) * limit, page * limit), headers];
-};
-
 const routes = {
   "GET /settings/sources": () => sources,
   "GET /stats": () => ({ latestRun: live(runs[0]), latestCompletedRun: withRepo(run), totals: { rules: 1, runs: 1 } }),
-  // `q` over title and external id, `source` names; paged only when `page` or `limit` is given.
-  "GET /rules": (url) => {
-    const q = (url.searchParams.get("q") ?? "").trim().toLowerCase();
-    const names = (url.searchParams.get("source") ?? "").split(",").filter(Boolean);
-    const matches = mockRules.filter(
-      (r) =>
-        (!q || r.title.toLowerCase().includes(q) || r.externalId.toLowerCase().includes(q)) &&
-        (!names.length || names.includes(r.source.name)),
-    );
-    return paged(matches, url.searchParams, 50, true);
-  },
   "POST /runs": () => {
     queueRun();
     return [202, { jobId: "e2e-job", demo: true }];
@@ -155,6 +113,7 @@ createServer((req, res) => {
   if (req.headers.authorization !== `Bearer ${TOKEN}`) return send(401, { error: "unauthorized" });
   const fromFindings = routeFindings(req.method, url, findings);
   if (fromFindings) return send(...fromFindings);
+  if (handleRules(req, url, res)) return;
 
   if (req.method === "GET" && url.pathname === "/runs") {
     const out = listRuns(runs.map(live), url.searchParams);

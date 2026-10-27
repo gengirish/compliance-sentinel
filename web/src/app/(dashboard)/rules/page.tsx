@@ -1,41 +1,91 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
-import { ExternalLink, Search } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { ClearFilters } from "@/components/list/clear-filters";
+import { ChipDivider, FilterChip, FilterChips } from "@/components/list/filter-chips";
 import { Pager } from "@/components/list/pager";
+import { SortHeader } from "@/components/list/sort-header";
+import { DateRange, FilterBar, SearchBox, SelectFilter } from "@/components/list/url-controls";
 import { EmptyState, PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
-import { hasAny, pickLimit, pickOne, pickPage, pickSearch, type SearchParams } from "@/lib/list-params";
+import {
+  hasAny,
+  hrefWith,
+  pickDate,
+  pickLimit,
+  pickOne,
+  pickPage,
+  pickSearch,
+  pickSort,
+  toggleValue,
+  toQuery,
+  type SearchParams,
+  type SortState,
+} from "@/lib/list-params";
 import { cn, formatDateTime } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Rules" };
 
-const PAGE_SIZE = 50;
-
-/* Below `sm` rows restyle into stacked cards; see the runs page for how the one DOM serves both. */
+/*
+ * Below `sm` the same table restyles into stacked cards: rows become two-column grids and each
+ * cell shows its column name from `data-label` as CSS generated content. One DOM, so no text is
+ * rendered twice, and the explicit roles keep the table semantics a `display` change can drop.
+ */
 const cell = "block min-w-0 sm:table-cell sm:px-4 sm:py-3";
 const labelled =
   "before:mb-0.5 before:block before:text-xs before:font-semibold before:uppercase before:tracking-wide before:text-muted before:content-[attr(data-label)] sm:before:content-none";
-const field =
-  "min-h-11 rounded-lg border border-border bg-surface px-3 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-accent";
+
+const PATH = "/rules";
+const SORTS = ["changed", "first_seen", "effective", "title", "source"] as const;
+const DEFAULT_SORT = { sort: "changed", order: "desc" } as const;
+const CHANGED_WITHIN = ["7", "30", "90"] as const;
+const AUDITED = ["yes", "no"] as const;
+const FILTER_KEYS = ["q", "source", "audited", "changed", "from", "to"] as const;
+
+/** Source names as the API accepts them; anything else in the URL is dropped. */
+function pickSources(raw: string | string[] | undefined): string[] {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  return [...new Set((value ?? "").split(",").filter((s) => /^[a-z0-9-]{1,64}$/.test(s)))];
+}
+
+type ListQuery = {
+  q?: string;
+  source: string[];
+  audited?: (typeof AUDITED)[number];
+  changed?: (typeof CHANGED_WITHIN)[number];
+  from?: string;
+  to?: string;
+  sort: SortState<(typeof SORTS)[number]>;
+  page: number;
+  limit: number;
+};
 
 export default async function RulesPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  const search = await searchParams;
-  const q = pickSearch(search.q);
-  const page = pickPage(search.page);
-  const limit = pickLimit(search.limit, PAGE_SIZE);
-  // Every rule, for the source choices: rules are shared and number in the dozens, and the
-  // operator-only source catalog is not readable by every tenant.
-  const all = await api.rules();
-  const sourceNames = [...new Set(all.items.map((r) => r.source.name))].sort();
-  // A source that is not (or no longer) collected is dropped, so an old link shows every source.
-  const source = pickOne(search.source, sourceNames);
-  const filtered = Boolean(q || source);
-  const { items: rules, total } = filtered || page > 1 || limit !== PAGE_SIZE
-    ? await api.rules({ q, source: source ? [source] : undefined, page, limit })
-    : { items: all.items.slice(0, limit), total: all.total };
+  const params = await searchParams;
+  const from = pickDate(params.from);
+  // A reversed range would be a 400 from the API; keep the start and drop the end.
+  const toRaw = pickDate(params.to);
+  const query: ListQuery = {
+    q: pickSearch(params.q),
+    source: pickSources(params.source),
+    audited: pickOne(params.audited, AUDITED),
+    changed: pickOne(params.changed, CHANGED_WITHIN),
+    from,
+    to: from && toRaw && toRaw < from ? undefined : toRaw,
+    sort: pickSort(params, SORTS, DEFAULT_SORT),
+    page: pickPage(params.page),
+    limit: pickLimit(params.limit, 50),
+  };
+  const { q, source, audited, changed, to } = query;
+  const sources = await api.ruleSources();
+
+  const filtered = hasAny(params, FILTER_KEYS);
+  const active = [q, source.length, audited, changed, from || to].filter(Boolean).length;
+  // Show chips for every source with rules, plus any picked in the URL that has none yet.
+  const sourceNames = [...new Set([...sources.map((s) => s.name), ...source])];
+  const fixtures = new Set(sources.filter((s) => s.kind === "fixture").map((s) => s.name));
 
   return (
     <>
@@ -43,124 +93,161 @@ export default async function RulesPage({ searchParams }: { searchParams: Promis
         title="Tracked rules"
         description="Regulations collected from the Federal Register, the SEC, FINRA, the FCA, ESMA, ASIC, EUR-Lex and MAS. A rule is re-audited when its text changes."
       />
-      {all.total === 0 ? (
+      {sources.length === 0 && !filtered ? (
         <EmptyState title="No rules collected yet" />
       ) : (
         <>
-          {/* A plain GET form: it works before hydration, and the result is a shareable URL. */}
-          <form action="/rules" method="get" role="search" className="mb-4 flex flex-wrap items-end gap-3">
-            <div className="flex w-full flex-col gap-1 sm:w-auto">
-              <label htmlFor="rules-q" className="text-xs font-semibold uppercase tracking-wide text-muted">
-                Search
-              </label>
-              <div className="relative flex items-center">
-                <Search className="pointer-events-none absolute left-3 size-4 text-muted" aria-hidden />
-                <input
-                  id="rules-q"
-                  type="search"
-                  name="q"
-                  defaultValue={q ?? ""}
-                  maxLength={100}
-                  placeholder="Title or id, such as 17a-4"
-                  className={cn(field, "w-full pl-9 sm:w-72")}
-                />
-              </div>
-            </div>
-            <div className="flex w-full flex-col gap-1 sm:w-auto">
-              <label htmlFor="rules-source" className="text-xs font-semibold uppercase tracking-wide text-muted">
-                Source
-              </label>
-              <select id="rules-source" name="source" defaultValue={source ?? ""} className={cn(field, "w-full sm:w-48")}>
-                <option value="">All sources</option>
-                {sourceNames.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button type="submit" variant="secondary">
-                Search
-              </Button>
-              {hasAny(search, ["q", "source"]) && <ClearFilters href="/rules" />}
-            </div>
-          </form>
-
-          {rules.length === 0 ? (
-            <EmptyState title={filtered && total === 0 ? "No rules match" : "No rules on this page"}>
-              <Link href="/rules" prefetch={false} className="inline-flex min-h-11 items-center text-accent hover:underline">
-                {filtered ? "Clear the search and show every rule" : "Go to the first page"}
-              </Link>
-            </EmptyState>
-          ) : (
-            <div className="overflow-x-auto rounded-xl border border-border">
-              <table role="table" className="block w-full text-sm sm:table sm:min-w-[760px]">
-                <thead role="rowgroup" className="hidden bg-surface text-left text-xs uppercase tracking-wide text-muted sm:table-header-group">
-                  <tr role="row">
-                    <th role="columnheader" className="px-4 py-3 font-semibold">
-                      Rule
-                    </th>
-                    <th role="columnheader" className="px-4 py-3 font-semibold">
-                      Source
-                    </th>
-                    <th role="columnheader" className="px-4 py-3 font-semibold">
-                      Effective
-                    </th>
-                    <th role="columnheader" className="px-4 py-3 font-semibold">
-                      Last changed
-                    </th>
-                    <th role="columnheader" className="px-4 py-3 font-semibold">
-                      Last audited
-                    </th>
-                  </tr>
-                </thead>
-                <tbody role="rowgroup" className="block divide-y divide-border sm:table-row-group">
-                  {rules.map((r) => (
-                    <tr
-                      key={r.id}
-                      role="row"
-                      className="grid grid-cols-2 gap-x-4 gap-y-3 p-4 align-top hover:bg-surface/60 sm:table-row sm:p-0"
-                    >
-                      <td role="cell" className={cn(cell, "col-span-2 sm:max-w-md")}>
-                        <a
-                          href={r.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-start gap-1 font-medium break-words hover:text-accent"
-                        >
-                          {r.title}
-                          <ExternalLink className="mt-1 size-3 shrink-0" aria-hidden />
-                        </a>
-                        <p className="font-mono text-xs break-all text-muted">{r.externalId}</p>
-                      </td>
-                      <td role="cell" data-label="Source" className={cn(cell, labelled)}>
-                        <Badge tone={r.source.kind === "fixture" ? "neutral" : "primary"}>{r.source.name}</Badge>
-                      </td>
-                      <td role="cell" data-label="Effective" className={cn(cell, labelled, "text-muted")}>
-                        {r.effectiveDate ?? "—"}
-                      </td>
-                      <td role="cell" data-label="Last changed" className={cn(cell, labelled, "text-muted")}>
-                        {formatDateTime(r.lastChangedAt)}
-                      </td>
-                      <td role="cell" data-label="Last audited" className={cn(cell, labelled)}>
-                        {r.lastAuditedRunId ? (
-                          <Link href={`/runs/${r.lastAuditedRunId}`} prefetch={false} className="text-accent hover:underline">
-                            Run #{r.lastAuditedRunId}
-                          </Link>
-                        ) : (
-                          <span className="text-muted">Not yet</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          {total > 0 && <Pager path="/rules" params={search} page={page} limit={limit} total={total} noun="rules" />}
+          <FilterBar active={active}>
+            <SearchBox label="Search rules" placeholder="Search title or id" />
+            <SelectFilter
+              label="Audited"
+              param="audited"
+              options={[
+                { value: "yes", label: "Audited" },
+                { value: "no", label: "Never audited" },
+              ]}
+            />
+            <DateRange label="Effective" />
+            {filtered && <ClearFilters href={PATH} />}
+            <FilterChips label="Source">
+              {sourceNames.map((name) => (
+                <FilterChip key={name} href={hrefWith(PATH, params, { source: toggleValue(source, name) })} active={source.includes(name)}>
+                  {name}
+                  {fixtures.has(name) && <span className="text-xs text-muted">demo</span>}
+                </FilterChip>
+              ))}
+            </FilterChips>
+            <ChipDivider />
+            <FilterChips label="Changed within">
+              <span className="text-sm text-muted" aria-hidden>
+                Changed within
+              </span>
+              {CHANGED_WITHIN.map((days) => (
+                <FilterChip key={days} href={hrefWith(PATH, params, { changed: changed === days ? null : days })} active={changed === days}>
+                  {days}d
+                </FilterChip>
+              ))}
+            </FilterChips>
+          </FilterBar>
+          {/*
+            The table streams into a boundary keyed by the query. Besides showing a placeholder at
+            once while the controls stay put, this works around Next 16.1.6: a navigation that
+            swaps a 50-row table in place was often fetched but never committed.
+          */}
+          <Suspense key={toQuery(params).toString()} fallback={<TableSkeleton />}>
+            <RulesTable params={params} query={query} />
+          </Suspense>
         </>
       )}
+    </>
+  );
+}
+
+function TableSkeleton() {
+  return <div className="h-96 animate-pulse rounded-xl border border-border bg-surface" aria-busy="true" aria-label="Loading rules" />;
+}
+
+async function RulesTable({ params, query }: { params: SearchParams; query: ListQuery }) {
+  const { sort, page, limit } = query;
+  const { items: rules, total } = await api.rulesPage({
+    q: query.q,
+    source: query.source.join(","),
+    audited: query.audited,
+    changed: query.changed,
+    from: query.from,
+    to: query.to,
+    sort: sort.isDefault ? undefined : sort.sort,
+    order: sort.isDefault ? undefined : sort.order,
+    page: page > 1 ? page : undefined,
+    limit: limit === 50 ? undefined : limit,
+  });
+  const header = { path: PATH, params, current: sort };
+
+  if (rules.length === 0) {
+    return (
+      <EmptyState title={total === 0 ? "No rules match these filters" : "No rules on this page"}>
+        {total === 0 ? (
+          <ClearFilters href={PATH} />
+        ) : (
+          <Link href={hrefWith(PATH, params, { page: null })} prefetch={false} className="text-accent hover:underline">
+            Back to the first page
+          </Link>
+        )}
+      </EmptyState>
+    );
+  }
+  return (
+    <>
+      <div className="overflow-x-auto rounded-xl border border-border">
+        <table role="table" className="block w-full text-sm sm:table sm:min-w-[900px]">
+          <thead role="rowgroup" className="hidden bg-surface text-left text-xs uppercase tracking-wide text-muted sm:table-header-group">
+            <tr role="row">
+              <SortHeader {...header} sortKey="title" firstOrder="asc">
+                Rule
+              </SortHeader>
+              <SortHeader {...header} sortKey="source" firstOrder="asc">
+                Source
+              </SortHeader>
+              <SortHeader {...header} sortKey="effective">
+                Effective
+              </SortHeader>
+              <SortHeader {...header} sortKey="first_seen">
+                First seen
+              </SortHeader>
+              <SortHeader {...header} sortKey="changed">
+                Last changed
+              </SortHeader>
+              <th role="columnheader" scope="col" className="px-4 py-3 font-semibold">
+                Last audited
+              </th>
+            </tr>
+          </thead>
+          <tbody role="rowgroup" className="block divide-y divide-border sm:table-row-group">
+            {rules.map((r) => (
+              <tr
+                key={r.id}
+                role="row"
+                className="grid grid-cols-2 gap-x-4 gap-y-3 p-4 align-top hover:bg-surface/60 sm:table-row sm:p-0"
+              >
+                <td role="cell" className={cn(cell, "col-span-2 sm:max-w-md")}>
+                  <a
+                    href={r.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-start gap-1 font-medium break-words hover:text-accent"
+                  >
+                    {r.title}
+                    <ExternalLink className="mt-1 size-3 shrink-0" aria-hidden />
+                  </a>
+                  <p className="font-mono text-xs break-all text-muted">{r.externalId}</p>
+                </td>
+                <td role="cell" data-label="Source" className={cn(cell, labelled)}>
+                  <Badge tone={r.source.kind === "fixture" ? "neutral" : "primary"}>{r.source.name}</Badge>
+                </td>
+                <td role="cell" data-label="Effective" className={cn(cell, labelled, "text-muted")}>
+                  {r.effectiveDate ?? "—"}
+                </td>
+                <td role="cell" data-label="First seen" className={cn(cell, labelled, "text-muted")}>
+                  {formatDateTime(r.firstSeenAt)}
+                </td>
+                <td role="cell" data-label="Last changed" className={cn(cell, labelled, "text-muted")}>
+                  {formatDateTime(r.lastChangedAt)}
+                </td>
+                <td role="cell" data-label="Last audited" className={cn(cell, labelled)}>
+                  {r.lastAuditedRunId ? (
+                    <Link href={`/runs/${r.lastAuditedRunId}`} prefetch={false} className="text-accent hover:underline">
+                      Run #{r.lastAuditedRunId}
+                    </Link>
+                  ) : (
+                    <span className="text-muted">Not yet</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <Pager path={PATH} params={params} page={page} limit={limit} total={total} noun="rules" />
     </>
   );
 }

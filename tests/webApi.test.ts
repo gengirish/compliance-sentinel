@@ -159,7 +159,8 @@ describe("web API", () => {
 
     const byId = await getPage(`/rules?q=${encodeURIComponent(sample.externalId.toLowerCase())}`);
     expect(byId.body.some((r: any) => r.id === sample.id)).toBe(true);
-    expect(byId.total).toBeNull();
+    // Every rules response is a page (50 by default) and carries the match count.
+    expect(Number(byId.total)).toBe(byId.body.length);
     const byTitle = await getPage(`/rules?q=${encodeURIComponent(sample.title.slice(0, 8))}`);
     expect(byTitle.body.some((r: any) => r.id === sample.id)).toBe(true);
     // LIKE wildcards in the search are taken literally.
