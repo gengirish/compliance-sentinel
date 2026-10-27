@@ -140,7 +140,9 @@ export default async function OverviewPage() {
               {critical.length === 0 ? (
                 <EmptyState title="No critical violations in the latest audit" />
               ) : (
-                critical.slice(0, OVERVIEW_LIMIT).map((f) => <FindingCard key={f.id} finding={f} />)
+                critical
+                  .slice(0, OVERVIEW_LIMIT)
+                  .map((f) => <FindingCard key={f.id} finding={f} repoUrl={latest.repo?.url} sha={latest.headSha ?? undefined} />)
               )}
             </section>
           </div>

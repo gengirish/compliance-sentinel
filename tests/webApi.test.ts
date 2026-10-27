@@ -4,7 +4,8 @@ import { openMigratedDb, type DbHandle } from "../src/db/client.js";
 import { OfflineAnalyst } from "../src/llm/offlineAnalyst.js";
 import { runPipeline } from "../src/pipeline/run.js";
 import { LocalHashEmbedder } from "../src/rag/embed.js";
-import { tenants } from "../src/db/schema.js";
+import { eq } from "drizzle-orm";
+import { repos, tenants } from "../src/db/schema.js";
 import { TENANT_HEADER } from "../src/db/tenants.js";
 import { createApp } from "../src/web/server.js";
 
@@ -68,6 +69,24 @@ describe("web API", () => {
     expect((await get("/runs/abc")).status).toBe(400);
   });
 
+  it("names the GitHub repository of a run, and none for the demo app", async () => {
+    const demo = await get(`/runs/${runId}`);
+    expect(demo.body.repo).toBeNull();
+    expect(demo.body.headSha).toBeTruthy();
+
+    // A repository installed through the GitHub App has a GitHub id, so its code can be linked.
+    const repoId: number = demo.body.repoId;
+    const [original] = await handle.db.select().from(repos).where(eq(repos.id, repoId));
+    await handle.db.update(repos).set({ githubRepoId: 4242, fullName: "acme/payments-api" }).where(eq(repos.id, repoId));
+    try {
+      const expected = { fullName: "acme/payments-api", url: "https://github.com/acme/payments-api" };
+      expect((await get(`/runs/${runId}`)).body.repo).toEqual(expected);
+      expect((await get("/stats")).body.latestCompletedRun.repo).toEqual(expected);
+    } finally {
+      await handle.db.update(repos).set({ githubRepoId: null, fullName: original!.fullName }).where(eq(repos.id, repoId));
+    }
+  });
+
   it("lists findings with rule and resolved citations, and filters them", async () => {
     const all = await get(`/runs/${runId}/findings`);
     expect(all.body.length).toBeGreaterThan(0);
@@ -107,6 +126,54 @@ describe("web API", () => {
     expect(body.length).toBeGreaterThan(0);
     expect(body.some((r: any) => r.lastAuditedRunId === runId)).toBe(true);
     expect(body[0].source.name).toBeTruthy();
+  });
+
+  const getPage = async (path: string) => {
+    const res = await app.request(path, { headers: auth });
+    return { status: res.status, total: res.headers.get("x-total-count"), body: (await res.json()) as any };
+  };
+
+  it("pages runs with page and limit, and sends the total in a header", async () => {
+    const plain = await getPage("/runs");
+    expect(Array.isArray(plain.body)).toBe(true);
+    const total = Number(plain.total);
+    expect(total).toBe(plain.body.length);
+
+    const first = await getPage("/runs?counts=1&limit=25");
+    expect(first.body[0].id).toBe(plain.body[0].id);
+    expect(first.body[0].counts).toBeDefined();
+    expect(Number(first.total)).toBe(total);
+    // Past the last page: an empty page, still with the total.
+    const past = await getPage("/runs?page=2&limit=25");
+    expect(past.body).toEqual([]);
+    expect(Number(past.total)).toBe(total);
+
+    expect((await getPage("/runs?page=0")).status).toBe(400);
+    expect((await getPage("/runs?limit=7")).status).toBe(400);
+  });
+
+  it("searches and filters rules by text and source, and pages them when asked", async () => {
+    const all = (await getPage("/rules")).body;
+    expect(all.length).toBeGreaterThan(0);
+    const sample = all[0];
+
+    const byId = await getPage(`/rules?q=${encodeURIComponent(sample.externalId.toLowerCase())}`);
+    expect(byId.body.some((r: any) => r.id === sample.id)).toBe(true);
+    expect(byId.total).toBeNull();
+    const byTitle = await getPage(`/rules?q=${encodeURIComponent(sample.title.slice(0, 8))}`);
+    expect(byTitle.body.some((r: any) => r.id === sample.id)).toBe(true);
+    // LIKE wildcards in the search are taken literally.
+    expect((await getPage("/rules?q=%25%25%25")).body).toEqual([]);
+
+    const bySource = await getPage(`/rules?source=${sample.source.name}`);
+    expect(bySource.body.length).toBeGreaterThan(0);
+    expect(bySource.body.every((r: any) => r.source.name === sample.source.name)).toBe(true);
+    expect((await getPage("/rules?source=no-such-source")).body).toEqual([]);
+
+    const paged = await getPage("/rules?limit=25");
+    expect(Number(paged.total)).toBe(all.length);
+    expect(paged.body.map((r: any) => r.id)).toEqual(all.slice(0, 25).map((r: any) => r.id));
+    expect((await getPage("/rules?limit=3")).status).toBe(400);
   });
 
   describe("tenant isolation", () => {

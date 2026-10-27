@@ -1,6 +1,7 @@
 import { and, asc, cosineDistance, eq, inArray } from "drizzle-orm";
 import type { Db } from "../db/client.js";
 import { codeChunks, ruleChunks, rules, type Rule } from "../db/schema.js";
+import { redactSecrets } from "../redact.js";
 import { chunkRuleText } from "./chunker.js";
 import type { Embedder } from "./embed.js";
 
@@ -81,7 +82,7 @@ export async function retrieveCodeChunks(
 ): Promise<CodeChunkHit[]> {
   const [vector] = await embedder.embed([query], "query");
   const distance = cosineDistance(codeChunks.embedding, vector!);
-  return db
+  const hits = await db
     .select({
       id: codeChunks.id,
       path: codeChunks.path,
@@ -96,6 +97,8 @@ export async function retrieveCodeChunks(
     )
     .orderBy(distance)
     .limit(k);
+  // Chunks indexed before redaction existed still hold raw secrets; keep them from the analyst.
+  return hits.map((hit) => ({ ...hit, text: redactSecrets(hit.text, hit.path) }));
 }
 
 export async function getRuleChunks(db: Db, ruleId: number) {

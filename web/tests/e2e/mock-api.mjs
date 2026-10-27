@@ -60,7 +60,14 @@ const live = (r) => {
   if (r.status !== "running" || Date.now() - Date.parse(r.startedAt) < RUN_SECONDS * 1000) return r;
   return { ...r, status: "completed", finishedAt: new Date().toISOString(), counts };
 };
-const rule = { id: 1, title: "Demo Safeguards Rule", url: "https://example.com/rule", externalId: "DEMO-1" };
+// GET /runs/:id and /stats name the GitHub repository and commit audited, so code locations link there.
+const AUDITED = {
+  repoId: 1,
+  headSha: "3f2c1a9e8b7d6c5f4e3a2b1c0d9e8f7a6b5c4d3e",
+  repo: { fullName: "acme/payments-api", url: "https://github.com/acme/payments-api" },
+};
+const withRepo = (r) => ({ ...r, ...AUDITED });
+const rule ={ id: 1, title: "Demo Safeguards Rule", url: "https://example.com/rule", externalId: "DEMO-1" };
 const finding = (id, status, severity, obligation) => ({
   id,
   runId: 1,
@@ -82,7 +89,7 @@ const findings = [
 
 const routes = {
   "GET /settings/sources": () => sources,
-  "GET /stats": () => ({ latestRun: live(runs[0]), latestCompletedRun: run, totals: { rules: 1, runs: 1 } }),
+  "GET /stats": () => ({ latestRun: live(runs[0]), latestCompletedRun: withRepo(run), totals: { rules: 1, runs: 1 } }),
   "GET /runs": () => runs.map(live),
   "GET /rules": () => [
     {
@@ -114,7 +121,7 @@ createServer((req, res) => {
   const runMatch = url.pathname.match(/^\/runs\/(\d+)$/);
   if (req.method === "GET" && runMatch) {
     const found = runs.find((r) => r.id === Number(runMatch[1]));
-    return found ? send(200, live(found)) : send(404, { error: "run not found" });
+    return found ? send(200, withRepo(live(found))) : send(404, { error: "run not found" });
   }
   const sourceMatch = url.pathname.match(/^\/settings\/sources\/([\w-]+)$/);
   if (req.method === "PUT" && sourceMatch) {

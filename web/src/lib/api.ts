@@ -37,6 +37,8 @@ const Run = z.object({
   // Optional so the dashboard keeps working against an API deployed before tenancy.
   repoId: z.number().nullable().optional(),
   headSha: z.string().nullable().optional(),
+  // The GitHub repository audited, sent by GET /runs/:id and /stats; null for the demo app or a local path.
+  repo: z.object({ fullName: z.string(), url: z.string() }).nullable().optional(),
   rulesInScope: z.array(z.number()),
   reportUrl: z.string().nullable(),
   costUsd: z.number(),

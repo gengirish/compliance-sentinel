@@ -1,6 +1,7 @@
 import { and, asc, eq } from "drizzle-orm";
 import type { Db } from "../db/client.js";
 import { codeChunks } from "../db/schema.js";
+import { redactSecrets } from "../redact.js";
 import type { EvidenceSnippet, SearchCoverage } from "./types.js";
 
 /** path -> file lines, rebuilt from the index so evidence always matches the audited snapshot. */
@@ -28,6 +29,8 @@ export async function loadIndexedFiles(db: Db, repoId: number, commitSha: string
   for (const lines of files.values()) {
     for (let i = 0; i < lines.length; i++) lines[i] ??= "";
   }
+  // Snapshots indexed before chunks were redacted still hold raw secrets; mask them on the way out.
+  for (const [path, lines] of files) files.set(path, redactSecrets(lines.join("\n"), path).split("\n"));
   return files;
 }
 

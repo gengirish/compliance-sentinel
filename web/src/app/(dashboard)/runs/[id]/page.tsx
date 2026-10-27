@@ -180,7 +180,7 @@ export default async function RunPage({
       ) : (
         <div className="space-y-4">
           {findings.map((f) => (
-            <FindingCard key={f.id} finding={f} />
+            <FindingCard key={f.id} finding={f} repoUrl={run.repo?.url} sha={run.headSha ?? undefined} />
           ))}
         </div>
       )}

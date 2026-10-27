@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { SEVERITIES, STATUSES } from "../graph/types.js";
-import { searchQuery, sortQuery } from "./listQuery.js";
+import { PAGE_LIMITS, searchQuery, sortQuery } from "./listQuery.js";
 
 /** Request inputs for the HTTP API. Every route parses its params and query through one of these. */
 
@@ -25,7 +25,42 @@ export function commaList<T extends readonly [string, ...string[]]>(allowed: T) 
 
 export const TriggerRunQuery = z.object({ demo: flag });
 
-export const ListRunsQuery = z.object({ counts: flag });
+const page = z.coerce.number().int().positive({ message: "page must be a positive integer" });
+
+/** `?limit=` from a fixed set; `extra` adds a legacy size a route already served. */
+function pageLimit(extra: readonly number[] = []) {
+  const allowed = [...extra, ...PAGE_LIMITS];
+  return z.coerce.number().refine((n) => allowed.includes(n), { message: `limit must be one of ${allowed.join(", ")}` });
+}
+
+/** Runs before paging were the newest 20, and a plain `GET /runs` still is (status polling relies on it). */
+export const RUNS_DEFAULT_LIMIT = 20;
+
+export const ListRunsQuery = z.object({
+  counts: flag,
+  page: page.default(1),
+  limit: pageLimit([RUNS_DEFAULT_LIMIT]).default(RUNS_DEFAULT_LIMIT),
+});
+
+/** `?source=a,b`: source names (the catalog grows, so they are not a fixed enum here). */
+const sourceNames = z
+  .string()
+  .optional()
+  .transform((raw) => [...new Set((raw ?? "").split(",").map((s) => s.trim()).filter(Boolean))])
+  .pipe(z.array(z.string().max(64, { message: "source names are at most 64 characters" })).max(20, { message: "at most 20 sources" }));
+
+export const RULES_PAGE_LIMIT = 50;
+
+/**
+ * `GET /rules`: `q` over title and external id, `source` names, and paging. Without `page` or
+ * `limit` every rule is returned, as before paging existed.
+ */
+export const ListRulesQuery = z.object({
+  q: searchQuery,
+  source: sourceNames,
+  page: page.optional(),
+  limit: pageLimit().optional(),
+});
 
 export const FINDING_SORTS = ["severity", "status", "rule", "path"] as const;
 

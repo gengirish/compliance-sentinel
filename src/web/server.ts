@@ -9,7 +9,7 @@ import { type Context, Hono } from "hono";
 import { ZodError, type z } from "zod";
 import { config } from "../config.js";
 import { openMigratedDb, type Db } from "../db/client.js";
-import { auditRuns, findings, LOCAL_TENANT_ID, ruleChunks, rules, sources } from "../db/schema.js";
+import { auditRuns, findings, LOCAL_TENANT_ID, repos, ruleChunks, rules, sources } from "../db/schema.js";
 import { resolveTenantId, TENANT_HEADER } from "../db/tenants.js";
 import { verifyGitHubSignature } from "../github/app.js";
 import { handleGitHubEvent } from "../github/webhook.js";
@@ -18,10 +18,21 @@ import { errorMessage, log } from "../log.js";
 import { AgentMailClient, parseInboundCommand, senderAddress, verifyWebhookSignature, WebhookEvent } from "../notify/agentmail.js";
 import { failStaleRuns } from "../pipeline/watchdog.js";
 import { createQueue, enqueueManualAudit, INSTALL_JOB, type AuditJobData } from "../queue/queue.js";
+import { redactSecrets } from "../redact.js";
 import { signReportUrl } from "../report/upload.js";
 import { findSource, setSourceEnabled, sourceStates } from "../scrape/registry.js";
-import { likeContains, likePrefix, rank, type SortOrder } from "./listQuery.js";
-import { describeIssues, FINDING_SORTS, FindingsQuery, ListRunsQuery, RunIdParams, SourceSettingBody, TriggerRunQuery } from "./schemas.js";
+import { likeContains, likePrefix, pageOffset, rank, setTotal, type SortOrder } from "./listQuery.js";
+import {
+  describeIssues,
+  FINDING_SORTS,
+  FindingsQuery,
+  ListRulesQuery,
+  ListRunsQuery,
+  RULES_PAGE_LIMIT,
+  RunIdParams,
+  SourceSettingBody,
+  TriggerRunQuery,
+} from "./schemas.js";
 
 export type AppDeps = {
   db: Db;
@@ -239,6 +250,20 @@ export function createApp(deps: AppDeps): Hono<Env> {
     return run;
   };
 
+  /**
+   * The GitHub repository a run audited, for linking findings to code; null for the demo app,
+   * a local path or a URL clone, whose repos rows have no GitHub id and so no known host.
+   */
+  const repoLink = async (run: { tenantId: number; repoId: number | null }) => {
+    if (run.repoId === null) return null;
+    const [repo] = await deps.db
+      .select({ fullName: repos.fullName, githubRepoId: repos.githubRepoId })
+      .from(repos)
+      .where(and(eq(repos.id, run.repoId), eq(repos.tenantId, run.tenantId)));
+    if (!repo || repo.githubRepoId === null) return null;
+    return { fullName: repo.fullName, url: `https://github.com/${repo.fullName}` };
+  };
+
   /** Manual trigger. `?demo=1` forces the bundled demo rules through. */
   app.post("/runs", async (c) => {
     const query = parseInput(c, TriggerRunQuery, c.req.query());
@@ -251,17 +276,26 @@ export function createApp(deps: AppDeps): Hono<Env> {
     return c.json({ jobId, demo }, 202);
   });
 
+  /**
+   * Runs, newest first. `?page=` (1-based) and `?limit=` (20, 25, 50 or 100; default 20) page
+   * through them, and `x-total-count` carries the tenant's run count. The body stays a plain
+   * array, so a bare `GET /runs` is still the newest 20, as status polling expects.
+   */
   app.get("/runs", async (c) => {
     const query = parseInput(c, ListRunsQuery, c.req.query());
     if (!query.ok) return query.response;
     const tenantId = c.get("tenantId");
-    if (tenantId === null) return c.json([]);
-    const rows = await deps.db
-      .select()
-      .from(auditRuns)
-      .where(eq(auditRuns.tenantId, tenantId))
-      .orderBy(desc(auditRuns.id))
-      .limit(20);
+    if (tenantId === null) {
+      setTotal(c, 0);
+      return c.json([]);
+    }
+    const { page, limit } = query.data;
+    const mine = eq(auditRuns.tenantId, tenantId);
+    const [rows, [total]] = await Promise.all([
+      deps.db.select().from(auditRuns).where(mine).orderBy(desc(auditRuns.id)).limit(limit).offset(pageOffset(page, limit)),
+      deps.db.select({ n: count() }).from(auditRuns).where(mine),
+    ]);
+    setTotal(c, total?.n ?? 0);
     if (!query.data.counts) return c.json(rows);
     const counts = await countFindings(
       deps.db,
@@ -287,7 +321,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
     const counts = latestCompleted ? (await countFindings(deps.db, [latestCompleted.id])).get(latestCompleted.id) : undefined;
     return c.json({
       latestRun: latestRun ?? null,
-      latestCompletedRun: latestCompleted ? { ...latestCompleted, counts } : null,
+      latestCompletedRun: latestCompleted ? { ...latestCompleted, counts, repo: await repoLink(latestCompleted) } : null,
       totals: { rules: ruleCount?.n ?? 0, runs: runCount?.n ?? 0 },
     });
   });
@@ -299,7 +333,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
     const run = await findRun(c.get("tenantId"), id);
     if (!run) return c.json({ error: "run not found" }, 404);
     const counts = (await countFindings(deps.db, [id])).get(id);
-    return c.json({ ...run, counts });
+    return c.json({ ...run, counts, repo: await repoLink(run) });
   });
 
   /**
@@ -349,6 +383,8 @@ export function createApp(deps: AppDeps): Hono<Env> {
     return c.json(
       rows.map(({ finding, rule }) => ({
         ...finding,
+        // Findings stored before evidence was redacted still hold raw secrets.
+        evidence: finding.evidence.map((e) => ({ ...e, excerpt: redactSecrets(e.excerpt, e.path) })),
         rule,
         citations: finding.citationChunkIds.flatMap((cid) => byId.get(cid) ?? []),
       })),
@@ -356,7 +392,20 @@ export function createApp(deps: AppDeps): Hono<Env> {
   });
 
   /** Tracked rules with their source and the last run that produced findings for them. */
+  /**
+   * Tracked rules, last changed first. `?q=` searches the title and external id, `?source=`
+   * takes a comma list of source names. With `?page=` or `?limit=` (25, 50 or 100; default 50)
+   * the list is paged and `x-total-count` carries the match count; without either, every
+   * matching rule is returned, as before paging existed.
+   */
   app.get("/rules", async (c) => {
+    const query = parseInput(c, ListRulesQuery, c.req.query());
+    if (!query.ok) return query.response;
+    const { q, source: sourceNames, page, limit } = query.data;
+    const filters: SQL[] = [];
+    if (q) filters.push(or(ilike(rules.title, likeContains(q)), ilike(rules.externalId, likeContains(q)))!);
+    if (sourceNames.length) filters.push(inArray(sources.name, sourceNames));
+    const where = filters.length ? and(...filters) : undefined;
     // Rules are shared; which run last audited one is not.
     const lastAudited = deps.db
       .select({ ruleId: findings.ruleId, runId: max(findings.runId).as("last_run_id") })
@@ -365,7 +414,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
       .where(eq(auditRuns.tenantId, c.get("tenantId") ?? -1))
       .groupBy(findings.ruleId)
       .as("last_audited");
-    const rows = await deps.db
+    const select = deps.db
       .select({
         id: rules.id,
         externalId: rules.externalId,
@@ -380,7 +429,16 @@ export function createApp(deps: AppDeps): Hono<Env> {
       .from(rules)
       .innerJoin(sources, eq(rules.sourceId, sources.id))
       .leftJoin(lastAudited, eq(lastAudited.ruleId, rules.id))
-      .orderBy(desc(rules.lastChangedAt));
+      .where(where)
+      .orderBy(desc(rules.lastChangedAt), desc(rules.id))
+      .$dynamic();
+    if (page === undefined && limit === undefined) return c.json(await select);
+    const pageSize = limit ?? RULES_PAGE_LIMIT;
+    const [rows, [total]] = await Promise.all([
+      select.limit(pageSize).offset(pageOffset(page ?? 1, pageSize)),
+      deps.db.select({ n: count() }).from(rules).innerJoin(sources, eq(rules.sourceId, sources.id)).where(where),
+    ]);
+    setTotal(c, total?.n ?? 0);
     return c.json(rows);
   });
 

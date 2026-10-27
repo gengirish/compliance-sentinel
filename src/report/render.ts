@@ -11,6 +11,7 @@ import { ruleChunks, rules, sources } from "../db/schema.js";
 import type { AuditStateType, ReportResult } from "../graph/state.js";
 import { summarize, type Finding } from "../graph/types.js";
 import { errorMessage, log } from "../log.js";
+import { redactSecrets } from "../redact.js";
 import { storeReport } from "./upload.js";
 
 const run = promisify(execFile);
@@ -88,7 +89,7 @@ export async function buildReportData(db: Db, input: ReportInput) {
       evidence: finding.evidence.map((e) => ({
         path: e.path,
         lines: e.start_line === e.end_line ? `${e.start_line}` : `${e.start_line}-${e.end_line}`,
-        excerpt: e.excerpt,
+        excerpt: redactSecrets(e.excerpt, e.path),
       })),
     };
   };

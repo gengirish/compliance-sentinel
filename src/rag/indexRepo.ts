@@ -9,6 +9,7 @@ import type { Db } from "../db/client.js";
 import { codeChunks, LOCAL_TENANT_ID } from "../db/schema.js";
 import { ensureRepo } from "../db/tenants.js";
 import { log } from "../log.js";
+import { redactSecrets } from "../redact.js";
 import { chunkCode } from "./chunker.js";
 import type { Embedder } from "./embed.js";
 
@@ -126,7 +127,8 @@ export async function indexRepo(db: Db, embedder: Embedder, root: string, opts: 
   if (existing.length > 0) return { ...result, chunks: 0, reindexed: false };
 
   const drafts = files.flatMap((file) =>
-    chunkCode(file.text).map((chunk) => ({ path: file.path, ...chunk })),
+    // Redacted here so credentials never reach the embedder, the database or the analyst.
+    chunkCode(redactSecrets(file.text, file.path)).map((chunk) => ({ path: file.path, ...chunk })),
   );
   const vectors = await embedder.embed(
     drafts.map((d) => `${d.path}

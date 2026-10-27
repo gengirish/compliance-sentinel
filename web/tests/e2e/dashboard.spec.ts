@@ -152,3 +152,13 @@ test("a skipped run says why, and shows — rather than blank counts", async ({ 
   await row.getByRole("link", { name: "#3" }).click();
   await expect(page.getByText("No new or amended rules since the last check")).toBeVisible();
 });
+
+test("a code location links to the file on GitHub at the audited commit", async ({ page }) => {
+  await page.goto("/runs/1?severity=critical");
+  const link = page.locator("article").first().getByRole("link", { name: "Open src/auth/session.ts lines 11–15 on GitHub" });
+  await expect(link).toHaveAttribute(
+    "href",
+    "https://github.com/acme/payments-api/blob/3f2c1a9e8b7d6c5f4e3a2b1c0d9e8f7a6b5c4d3e/src/auth/session.ts#L11-L15",
+  );
+  await expect(link).toHaveAttribute("target", "_blank");
+});
