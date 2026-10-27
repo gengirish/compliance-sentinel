@@ -20,24 +20,36 @@ export default async function OverviewPage() {
   const counts = latest?.counts;
   const critical = latest ? await api.findings(latest.id, { status: ["violation"], severity: ["critical"] }) : [];
 
-  // Each tile opens the latest run filtered to what it counts.
+  // Each tile opens the latest run filtered to the findings it counts.
   const tiles = [
-    { label: "Violations", value: counts?.byStatus.violation, className: "text-danger", query: "status=violation" },
+    { label: "Violations", value: counts?.byStatus.violation, className: "text-danger", filter: "status=violation" },
     {
       label: "Critical violations",
       value: counts?.criticalViolations,
       className: "text-danger",
-      query: "status=violation&severity=critical",
+      filter: "status=violation&severity=critical",
     },
-    { label: "Needs review", value: counts?.byStatus.needs_review, className: "text-warning", query: "status=needs_review" },
-    { label: "Compliant", value: counts?.byStatus.compliant, className: "text-success", query: "status=compliant" },
+    { label: "Needs review", value: counts?.byStatus.needs_review, className: "text-warning", filter: "status=needs_review" },
+    { label: "Compliant", value: counts?.byStatus.compliant, className: "text-success", filter: "status=compliant" },
   ];
 
   return (
     <>
       <PageHeader
         title="Overview"
-        description={`${stats.totals.rules} rules tracked across ${stats.totals.runs} audit runs.`}
+        description={
+          <>
+            <Link href="/rules" prefetch={false} className="text-accent hover:underline">
+              {stats.totals.rules} rules
+            </Link>{" "}
+            tracked across{" "}
+            <Link href="/runs" prefetch={false} className="text-accent hover:underline">
+              {stats.totals.runs} audit runs
+            </Link>
+            .
+          </>
+        }
+        // TODO(A5): once a tenant's repos are known, a repository select joins the header here and scopes the tiles.
         actions={<RunAuditButton latestRun={stats.latestRun} />}
       />
 
@@ -60,14 +72,15 @@ export default async function OverviewPage() {
             {tiles.map((t) => (
               <Link
                 key={t.label}
-                href={`/runs/${latest.id}?${t.query}`}
+                href={`/runs/${latest.id}?${t.filter}`}
                 prefetch={false}
-                className="group block rounded-xl"
+                className={cn(
+                  "rounded-xl border border-border bg-surface p-5 transition-colors hover:border-primary-light/50 hover:bg-surface-light",
+                  "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+                )}
               >
-                <Card className="h-full transition-colors group-hover:border-accent/50 group-hover:bg-surface-light/60">
-                  <CardTitle className="group-hover:text-foreground">{t.label}</CardTitle>
-                  <p className={cn("mt-2 text-3xl font-bold tabular-nums sm:text-4xl", t.className)}>{t.value ?? 0}</p>
-                </Card>
+                <CardTitle>{t.label}</CardTitle>
+                <p className={cn("mt-2 text-3xl font-bold tabular-nums sm:text-4xl", t.className)}>{t.value ?? 0}</p>
               </Link>
             ))}
           </section>
