@@ -5,16 +5,22 @@ const { values } = parseArgs({
   options: {
     demo: { type: "boolean", default: false },
     rules: { type: "string" },
+    repo: { type: "string" },
+    "repo-url": { type: "string" },
+    ref: { type: "string" },
     help: { type: "boolean", short: "h", default: false },
   },
 });
 
 if (values.help) {
-  console.log(`Usage: pnpm audit:run [--demo] [--rules 1,2,3]
+  console.log(`Usage: pnpm audit:run [--demo] [--rules 1,2,3] [--repo <path> | --repo-url <url> [--ref <sha>]]
 
   (no flags)   Scrape the sources and audit any new or amended rules.
   --demo       Force the bundled demo rules through against the target repo.
-  --rules      Audit rules already in the store, by id, without scraping.`);
+  --rules      Audit rules already in the store, by id, without scraping.
+  --repo       Audit the repository at this local path.
+  --repo-url   Clone and audit this repository (shallow, into .data/repos/).
+  --ref        Commit sha, branch or tag to check out with --repo-url.`);
   process.exit(0);
 }
 
@@ -23,7 +29,14 @@ const ruleIds = values.rules
   .map((s) => Number(s.trim()))
   .filter((n) => Number.isInteger(n) && n > 0);
 
-const result = await runPipeline({ trigger: "manual", demo: values.demo, ruleIds });
+const result = await runPipeline({
+  trigger: "manual",
+  demo: values.demo,
+  ruleIds,
+  repoPath: values.repo,
+  repoUrl: values["repo-url"],
+  repoRef: values.ref,
+});
 
 if (result.status === "skipped") {
   console.log(`Run ${result.runId}: no new or amended rules, nothing to audit.`);

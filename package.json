@@ -18,6 +18,7 @@
     "digest:run": "tsx src/cli/digestRun.ts",
     "eval:retrieval": "tsx src/cli/evalRetrieval.ts",
     "eval:golden": "tsx src/cli/evalGolden.ts",
+    "audit:real": "tsx src/cli/auditRealRepos.ts",
     "runs:fail-stale": "tsx src/cli/failStaleRuns.ts",
     "agentmail:webhook": "node scripts/agentmail-webhook.mjs",
     "dev:web": "tsx watch src/web/server.ts",

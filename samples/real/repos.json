@@ -1,0 +1,20 @@
+[
+  {
+    "url": "https://github.com/ghostfolio/ghostfolio",
+    "ref": "5ab32ffc1ef539e72ed88af19a20168223e8dcb8",
+    "license": "AGPL-3.0",
+    "why": "TypeScript personal-finance app holding account and transaction data"
+  },
+  {
+    "url": "https://github.com/juice-shop/juice-shop",
+    "ref": "717f5efa886b0417eeecb52378b03cf10567b7e2",
+    "license": "MIT",
+    "why": "Deliberately insecure TypeScript shop: a control that must produce findings"
+  },
+  {
+    "url": "https://github.com/maybe-finance/maybe",
+    "ref": "77b5469832758d1cbee1a940f3012a1ae1c74cd3",
+    "license": "AGPL-3.0",
+    "why": "Rails personal-finance app: tests Ruby coverage"
+  }
+]

@@ -16,6 +16,8 @@ const run = promisify(execFile);
 const IGNORED_DIRS = new Set([
   "node_modules", ".git", "dist", "build", "coverage", ".next", "vendor", "out", ".turbo", ".cache",
   "__pycache__", ".venv", "venv", "target", "tmp", "log", "logs",
+  // Translation catalogues: large, numerous and never evidence of a control.
+  "i18n", "l10n", "locales", "locale", "translations",
 ]);
 /** Generated or bundled files: indexing them costs embeddings and never yields useful evidence. */
 const IGNORED_SUFFIXES = [".min.js", ".min.css", ".map", ".bundle.js", ".d.ts", ".snap"];
