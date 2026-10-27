@@ -1,5 +1,6 @@
 // Stand-in for the Sentinel API during e2e runs: fixed fixtures, same routes and token check.
 import { createServer } from "node:http";
+import { sources } from "./mock-sources.mjs";
 
 const PORT = Number(process.env.MOCK_API_PORT ?? 8099);
 const TOKEN = "e2e-token";
@@ -77,23 +78,6 @@ const findings = [
   finding(2, "violation", "high", "Expire sessions after inactivity"),
   finding(3, "compliant", "medium", "Log access to customer records"),
 ];
-
-const source = (name, label, region, enabled, requires = null) => ({
-  name,
-  label,
-  region,
-  description: `${label} test source.`,
-  requires,
-  kind: "api",
-  url: `https://example.com/${name}`,
-  enabled,
-  defaultEnabled: enabled,
-  overridden: false,
-  updatedAt: null,
-  lastCheckedAt: null,
-  rules: 0,
-});
-const sources = [source("federal-register", "Federal Register", "US", true), source("mas", "MAS", "SG", false, "Chromium (Playwright) and pdftotext")];
 
 const routes = {
   "GET /settings/sources": () => sources,

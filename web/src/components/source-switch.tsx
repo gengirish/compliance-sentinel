@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -15,10 +14,9 @@ type Props = {
 
 /**
  * One scraper's on/off switch, plus a reset back to its SCRAPE_* flag when the dashboard has
- * overridden it. Saves straight away and re-renders the page from the API's answer.
+ * overridden it. Saves straight away, then reloads the page to show the API's answer.
  */
 export function SourceSwitch({ name, label, enabled, defaultEnabled, overridden }: Props) {
-  const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Shown at once, so the switch does not lag the click while the page re-renders.
@@ -39,10 +37,13 @@ export function SourceSwitch({ name, label, enabled, defaultEnabled, overridden 
         const body = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(body.error ?? `Request failed (${res.status})`);
       }
-      router.refresh();
+      // A reload rather than router.refresh(): on Next 16.1.6 a second refresh on a page is often
+      // fetched but never committed (see refresh-while.tsx), which left a row's badge one switch
+      // behind. A reload keeps the URL, so the list's filters and sort survive it. The switch
+      // stays pending until the page comes back.
+      window.location.reload();
     } catch (err) {
       setError((err as Error).message);
-    } finally {
       setOptimistic(null);
       setPending(false);
     }
