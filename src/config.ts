@@ -62,6 +62,8 @@ const EnvSchema = z.object({
   /** The weekly "what changed" digest: Monday 07:00 UTC, covering the last DIGEST_DAYS days. */
   DIGEST_CRON: z.string().default("0 7 * * 1"),
   DIGEST_DAYS: z.coerce.number().int().positive().default(7),
+  /** The dashboard's public URL: subscription emails link to its confirm and unsubscribe pages. */
+  DASHBOARD_URL: z.string().default("https://compliance-sentinel-web.vercel.app"),
   MAX_RUN_COST_USD: z.coerce.number().positive().default(2),
   AUDIT_CONCURRENCY: z.coerce.number().int().positive().default(4),
   /** A run still "running" after this long is presumed orphaned and marked failed. */

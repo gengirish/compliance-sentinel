@@ -73,6 +73,20 @@ export const sourceSettings = pgTable("source_settings", {
   updatedAt: ts("updated_at").notNull().defaultNow(),
 });
 
+export const SUBSCRIBER_STATUSES = ["pending", "active", "unsubscribed"] as const;
+
+/** Weekly digest subscribers from the website, double opt-in (migration 0007). */
+export const digestSubscribers = pgTable("digest_subscribers", {
+  id: id(),
+  email: text("email").notNull().unique(),
+  status: text("status", { enum: SUBSCRIBER_STATUSES }).notNull().default("pending"),
+  token: text("token").notNull().unique(),
+  createdAt: ts("created_at").notNull().defaultNow(),
+  confirmationSentAt: ts("confirmation_sent_at"),
+  confirmedAt: ts("confirmed_at"),
+  unsubscribedAt: ts("unsubscribed_at"),
+});
+
 export const rules = pgTable(
   "rules",
   {
