@@ -4,7 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { serve } from "@hono/node-server";
 import type { Queue } from "bullmq";
-import { and, count, desc, eq, inArray, max, type SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, inArray, max, or, sql, type SQL } from "drizzle-orm";
 import { type Context, Hono } from "hono";
 import { ZodError, type z } from "zod";
 import { config } from "../config.js";
@@ -20,7 +20,8 @@ import { failStaleRuns } from "../pipeline/watchdog.js";
 import { createQueue, enqueueManualAudit, INSTALL_JOB, type AuditJobData } from "../queue/queue.js";
 import { signReportUrl } from "../report/upload.js";
 import { findSource, setSourceEnabled, sourceStates } from "../scrape/registry.js";
-import { describeIssues, FindingsQuery, ListRunsQuery, RunIdParams, SourceSettingBody, TriggerRunQuery } from "./schemas.js";
+import { likeContains, likePrefix, rank, type SortOrder } from "./listQuery.js";
+import { describeIssues, FINDING_SORTS, FindingsQuery, ListRunsQuery, RunIdParams, SourceSettingBody, TriggerRunQuery } from "./schemas.js";
 
 export type AppDeps = {
   db: Db;
@@ -87,6 +88,25 @@ async function countFindings(db: Db, runIds: number[]): Promise<Map<number, Find
     if (r.status === "violation" && r.severity === "critical") c.criticalViolations += r.n;
   }
   return out;
+}
+
+/** Ranked so that descending is the worst first: critical before low, violation before compliant. */
+const severityWeight = rank(findings.severity, ["low", "medium", "high", "critical"]);
+const statusWeight = rank(findings.status, ["compliant", "needs_review", "violation"]);
+/** The first evidence path; findings without evidence sort last in either direction. */
+const firstPath = sql`${findings.evidence}->0->>'path'`;
+
+/** ORDER BY for the findings list. Each key falls back to worst first, then id, so the order is stable. */
+function findingsOrder(sort: (typeof FINDING_SORTS)[number], order: SortOrder): SQL[] {
+  const dir = order === "asc" ? asc : desc;
+  const worstFirst = [desc(severityWeight), desc(statusWeight)];
+  const keys: Record<typeof sort, SQL[]> = {
+    severity: [dir(severityWeight), dir(statusWeight)],
+    status: [dir(statusWeight), dir(severityWeight)],
+    rule: [dir(rules.title), ...worstFirst],
+    path: [order === "asc" ? sql`${firstPath} ASC NULLS LAST` : sql`${firstPath} DESC NULLS LAST`, ...worstFirst],
+  };
+  return [...keys[sort], asc(findings.id)];
 }
 
 function tokenMatches(expected: string, header: string | undefined): boolean {
@@ -282,7 +302,12 @@ export function createApp(deps: AppDeps): Hono<Env> {
     return c.json({ ...run, counts });
   });
 
-  /** Findings for a run with their rule and resolved regulation citations. `?status=` and `?severity=` take comma lists. */
+  /**
+   * Findings for a run with their rule and resolved regulation citations. `?status=` and
+   * `?severity=` take comma lists; `?rule=` a rule id, `?path=` an evidence path prefix and
+   * `?q=` searches the obligation and rationale. `?sort=` is severity (default, worst first),
+   * status, rule or path, with `?order=`. No paging: a run has at most a few hundred findings.
+   */
   app.get("/runs/:id/findings", async (c) => {
     const params = parseInput(c, RunIdParams, c.req.param());
     if (!params.ok) return params.response;
@@ -290,10 +315,17 @@ export function createApp(deps: AppDeps): Hono<Env> {
     const query = parseInput(c, FindingsQuery, c.req.query());
     if (!query.ok) return query.response;
     if (!(await findRun(c.get("tenantId"), id))) return c.json({ error: "run not found" }, 404);
-    const { status: statuses, severity: severities } = query.data;
+    const { status: statuses, severity: severities, rule, path: pathPrefix, q, sort, order } = query.data;
     const where: SQL[] = [eq(findings.runId, id)];
     if (statuses.length) where.push(inArray(findings.status, statuses));
     if (severities.length) where.push(inArray(findings.severity, severities));
+    if (rule !== undefined) where.push(eq(findings.ruleId, rule));
+    if (pathPrefix) {
+      // Any evidence location under the prefix; the prefix is a parameter with `%` and `_` escaped.
+      const prefix = likePrefix(pathPrefix);
+      where.push(sql`EXISTS (SELECT 1 FROM jsonb_array_elements(${findings.evidence}) e WHERE e->>'path' LIKE ${prefix} ESCAPE '\\')`);
+    }
+    if (q) where.push(or(ilike(findings.obligation, likeContains(q)), ilike(findings.rationale, likeContains(q)))!);
 
     const rows = await deps.db
       .select({
@@ -303,7 +335,7 @@ export function createApp(deps: AppDeps): Hono<Env> {
       .from(findings)
       .innerJoin(rules, eq(findings.ruleId, rules.id))
       .where(and(...where))
-      .orderBy(findings.id);
+      .orderBy(...findingsOrder(sort, order));
 
     const chunkIds = [...new Set(rows.flatMap((r) => r.finding.citationChunkIds))];
     const chunks = chunkIds.length

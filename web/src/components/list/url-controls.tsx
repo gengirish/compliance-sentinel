@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
  * Client controls that write one URL parameter each. The server page re-renders from the new
  * URL, so these hold no list state of their own. Changing a filter returns to page 1.
  */
-function useSetParam() {
+export function useSetParam() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();

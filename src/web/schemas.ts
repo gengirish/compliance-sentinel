@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { SEVERITIES, STATUSES } from "../graph/types.js";
+import { searchQuery, sortQuery } from "./listQuery.js";
 
 /** Request inputs for the HTTP API. Every route parses its params and query through one of these. */
 
@@ -26,9 +27,22 @@ export const TriggerRunQuery = z.object({ demo: flag });
 
 export const ListRunsQuery = z.object({ counts: flag });
 
+export const FINDING_SORTS = ["severity", "status", "rule", "path"] as const;
+
 export const FindingsQuery = z.object({
   status: commaList(STATUSES),
   severity: commaList(SEVERITIES),
+  rule: z.coerce.number().int().positive({ message: "rule must be a positive integer" }).optional(),
+  /** Evidence path prefix, such as `src/payments`. */
+  path: z
+    .string()
+    .trim()
+    .max(200, { message: "path must be at most 200 characters" })
+    .optional()
+    .transform((v) => (v ? v : undefined)),
+  q: searchQuery,
+  // Severity descending is the worst first: critical, then violation before needs review.
+  ...sortQuery(FINDING_SORTS, { sort: "severity", order: "desc" }),
 });
 
 /** `true`/`false` switches the source; `null` hands it back to its SCRAPE_* flag. */
