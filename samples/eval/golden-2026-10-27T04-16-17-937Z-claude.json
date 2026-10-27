@@ -1,0 +1,51 @@
+{
+  "startedAt": "2026-10-27T04:16:17.937Z",
+  "wallSeconds": 125.39,
+  "analyst": "claude",
+  "models": {
+    "assess": "claude-sonnet-5-5",
+    "fast": "claude-haiku-5-5"
+  },
+  "embedder": "voyage-law-2",
+  "costUsd": 0.4666837000000001,
+  "findings": {
+    "compliant": 0,
+    "violation": 18,
+    "needs_review": 10
+  },
+  "recall": 0.8,
+  "precision": 0.8333333333333334,
+  "precisionWithConfirmedGaps": 0.9444444444444444,
+  "violations": 18,
+  "found": [
+    "pii-in-logs",
+    "no-retention-job",
+    "plaintext-secrets",
+    "missing-consent",
+    "no-breach-notification",
+    "pci-cvv-stored",
+    "pci-pan-unreadable",
+    "pci-shared-account"
+  ],
+  "missed": [
+    "pci-pan-in-logs",
+    "pci-pan-plain-http"
+  ],
+  "confirmedGaps": [
+    "no-mfa",
+    "no-activity-audit-log"
+  ],
+  "falselyFlagged": [],
+  "falsePositives": [
+    {
+      "obligation": "Contain and control security incidents to prevent further unauthorized access to or use of customer information, and recover from them.",
+      "severity": "high",
+      "evidence": [
+        "src/routes/incidents.js:10-18",
+        "schema.sql:38-43"
+      ],
+      "rationale": "Section 248.30(a)(3)(ii) requires incident procedures to contain and control incidents to prevent further unauthorized access to customer information. The incident intake handler only inserts a row and logs it, leaving a TODO instead of any action. A repository-wide search for containment terms (revoke, disable_account, rotate_key, quarantine, kill_switch, isolate) matched no files, so the containment control appears absent."
+    }
+  ],
+  "errors": []
+}

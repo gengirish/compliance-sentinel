@@ -1,0 +1,58 @@
+{
+  "startedAt": "2026-10-27T04:21:16.639Z",
+  "wallSeconds": 121.964,
+  "analyst": "claude",
+  "models": {
+    "assess": "claude-sonnet-5-5",
+    "fast": "claude-haiku-5-5"
+  },
+  "embedder": "voyage-law-2",
+  "costUsd": 0.5579052,
+  "findings": {
+    "compliant": 0,
+    "violation": 30,
+    "needs_review": 9
+  },
+  "recall": 1,
+  "precision": 0.8,
+  "precisionWithConfirmedGaps": 0.9333333333333333,
+  "violations": 30,
+  "found": [
+    "pii-in-logs",
+    "no-retention-job",
+    "plaintext-secrets",
+    "missing-consent",
+    "no-breach-notification",
+    "pci-pan-in-logs",
+    "pci-cvv-stored",
+    "pci-pan-unreadable",
+    "pci-pan-plain-http",
+    "pci-shared-account"
+  ],
+  "missed": [],
+  "confirmedGaps": [
+    "no-mfa",
+    "no-activity-audit-log"
+  ],
+  "falselyFlagged": [],
+  "falsePositives": [
+    {
+      "obligation": "Where testing shows tolerance cannot be met, make the necessary changes and record lessons learned and remediation.",
+      "severity": "high",
+      "evidence": [
+        "src/routes/incidents.js:10-16",
+        "schema.sql:38-43"
+      ],
+      "rationale": "SYSC 15A.5.3 requires firms to make changes and record lessons learned where testing shows tolerance cannot be met, and 15A.6.1 requires remediation to be recorded. The repository search finds no lessons-learned, remediation, post-mortem, action-item or test-result terms in any of the 15 files. The incident intake handler only inserts a bare summary row and logs it, with a TODO, and the schema has no fields for lessons learned or remediation tracking."
+    },
+    {
+      "obligation": "Apply security patches to every system to address vulnerabilities, within a timeframe commensurate with the risk of each vulnerability.",
+      "severity": "high",
+      "evidence": [
+        "package.json:8-13"
+      ],
+      "rationale": "MAS Notice 655 para 4.2 requires security patches to be applied to every system within a timeframe commensurate with risk. The repository shows no patching mechanism: no dependabot, renovate, npm audit, vulnerability scanning, or CVE tracking matches in any of the 15 indexed files. package.json lists dependencies only as caret ranges with no lockfile or automated update process shown, so the control is absent from the place it would normally live."
+    }
+  ],
+  "errors": []
+}

@@ -22,9 +22,11 @@ Give it a rule (or let it pick up new and amended rules from eight regulatory so
 | Regulatory change digest (graph node) and weekly digest delivery | Verified against Neon: `pnpm digest:run --demo` digested the 5 demo rules (run 14) and the weekly digest covered 17 rule changes, reusing stored digests, and was delivered by email from the AgentMail inbox. Digests stored before the API key was set are the offline baseline; new rule versions are digested by Claude |
 | Full run on live sources, then a second run that correctly skips | Verified locally |
 | Neon Postgres with pgvector, including the Postgres checkpointer | Verified: migrations and a demo audit ran against Neon |
-| Audit with Claude (`claude-sonnet-5-5`, `claude-haiku-5-5`) | Verified: golden eval run three times, 5/5 recall each time, about $0.45 per run (see [Evaluation](#evaluation)) |
+| Audit with Claude (`claude-sonnet-5-5`, `claude-haiku-5-5`) | Verified: golden eval run three times on each planted set, 28 of 30 found on the ten-violation set, about $0.50 per run (see [Evaluation](#evaluation)) |
 | Voyage `voyage-law-2` embeddings | Implemented, **not yet run**: needs `VOYAGE_API_KEY`. The eval above used the local hash embedder |
-| Audits of real open-source repositories (`pnpm audit:real`) | Plumbing verified offline on three pinned repos; **Claude results not yet published** |
+| Audits of real open-source repositories (`pnpm audit:real`) | Run with Claude on three pinned repos for $3.82. Precision is 42% (10 of 24 violations true) on a first-pass label by Claude Code, **not yet confirmed by a person** (see [samples/real](samples/real)) |
+| GitHub Action ([action.yml](action.yml), [docs/github-action.md](docs/github-action.md)) | Audit step, Markdown summary and `--fail-on` exit codes verified locally; **not yet run on GitHub** |
+| PCI DSS v4.0.1 rules (paraphrased) and five planted PCI violations in the demo app | Offline golden test passes on all ten planted violations |
 | Docker image and PDF rendering with WeasyPrint | Verified in CI on every push (image builds, demo report renders to a 17-page PDF) |
 | BullMQ worker and cron | Implemented and typechecked; **not yet run against Redis** |
 | Fly.io deployment | Deployed at <https://compliance-sentinel-gengirish.fly.dev> (`/health` returns 200; other routes need the token) |
@@ -188,7 +190,7 @@ fly logs --process-group worker
 
 ## Evaluation
 
-[demo-target-app](demo-target-app) is a small Express API with five planted violations and two areas that are implemented correctly:
+[demo-target-app](demo-target-app) is a small Express API with ten planted violations and two areas that are implemented correctly:
 
 | Planted violation | Where |
 |---|---|
@@ -197,17 +199,25 @@ fly logs --process-group worker
 | Plaintext secrets | `src/config.js` |
 | Marketing opt-in assumed, no consent capture | `src/routes/signup.js`, `schema.sql` |
 | No breach-notification step | `src/routes/incidents.js` |
+| PCI DSS 3.4.1: full card number written to the log | `src/routes/payments.js` |
+| PCI DSS 3.3.1: card verification code stored after authorisation | `src/routes/payments.js`, `schema.sql` |
+| PCI DSS 3.5.1: card numbers stored in plaintext | `schema.sql` |
+| PCI DSS 4.2.1: card data sent to the processor over plain HTTP | `src/routes/payments.js` |
+| PCI DSS 8.2.2: one shared login for the admin console | `src/config.js` |
+
+The five PCI DSS violations were added on 2026-10-27, together with a paraphrased PCI DSS v4.0.1 rule file. The first five rows are the original set.
 
 Compliant areas that must not be flagged: TLS enforcement (`src/middleware/https.js`) and access control (`src/middleware/auth.js`).
 
 Claude also reported gaps the demo app really has but that were never planted: no multi-factor authentication, no way to withdraw marketing consent, and no audit trail of user activity. Each was confirmed by reading the code and is listed in `CONFIRMED_GAPS` in [src/eval/golden.ts](src/eval/golden.ts). Precision is reported two ways: strictly against the planted list, and counting those confirmed gaps as correct.
 
-| Analyst | Runs | Recall | Precision, planted only | Precision, incl. confirmed gaps | False positives per run | Compliant areas flagged | Cost per run |
-|---|---|---|---|---|---|---|---|
-| Offline keyword baseline | 1 | 5/5 | 100% | 100% | 0 | 0 | $0 |
-| Claude (`claude-sonnet-5-5` assess, `claude-haiku-5-5` relevance) | 3 | 5/5, 5/5, 5/5 | 78%, 76%, 82% | 94%, 88%, 100% | 1, 2, 0 | 0 | $0.45, $0.45, $0.44 |
+| Analyst | Planted set | Runs | Recall | Precision, planted only | Precision, incl. confirmed gaps | False positives per run | Compliant areas flagged | Cost per run |
+|---|---|---|---|---|---|---|---|---|
+| Offline keyword baseline | 10 (with PCI DSS) | 1 | 10/10 | 100% | 100% | 0 | 0 | $0 |
+| Claude (`claude-sonnet-5-5` assess, `claude-haiku-5-5` relevance) | 5 (original) | 3 | 5/5, 5/5, 5/5 | 78%, 76%, 82% | 94%, 88%, 100% | 1, 2, 0 | 0 | $0.45, $0.45, $0.44 |
+| Claude (same models) | 10 (with PCI DSS) | 3 | 8/10, 10/10, 10/10 | 83%, 89%, 80% | 94%, 100%, 93% | 1, 0, 2 | 0 | $0.47, $0.56, $0.56 |
 
-Measured 2026-10-27 with the local hash embedder, because `VOYAGE_API_KEY` was not set; about 90 seconds per run. The raw results are in [samples/eval/](samples/eval). The three false positives were all governance duties that do not live in code (a patching timeframe, a register of important business services, an impact tolerance). They should be `needs_review`; that is the next prompt fix.
+Measured 2026-10-27 with the local hash embedder, because `VOYAGE_API_KEY` was not set; about 90 seconds per run. The raw results are in [samples/eval/](samples/eval). One run missed the card number in the logs and the plain-HTTP call to the processor. Every false positive across the six runs was a governance duty that does not live in code, such as a patching timeframe, a register of important business services, or incident containment. Those should be `needs_review`; that is the next prompt fix.
 
 The offline row shows that the pipeline, retrieval and citation checks work. It says little about reasoning quality, because the baseline's patterns were written with this demo app in view.
 

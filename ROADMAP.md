@@ -212,3 +212,28 @@ Estimates assume one person full time. §1 is the only item that can be finished
 | Tenant data leaks across orgs | Every query takes a tenant id; one test per API route that asserts cross-tenant reads return nothing |
 | Fix PRs are wrong | Draft only, one file, only after a human accepted the finding |
 | Nobody takes the calls | The Action on the Marketplace is the fallback funnel; the install count is the signal even without conversations |
+
+## 12. Progress
+
+Decisions for §9 are recorded in [docs/decisions.md](docs/decisions.md).
+
+**2026-10-27**
+
+| Item | State |
+|---|---|
+| §1a Golden eval with Claude | Done. Results saved per run to `reports/eval/`, published runs in [samples/eval/](samples/eval). An eval in which every model call fails now aborts instead of scoring 0% recall and 100% precision |
+| §1a Absence of evidence | Fixed. The judge now gets a repository-wide keyword count and the file list, so it can call a control absent. The retention job went from missed in 3 of 3 runs to found in 3 of 3 |
+| §1b Real repositories | Done with Claude on ghostfolio, juice-shop and maybe at pinned commits, $3.82 in total. First-pass labels by Claude Code give 42% precision; **a person still has to confirm them** |
+| §2a GitHub Action | Built: [action.yml](action.yml), Markdown summary, comment upsert, `--fail-on`. The audit step was verified locally; **not yet run on GitHub or listed on the Marketplace** |
+| §4 PCI DSS | Paraphrased PCI DSS v4.0.1 rule file, five planted PCI violations in the demo app, four PCI catalogue controls with `frameworkRefs`, and the landing page rewritten for the fintech buyer |
+| §2b GitHub App and tenants | Not started |
+| §3 PR trigger | Not started. The Action already covers PRs for users who bring their own key |
+| §5 Review loop | Not started |
+
+**Next, in order**
+
+1. **Fix the main false-positive class.** Organisational duties, such as notifying a regulator or running incident response, should be `needs_review`, not violations against unrelated files. This is the cause of most of the 14 false positives on real code. Measure the fix on a fresh set of repositories, not the three already labelled, to avoid tuning to them.
+2. **Confirm the real-repo labels by hand.** About 30 minutes per repo, using the notes in each `labels.json`.
+3. **Set `VOYAGE_API_KEY`** and rerun the golden eval. All published numbers so far used the local hash embedder.
+4. **Run the Action on a real pull request.** Do it in a test repository, then list it on the Marketplace.
+5. **Then §2b, §3 and §5,** in that order.

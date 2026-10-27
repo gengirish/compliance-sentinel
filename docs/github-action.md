@@ -43,7 +43,7 @@ Then add `ANTHROPIC_API_KEY` under **Settings → Secrets and variables → Acti
 
 ## Cost
 
-The bundled demo rules cost about $0.45 per run with Claude on a small repository (see the Evaluation section of the README). A larger repository costs more, because each obligation's evidence is longer, and the per-run cap stops further model calls once it is reached.
+The bundled demo rules cost about $0.50 per run with Claude on a small repository (see the Evaluation section of the README). A larger repository costs more, because each obligation's evidence is longer, and the per-run cap stops further model calls once it is reached.
 
 ## Limits
 
