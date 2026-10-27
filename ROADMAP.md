@@ -236,4 +236,4 @@ Decisions for §9 are recorded in [docs/decisions.md](docs/decisions.md).
 2. **Confirm the real-repo labels by hand.** About 30 minutes per repo, using the notes in each `labels.json`.
 3. **Set `VOYAGE_API_KEY`** and rerun the golden eval. All published numbers so far used the local hash embedder.
 4. **Run the Action on a real pull request.** Do it in a test repository, then list it on the Marketplace.
-5. **Then §2b, §3 and §5,** in that order.
+5. **Then §2b, §3 and §5,** in that order. Implementation plan: [docs/plan-app-pr-review.md](docs/plan-app-pr-review.md).
