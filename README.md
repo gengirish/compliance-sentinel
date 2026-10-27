@@ -18,6 +18,7 @@ Give it a rule (or let it pick up new and amended rules from eight regulatory so
 | FCA publications RSS source | Verified against the live feed (publication pages fetched and reduced to body text) |
 | MAS circulars source (Playwright + pdftotext) | Verified locally against the live site (2 circulars, page text plus PDF text); **not yet run inside the Docker image**. Off by default (`SCRAPE_MAS=true`) |
 | ESMA news, FINRA notices, ASIC regulatory tracker sources | Verified against the live sites (ESMA and FINRA items with page text; ASIC regulatory guides with page and PDF text, capped at `ASIC_MAX_CHARS`) |
+| AgentMail email: alerts and digests sent from the app's inbox, "run audit" emails accepted through a signed webhook | Outbound verified (weekly digest delivered from `alerts@intelliforge.tech`); inbound route unit-tested, **webhook not yet registered** on the deployed app |
 | Regulatory change digest (graph node) and weekly digest delivery | Verified against Neon: `pnpm digest:run --demo` digested the 5 demo rules (run 14) and the weekly digest covered 17 rule changes, reusing stored digests, and was delivered by email from the AgentMail inbox. Digests stored before the API key was set are the offline baseline; new rule versions are digested by Claude |
 | Full run on live sources, then a second run that correctly skips | Verified locally |
 | Neon Postgres with pgvector, including the Postgres checkpointer | Verified: migrations and a demo audit ran against Neon |
@@ -45,6 +46,7 @@ The pipeline, step by step:
 flowchart TD
     cron["BullMQ repeatable job<br/>daily 06:00 UTC"] --> scrape
     manual["POST /runs<br/>(token, optional ?demo=1)"] --> scrape
+    inbox["#quot;run audit#quot; email to the AgentMail inbox<br/>POST /inbox/agentmail (Svix-signed)"] --> scrape
 
     subgraph ing [Ingest]
         scrape["Scrape<br/>Federal Register, SEC, FINRA, FCA, ESMA, ASIC (HTTP) + EUR-Lex, MAS (Playwright)"] --> diff{"Content hash<br/>changed?"}
@@ -52,9 +54,12 @@ flowchart TD
         diff -- yes --> embed["Chunk by section, embed<br/>Neon Postgres + pgvector"]
     end
 
-    embed --> extract
+    embed --> mode{"mode?"}
+    mode -- audit --> extract
+    mode -- digest --> digest
 
     subgraph audit [LangGraph audit graph]
+        digest["digest_rules<br/>summary, what changed, effective date,<br/>who it applies to, key obligations"]
         extract["extract_obligations"] -->|"Send() per obligation"| retrieve
         subgraph per [per obligation, in parallel]
             retrieve["retrieve_code_evidence<br/>keyword + vector"] --> assess["assess<br/>compliant / violation / needs_review"]
@@ -63,10 +68,13 @@ flowchart TD
         verify --> aggregate["aggregate"]
         aggregate --> render["render_report<br/>HTML to PDF (WeasyPrint)"]
         render --> gate{"severity_gate<br/>any critical?"}
-        gate -- yes --> notify["notify<br/>Slack + email"]
+        gate -- yes --> notify["notify<br/>Slack + AgentMail email (PDF attached)"]
     end
 
     render --> store[("Tigris bucket<br/>signed link")]
+    digest --> digests[("rule_digests<br/>one per rule version")]
+    weekly["Weekly digest job<br/>Monday 07:00 UTC"] --> digests
+    digests --> roundup["Email + Slack round-up<br/>of the week's rule changes"]
 ```
 
 One Fly app runs two process groups from the same image:
