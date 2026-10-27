@@ -4,6 +4,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { promisify } from "node:util";
 import { and, eq, ne } from "drizzle-orm";
+import { config } from "../config.js";
 import type { Db } from "../db/client.js";
 import { codeChunks } from "../db/schema.js";
 import { log } from "../log.js";
@@ -12,7 +13,13 @@ import type { Embedder } from "./embed.js";
 
 const run = promisify(execFile);
 
-const IGNORED_DIRS = new Set(["node_modules", ".git", "dist", "build", "coverage", ".next", "vendor"]);
+const IGNORED_DIRS = new Set([
+  "node_modules", ".git", "dist", "build", "coverage", ".next", "vendor", "out", ".turbo", ".cache",
+  "__pycache__", ".venv", "venv", "target", "tmp", "log", "logs",
+]);
+/** Generated or bundled files: indexing them costs embeddings and never yields useful evidence. */
+const IGNORED_SUFFIXES = [".min.js", ".min.css", ".map", ".bundle.js", ".d.ts", ".snap"];
+const IGNORED_FILES = new Set(["package-lock.json", "pnpm-lock.yaml", "yarn.lock", "composer.lock", "Gemfile.lock"]);
 const INDEXED_EXTENSIONS = new Set([
   ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".py", ".go", ".java", ".rb", ".php", ".cs",
   ".sql", ".json", ".yml", ".yaml", ".toml", ".env", ".sh", ".tf",
@@ -34,7 +41,7 @@ export function listRepoFiles(root: string): RepoFile[] {
       if (!entry.isFile()) continue;
       const ext = path.extname(entry.name) || (entry.name.startsWith(".env") ? ".env" : "");
       if (!INDEXED_EXTENSIONS.has(ext)) continue;
-      if (entry.name === "package-lock.json" || entry.name === "pnpm-lock.yaml") continue;
+      if (IGNORED_FILES.has(entry.name) || IGNORED_SUFFIXES.some((suffix) => entry.name.endsWith(suffix))) continue;
       if (statSync(full).size > MAX_FILE_BYTES) continue;
       out.push({ path: path.relative(root, full).split(path.sep).join("/"), text: readFileSync(full, "utf8") });
     }
@@ -67,12 +74,32 @@ export async function repoSnapshotId(root: string, files: RepoFile[]): Promise<s
   return `content-${hash.digest("hex").slice(0, 40)}`;
 }
 
-export type IndexResult = { repo: string; commitSha: string; chunks: number; reindexed: boolean };
+/** Thrown when a repository is over INDEX_MAX_FILES or INDEX_MAX_BYTES. */
+export class RepoTooLargeError extends Error {
+  constructor(
+    readonly files: number,
+    readonly bytes: number,
+  ) {
+    super(
+      `repository too large to index: ${files} files, ${bytes} bytes ` +
+        `(caps: INDEX_MAX_FILES=${config.INDEX_MAX_FILES}, INDEX_MAX_BYTES=${config.INDEX_MAX_BYTES})`,
+    );
+    this.name = "RepoTooLargeError";
+  }
+}
+
+export function assertIndexable(files: RepoFile[], limits = { maxFiles: config.INDEX_MAX_FILES, maxBytes: config.INDEX_MAX_BYTES }): void {
+  const bytes = files.reduce((sum, f) => sum + Buffer.byteLength(f.text), 0);
+  if (files.length > limits.maxFiles || bytes > limits.maxBytes) throw new RepoTooLargeError(files.length, bytes);
+}
+
+export type IndexResult = { repo: string; commitSha: string; files: number; chunks: number; reindexed: boolean };
 
 /** Indexes the target repo into `code_chunks`; a no-op when this snapshot is already indexed. */
 export async function indexRepo(db: Db, embedder: Embedder, root: string, repoName?: string): Promise<IndexResult> {
   const repo = repoName ?? path.basename(path.resolve(root));
   const files = listRepoFiles(root);
+  assertIndexable(files);
   const commitSha = await repoSnapshotId(root, files);
 
   const existing = await db
@@ -80,7 +107,7 @@ export async function indexRepo(db: Db, embedder: Embedder, root: string, repoNa
     .from(codeChunks)
     .where(and(eq(codeChunks.repo, repo), eq(codeChunks.commitSha, commitSha)))
     .limit(1);
-  if (existing.length > 0) return { repo, commitSha, chunks: 0, reindexed: false };
+  if (existing.length > 0) return { repo, commitSha, files: files.length, chunks: 0, reindexed: false };
 
   const drafts = files.flatMap((file) =>
     chunkCode(file.text).map((chunk) => ({ path: file.path, ...chunk })),
@@ -106,5 +133,5 @@ export async function indexRepo(db: Db, embedder: Embedder, root: string, repoNa
     }
   });
   log.info("repo indexed", { repo, commitSha, files: files.length, chunks: drafts.length });
-  return { repo, commitSha, chunks: drafts.length, reindexed: true };
+  return { repo, commitSha, files: files.length, chunks: drafts.length, reindexed: true };
 }

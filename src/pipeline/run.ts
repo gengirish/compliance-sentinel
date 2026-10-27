@@ -48,6 +48,10 @@ export type PipelineOptions = {
   deps?: Partial<Pick<GraphDeps, "renderReport" | "notify">>;
   sources?: { def: SourceDef; fetch: () => Promise<ScrapedRule[]> }[];
   repoPath?: string;
+  /** Clone this repository for the run instead of using TARGET_REPO_PATH / TARGET_REPO_URL. */
+  repoUrl?: string;
+  /** Commit sha (or branch/tag) to audit when cloning; defaults to the remote's default branch. */
+  repoRef?: string;
 };
 
 export const SKIP_NOTE = "No new or amended rules since the last check, so there was nothing to audit.";
@@ -127,19 +131,41 @@ async function createCheckpointer(handle: DbHandle): Promise<{ saver: BaseCheckp
   return { saver: new MemorySaver(), close: async () => undefined };
 }
 
-/** Uses TARGET_REPO_PATH, or shallow-clones TARGET_REPO_URL, or falls back to the demo app. */
-async function resolveTargetRepo(explicit?: string): Promise<string> {
-  if (explicit) return explicit;
+/** "https://github.com/owner/name(.git)" -> "owner/name"; other URLs -> their last two path segments. */
+export function repoNameFromUrl(url: string): string {
+  const parts = url
+    .replace(/\.git$/, "")
+    .split(/[/:]/)
+    .filter(Boolean);
+  return parts.slice(-2).join("/");
+}
+
+/** Shallow-clones `url` at `ref` (a sha, branch or tag) into its own folder under .data/repos. */
+export async function cloneRepo(url: string, ref?: string): Promise<string> {
+  const dir = path.join(resolveFromRoot(".data/repos"), repoNameFromUrl(url).replace(/[^\w.-]+/g, "__"));
+  rmSync(dir, { recursive: true, force: true });
+  mkdirSync(dir, { recursive: true });
+  const git = (...args: string[]) => run("git", ["-C", dir, ...args], { timeout: 300_000 });
+  await git("init", "--quiet");
+  await git("remote", "add", "origin", url);
+  // Fetching a single ref at depth 1 works for branch names, tags and (on GitHub) full commit shas.
+  await git("fetch", "--quiet", "--depth", "1", "origin", ref ?? "HEAD");
+  await git("checkout", "--quiet", "--detach", "FETCH_HEAD");
+  return dir;
+}
+
+type TargetRepo = { path: string; name?: string };
+
+/** An explicit path or URL wins; then TARGET_REPO_PATH, then TARGET_REPO_URL, then the demo app. */
+async function resolveTargetRepo(opts: Pick<PipelineOptions, "repoPath" | "repoUrl" | "repoRef">): Promise<TargetRepo> {
+  if (opts.repoPath) return { path: opts.repoPath };
+  if (opts.repoUrl) return { path: await cloneRepo(opts.repoUrl, opts.repoRef), name: repoNameFromUrl(opts.repoUrl) };
   if (!config.TARGET_REPO_PATH && config.TARGET_REPO_URL) {
-    const dir = resolveFromRoot(".data/target-repo");
-    rmSync(dir, { recursive: true, force: true });
-    mkdirSync(path.dirname(dir), { recursive: true });
-    await run("git", ["clone", "--depth", "1", config.TARGET_REPO_URL, dir], { timeout: 180_000 });
-    return dir;
+    return { path: await cloneRepo(config.TARGET_REPO_URL), name: repoNameFromUrl(config.TARGET_REPO_URL) };
   }
   const dir = targetRepoPath();
   if (!existsSync(dir)) throw new Error(`target repository not found at ${dir}`);
-  return dir;
+  return { path: dir };
 }
 
 /** Scrape -> diff -> persist. Returns only rules that are new or amended. */
@@ -228,8 +254,8 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
         const chunks = await embedRule(db, embedder, rule);
         log.info("rule embedded", { ruleId: rule.id, chunks });
       }
-      const repoPath = await resolveTargetRepo(opts.repoPath);
-      const index = await indexRepo(db, embedder, repoPath);
+      const target = await resolveTargetRepo(opts);
+      const index = await indexRepo(db, embedder, target.path, target.name);
       repo = index.repo;
       commitSha = index.commitSha;
     }

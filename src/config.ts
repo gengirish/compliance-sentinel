@@ -39,6 +39,9 @@ const EnvSchema = z.object({
   TIGRIS_ENDPOINT: z.string().default("https://fly.storage.tigris.dev"),
   TARGET_REPO_PATH: optional,
   TARGET_REPO_URL: optional,
+  /** Indexing stops with an error past these caps, so a large repository fails fast instead of running up cost. */
+  INDEX_MAX_FILES: z.coerce.number().int().positive().default(2_000),
+  INDEX_MAX_BYTES: z.coerce.number().int().positive().default(8_000_000),
   RUN_TRIGGER_TOKEN: optional,
   PUBLIC_BASE_URL: optional,
   AUDIT_CRON: z.string().default("0 6 * * *"),
