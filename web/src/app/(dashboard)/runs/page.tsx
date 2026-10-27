@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import { FileText } from "lucide-react";
 import { ClearFilters } from "@/components/list/clear-filters";
@@ -10,7 +11,18 @@ import { EmptyState, PageHeader } from "@/components/page-header";
 import { RunAuditButton } from "@/components/run-audit-button";
 import { RunStatusBadge } from "@/components/status-badges";
 import { api, RUN_SORTS, RUN_STATUSES, TRIGGER_LABEL, TRIGGERS, type Run } from "@/lib/api";
-import { hasAny, hrefWith, pickDate, pickList, pickPage, pickSort, toggleValue, type SearchParams } from "@/lib/list-params";
+import {
+  hasAny,
+  hrefWith,
+  pickDate,
+  pickList,
+  pickPage,
+  pickSort,
+  toggleValue,
+  toQuery,
+  type SearchParams,
+  type SortState,
+} from "@/lib/list-params";
 import { cn, formatDateTime, formatDuration, formatUsd } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "Runs" };
@@ -44,38 +56,21 @@ export default async function RunsPage({ searchParams }: { searchParams: Promise
   const activeFilters = [status.length, trigger.length, from || to, critical, repo].filter(Boolean).length;
   const filtered = activeFilters > 0;
 
-  const defaultView = !filtered && sort.isDefault && page === 1;
-  // The audit button watches the newest run. Unless this is the default view, the first row is not it.
-  const [{ items: runs, total }, statuses] = await Promise.all([
-    api.runsPage({
-      status,
-      trigger,
-      from,
-      to,
-      critical,
-      repo,
-      sort: sort.isDefault ? undefined : sort.sort,
-      order: sort.isDefault ? undefined : sort.order,
-      page: page > 1 ? page : undefined,
-    }),
-    defaultView ? null : api.runStatuses(),
-  ]);
-  const newest = (defaultView ? runs[0] : statuses?.[0]) ?? null;
+  // The newest runs, whatever the filters: the audit button watches the newest one, and the
+  // repository select lists the repos among them. The filtered page streams in below.
+  const { items: recent, total: allRuns } = await api.runsPage();
+  const newest = recent[0] ?? null;
 
-  // TODO(A5): label repositories by name and list all of the tenant's repos, not just the ones on this page.
-  const repoIds = [...new Set(runs.flatMap((r) => (r.repoId ? [r.repoId] : [])))];
+  // TODO(A5): label repositories by name and list all of the tenant's repos, not just the recent ones.
+  const repoIds = [...new Set(recent.flatMap((r) => (r.repoId ? [r.repoId] : [])))];
   const href = (changes: Record<string, string | null>) => hrefWith(PATH, params, changes);
-  const header = { path: PATH, params, current: sort };
+  const query: RunsView = { status, trigger, from, to, critical, repo, sort, page, filtered };
 
   return (
     <>
       <PageHeader
         title="Audit runs"
-        description={
-          filtered
-            ? `${plural(total, "run")} ${total === 1 ? "matches" : "match"} these filters.`
-            : `${plural(total, "run")}, from the daily schedule, manual triggers and repository events.`
-        }
+        description={`${plural(allRuns, "run")}, from the daily schedule, manual triggers and repository events.`}
         actions={<RunAuditButton latestRun={newest} />}
       />
       <FilterBar active={activeFilters}>
@@ -110,114 +105,165 @@ export default async function RunsPage({ searchParams }: { searchParams: Promise
         {hasAny(params, [...FILTER_KEYS, "sort", "order", "page"]) && <ClearFilters href={PATH} />}
       </FilterBar>
 
-      {runs.length === 0 ? (
-        total > 0 ? (
-          <EmptyState title="No runs on this page">
-            <Link href={href({ page: null })} prefetch={false} className="text-accent hover:underline">
-              Back to the first page
-            </Link>
-          </EmptyState>
-        ) : filtered ? (
-          <EmptyState title="No runs match these filters">
-            <ClearFilters href={PATH} />
-          </EmptyState>
-        ) : (
-          <EmptyState title="No runs yet" />
-        )
-      ) : (
-        <>
-          <div className="relative overflow-x-auto rounded-xl border border-border">
-            <table role="table" className="block w-full text-sm sm:table sm:min-w-[720px]">
-              <thead role="rowgroup" className="hidden bg-surface text-left text-xs uppercase tracking-wide text-muted sm:table-header-group">
-                <tr role="row">
-                  <th role="columnheader" scope="col" className="px-4 py-3 font-semibold">
-                    Run
-                  </th>
-                  <th role="columnheader" scope="col" className="px-4 py-3 font-semibold">
-                    Status
-                  </th>
-                  <SortHeader {...header} sortKey="started">
-                    Started
-                  </SortHeader>
-                  <SortHeader {...header} sortKey="duration">
-                    Duration
-                  </SortHeader>
-                  <SortHeader {...header} sortKey="violations" align="right">
-                    Violations
-                  </SortHeader>
-                  <SortHeader {...header} sortKey="critical" align="right">
-                    Critical
-                  </SortHeader>
-                  <SortHeader {...header} sortKey="cost" align="right">
-                    Cost
-                  </SortHeader>
-                  <th role="columnheader" scope="col" className="px-4 py-3 font-semibold">
-                    <span className="sr-only">Report</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody role="rowgroup" className="block divide-y divide-border sm:table-row-group">
-                {runs.map((run) => (
-                  <tr
-                    key={run.id}
-                    role="row"
-                    className="relative grid grid-cols-2 gap-x-4 gap-y-3 p-4 hover:bg-surface/60 sm:table-row sm:p-0"
-                  >
-                    <td role="cell" className={cn(cell, "col-span-2 pr-12 sm:pr-4")}>
-                      <Link
-                        href={`/runs/${run.id}`}
-                        prefetch={false}
-                        className="relative font-medium text-accent hover:underline before:absolute before:-inset-x-2 before:-inset-y-3.5"
-                      >
-                        #{run.id}
-                      </Link>
-                      <span className="ml-2 text-xs text-muted">{TRIGGER_LABEL[run.trigger]}</span>
-                    </td>
-                    <td role="cell" data-label="Status" className={cn(cell, labelled, "col-span-2")} title={reason(run)}>
-                      <RunStatusBadge status={run.status} />
-                      {(run.status === "skipped" || run.status === "failed") && reason(run) && (
-                        <p className="mt-1 max-w-full text-xs text-muted sm:max-w-56 sm:truncate">{reason(run)}</p>
-                      )}
-                    </td>
-                    <td role="cell" data-label="Started" className={cn(cell, labelled, "text-muted")}>
-                      {formatDateTime(run.startedAt)}
-                    </td>
-                    <td role="cell" data-label="Duration" className={cn(cell, labelled, "text-muted")}>
-                      {runDuration(run)}
-                    </td>
-                    {/* Only a completed run has counts worth showing; a zero from a skipped or failed run would mislead. */}
-                    <td role="cell" data-label="Violations" className={cn(cell, labelled, "tabular-nums sm:text-right")}>
-                      {run.status === "completed" ? (run.counts?.byStatus.violation ?? 0) : <NoValue />}
-                    </td>
-                    <td role="cell" data-label="Critical" className={cn(cell, labelled, "tabular-nums text-danger sm:text-right")}>
-                      {run.status === "completed" && run.counts?.criticalViolations ? run.counts.criticalViolations : <NoValue />}
-                    </td>
-                    <td role="cell" data-label="Cost" className={cn(cell, labelled, "tabular-nums text-muted sm:text-right")}>
-                      {formatUsd(run.costUsd)}
-                    </td>
-                    {/* On a card the report icon sits in the top corner, beside the run number. */}
-                    <td role="cell" className={cn(cell, "absolute right-2 top-2 sm:static sm:text-right")}>
-                      {run.reportUrl && (
-                        <a
-                          href={`/api/reports/${run.id}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          // A 44px target; the negative margin keeps the table row as short as the text rows.
-                          className="inline-flex size-11 items-center justify-center rounded-md text-muted hover:text-accent sm:-my-3"
-                          aria-label={`Report for run ${run.id}`}
-                        >
-                          <FileText className="size-4" aria-hidden />
-                        </a>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <Pager path={PATH} params={params} page={page} limit={LIMIT} total={total} noun="runs" labels={sort.isDefault ? { previous: "Newer", next: "Older" } : undefined} />
-        </>
+      {/*
+        The table streams into a boundary keyed by the query, as on the rules page: besides a
+        placeholder at once while the controls stay put, this works around Next 16.1.6, where a
+        navigation that swaps a table of 25 or more rows in place was often fetched but never committed.
+      */}
+      <Suspense key={toQuery(params).toString()} fallback={<TableSkeleton />}>
+        <RunsTable params={params} query={query} />
+      </Suspense>
+    </>
+  );
+}
+
+type RunsView = {
+  status: (typeof RUN_STATUSES)[number][];
+  trigger: (typeof TRIGGERS)[number][];
+  from?: string;
+  to?: string;
+  critical: boolean;
+  repo?: number;
+  sort: SortState<(typeof RUN_SORTS)[number]>;
+  page: number;
+  filtered: boolean;
+};
+
+function TableSkeleton() {
+  return <div className="h-96 animate-pulse rounded-xl border border-border bg-surface" aria-busy="true" aria-label="Loading runs" />;
+}
+
+async function RunsTable({ params, query }: { params: SearchParams; query: RunsView }) {
+  const { sort, page, filtered } = query;
+  const { items: runs, total } = await api.runsPage({
+    status: query.status,
+    trigger: query.trigger,
+    from: query.from,
+    to: query.to,
+    critical: query.critical,
+    repo: query.repo,
+    sort: sort.isDefault ? undefined : sort.sort,
+    order: sort.isDefault ? undefined : sort.order,
+    page: page > 1 ? page : undefined,
+  });
+  const href = (changes: Record<string, string | null>) => hrefWith(PATH, params, changes);
+  const header = { path: PATH, params, current: sort };
+
+  return (
+    <>
+      {filtered && total > 0 && (
+        <p className="mb-3 text-sm text-muted">
+          {plural(total, "run")} {total === 1 ? "matches" : "match"} these filters.
+        </p>
       )}
+    {runs.length === 0 ? (
+      total > 0 ? (
+        <EmptyState title="No runs on this page">
+          <Link href={href({ page: null })} prefetch={false} className="text-accent hover:underline">
+            Back to the first page
+          </Link>
+        </EmptyState>
+      ) : filtered ? (
+        <EmptyState title="No runs match these filters">
+          <ClearFilters href={PATH} />
+        </EmptyState>
+      ) : (
+        <EmptyState title="No runs yet" />
+      )
+    ) : (
+      <>
+        <div className="relative overflow-x-auto rounded-xl border border-border">
+          <table role="table" className="block w-full text-sm sm:table sm:min-w-[720px]">
+            <thead role="rowgroup" className="hidden bg-surface text-left text-xs uppercase tracking-wide text-muted sm:table-header-group">
+              <tr role="row">
+                <th role="columnheader" scope="col" className="px-4 py-3 font-semibold">
+                  Run
+                </th>
+                <th role="columnheader" scope="col" className="px-4 py-3 font-semibold">
+                  Status
+                </th>
+                <SortHeader {...header} sortKey="started">
+                  Started
+                </SortHeader>
+                <SortHeader {...header} sortKey="duration">
+                  Duration
+                </SortHeader>
+                <SortHeader {...header} sortKey="violations" align="right">
+                  Violations
+                </SortHeader>
+                <SortHeader {...header} sortKey="critical" align="right">
+                  Critical
+                </SortHeader>
+                <SortHeader {...header} sortKey="cost" align="right">
+                  Cost
+                </SortHeader>
+                <th role="columnheader" scope="col" className="px-4 py-3 font-semibold">
+                  <span className="sr-only">Report</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody role="rowgroup" className="block divide-y divide-border sm:table-row-group">
+              {runs.map((run) => (
+                <tr
+                  key={run.id}
+                  role="row"
+                  className="relative grid grid-cols-2 gap-x-4 gap-y-3 p-4 hover:bg-surface/60 sm:table-row sm:p-0"
+                >
+                  <td role="cell" className={cn(cell, "col-span-2 pr-12 sm:pr-4")}>
+                    <Link
+                      href={`/runs/${run.id}`}
+                      prefetch={false}
+                      className="relative font-medium text-accent hover:underline before:absolute before:-inset-x-2 before:-inset-y-3.5"
+                    >
+                      #{run.id}
+                    </Link>
+                    <span className="ml-2 text-xs text-muted">{TRIGGER_LABEL[run.trigger]}</span>
+                  </td>
+                  <td role="cell" data-label="Status" className={cn(cell, labelled, "col-span-2")} title={reason(run)}>
+                    <RunStatusBadge status={run.status} />
+                    {(run.status === "skipped" || run.status === "failed") && reason(run) && (
+                      <p className="mt-1 max-w-full text-xs text-muted sm:max-w-56 sm:truncate">{reason(run)}</p>
+                    )}
+                  </td>
+                  <td role="cell" data-label="Started" className={cn(cell, labelled, "text-muted")}>
+                    {formatDateTime(run.startedAt)}
+                  </td>
+                  <td role="cell" data-label="Duration" className={cn(cell, labelled, "text-muted")}>
+                    {runDuration(run)}
+                  </td>
+                  {/* Only a completed run has counts worth showing; a zero from a skipped or failed run would mislead. */}
+                  <td role="cell" data-label="Violations" className={cn(cell, labelled, "tabular-nums sm:text-right")}>
+                    {run.status === "completed" ? (run.counts?.byStatus.violation ?? 0) : <NoValue />}
+                  </td>
+                  <td role="cell" data-label="Critical" className={cn(cell, labelled, "tabular-nums text-danger sm:text-right")}>
+                    {run.status === "completed" && run.counts?.criticalViolations ? run.counts.criticalViolations : <NoValue />}
+                  </td>
+                  <td role="cell" data-label="Cost" className={cn(cell, labelled, "tabular-nums text-muted sm:text-right")}>
+                    {formatUsd(run.costUsd)}
+                  </td>
+                  {/* On a card the report icon sits in the top corner, beside the run number. */}
+                  <td role="cell" className={cn(cell, "absolute right-2 top-2 sm:static sm:text-right")}>
+                    {run.reportUrl && (
+                      <a
+                        href={`/api/reports/${run.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        // A 44px target; the negative margin keeps the table row as short as the text rows.
+                        className="inline-flex size-11 items-center justify-center rounded-md text-muted hover:text-accent sm:-my-3"
+                        aria-label={`Report for run ${run.id}`}
+                      >
+                        <FileText className="size-4" aria-hidden />
+                      </a>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <Pager path={PATH} params={params} page={page} limit={LIMIT} total={total} noun="runs" labels={sort.isDefault ? { previous: "Newer", next: "Older" } : undefined} />
+      </>
+    )}
     </>
   );
 }

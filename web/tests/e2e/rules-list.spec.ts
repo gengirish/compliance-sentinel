@@ -1,4 +1,7 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
+
+/** The pager's "Showing x–y of n" line. */
+const pagerText = (page: Page) => page.getByRole("navigation", { name: "Pages" }).locator("p");
 
 // The mock API (tests/e2e/mock-rules.mjs) has 61 rules: the demo rule, 59 numbered notices from
 // three sources and one MiCA rule from ESMA.
@@ -7,13 +10,13 @@ test("rules page pages at 50 and sorts by a column", async ({ page }) => {
   await page.goto("/rules");
   const rows = page.locator("tbody tr");
   await expect(rows).toHaveCount(50);
-  await expect(page.getByRole("status")).toHaveText("Showing 1–50 of 61 rules");
+  await expect(pagerText(page)).toHaveText("Showing 1–50 of 61 rules");
   await expect(rows.first()).toContainText("Demo Safeguards Rule");
 
-  await page.getByRole("link", { name: "Next page" }).click();
+  await page.getByRole("link", { name: "Next", exact: true }).click();
   await expect(page).toHaveURL(/page=2/);
   await expect(rows).toHaveCount(11);
-  await expect(page.getByRole("status")).toHaveText("Showing 51–61 of 61 rules");
+  await expect(pagerText(page)).toHaveText("Showing 51–61 of 61 rules");
 
   // Sorting goes back to page 1; the first click on Rule sorts A to Z.
   const ruleHeader = page.getByRole("columnheader", { name: "Rule" });
@@ -55,31 +58,32 @@ test("rules can be searched and filtered by source, cleared, and the back button
   const sources = page.getByRole("group", { name: "Source" });
   await sources.getByRole("link", { name: "esma" }).click();
   await expect(page).toHaveURL(/source=esma/);
-  await expect(page.getByRole("status")).toHaveText("Showing 1–20 of 20 rules");
-  await expect(sources.getByRole("link", { name: "esma" })).toHaveAttribute("aria-current", "true");
+  await expect(pagerText(page)).toHaveText("Showing 1–20 of 20 rules");
+  // Active chips say so in their accessible name rather than with aria-current.
+  await expect(sources.getByRole("link", { name: /^esma.*\(filter on\)$/ })).toBeVisible();
 
   await page.getByRole("group", { name: "Changed within" }).getByRole("link", { name: "7d" }).click();
   await expect(page).toHaveURL(/changed=7/);
-  await expect(page.getByRole("status")).toHaveText("Showing 1–19 of 19 rules");
+  await expect(pagerText(page)).toHaveText("Showing 1–19 of 19 rules");
 
   await page.getByLabel("Audited").selectOption("no");
   await expect(page).toHaveURL(/audited=no/);
-  await expect(page.getByRole("status")).toHaveText("Showing 1–14 of 14 rules");
+  await expect(pagerText(page)).toHaveText("Showing 1–14 of 14 rules");
   await expect(page.getByText("Not yet")).toHaveCount(14);
 
   // Back undoes the last filter only.
   await page.goBack();
   await expect(page).not.toHaveURL(/audited=/);
-  await expect(page.getByRole("status")).toHaveText("Showing 1–19 of 19 rules");
+  await expect(pagerText(page)).toHaveText("Showing 1–19 of 19 rules");
   await expect(page.getByLabel("Audited")).toHaveValue("");
 
   await page.getByRole("link", { name: "Clear" }).first().click();
   await expect(page).toHaveURL(/\/rules$/);
-  await expect(page.getByRole("status")).toHaveText("Showing 1–50 of 61 rules");
+  await expect(pagerText(page)).toHaveText("Showing 1–50 of 61 rules");
 
   await page.goBack();
   await expect(page).toHaveURL(/source=esma/);
-  await expect(page.getByRole("status")).toHaveText("Showing 1–19 of 19 rules");
+  await expect(pagerText(page)).toHaveText("Showing 1–19 of 19 rules");
 });
 
 test("an effective-date range and a smaller page size come from the URL", async ({ page }) => {
@@ -94,5 +98,5 @@ test("an effective-date range and a smaller page size come from the URL", async 
 
   // A hand-edited URL with values the API would reject shows the default view, not an error.
   await page.goto("/rules?sort=popularity&audited=maybe&limit=7&page=-1");
-  await expect(page.getByRole("status")).toHaveText("Showing 1–50 of 61 rules");
+  await expect(pagerText(page)).toHaveText("Showing 1–50 of 61 rules");
 });

@@ -26,7 +26,8 @@ test("filters by status and trigger through the URL, and back restores the previ
 
   await page.getByRole("link", { name: "Completed", exact: true }).click();
   await expect(page).toHaveURL(/\/runs\?status=completed$/);
-  await expect(page.getByRole("link", { name: "Completed", exact: true })).toHaveAttribute("aria-current", "true");
+  // Active chips say so in their accessible name rather than with aria-current.
+  await expect(page.getByRole("link", { name: "Completed (filter on)" })).toBeVisible();
   await expect(page.getByText(/runs? match(es)? these filters/)).toBeVisible();
   const completed = await totalRuns(page);
   await expect(rows(page)).toHaveCount(completed);
@@ -44,7 +45,7 @@ test("filters by status and trigger through the URL, and back restores the previ
   await page.goBack();
   await expect(page).toHaveURL(/\/runs\?status=completed$/);
   await expect(rows(page)).toHaveCount(completed);
-  await expect(page.getByRole("link", { name: "Pull request", exact: true })).not.toHaveAttribute("aria-current", "true");
+  await expect(page.getByRole("link", { name: "Pull request", exact: true })).toBeVisible();
 
   await page.getByRole("link", { name: "Clear" }).click();
   await expect(page).toHaveURL(/\/runs$/);
@@ -113,9 +114,9 @@ test("pages through the runs, and back returns to the first page", async ({ page
   const total = await totalRuns(page);
   expect(total).toBeGreaterThan(25);
   await expect(pagerText(page)).toHaveText(`Showing 1–25 of ${total} runs`);
-  await expect(page.getByRole("link", { name: "Previous page" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Newer" })).toHaveCount(0);
 
-  await page.getByRole("link", { name: "Next page" }).click();
+  await page.getByRole("link", { name: "Older" }).click();
   await expect(page).toHaveURL(/page=2/);
   await expect(pagerText(page)).toHaveText(`Showing 26–${total} of ${total} runs`);
   await expect(rows(page)).toHaveCount(total - 25);

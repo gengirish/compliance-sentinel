@@ -150,6 +150,7 @@ test("a skipped run says why, and shows — rather than blank counts", async ({ 
   await expect(row.getByText("—")).toHaveCount(2);
 
   await row.getByRole("link", { name: "#3" }).click();
+  await expect(page).toHaveURL(/\/runs\/3$/);
   await expect(page.getByText("No new or amended rules since the last check")).toBeVisible();
 });
 
@@ -168,7 +169,7 @@ test("the runs and rules lists fit a phone screen without sideways scrolling", a
   for (const path of ["/runs", "/rules"]) {
     await page.goto(path);
     // Rows restyle into cards below `sm`, so the table's scroll box has nothing to scroll.
-    const box = page.locator("table").locator("..");
+    const box = page.locator("#main table").first().locator("..");
     await expect(box).toBeVisible();
     expect(await box.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0);
   }
