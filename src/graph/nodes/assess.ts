@@ -37,6 +37,7 @@ export function assessNode(deps: GraphDeps) {
         obligation,
         ruleChunks: chunks,
         evidence: state.evidence,
+        coverage: state.coverage,
       });
       deps.budget.add(costUsd);
       return { assessment, costUsd };

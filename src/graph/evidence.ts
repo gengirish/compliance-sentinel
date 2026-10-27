@@ -1,7 +1,7 @@
 import { and, asc, eq } from "drizzle-orm";
 import type { Db } from "../db/client.js";
 import { codeChunks } from "../db/schema.js";
-import type { EvidenceSnippet } from "./types.js";
+import type { EvidenceSnippet, SearchCoverage } from "./types.js";
 
 /** path -> file lines, rebuilt from the index so evidence always matches the audited snapshot. */
 export type IndexedFiles = Map<string, string[]>;
@@ -41,6 +41,26 @@ type Window = { path: string; start: number; end: number; terms: Set<string>; hi
  * Case-insensitive keyword search over the indexed files (the grep half of
  * hybrid retrieval). Returns line windows around hits, best-covered first.
  */
+const MAX_LISTED_PATHS = 300;
+
+/** Counts, per term, how many indexed files contain it anywhere (case-insensitive). */
+export function searchCoverage(files: IndexedFiles, terms: string[]): SearchCoverage {
+  const cleaned = [...new Set(terms.map((t) => t.trim()).filter((t) => t.length >= 3))];
+  const coverage = cleaned.map((term) => {
+    const pattern = new RegExp(escapeRegExp(term), "i");
+    let count = 0;
+    for (const lines of files.values()) if (lines.some((line) => pattern.test(line))) count++;
+    return { term, files: count };
+  });
+  const paths = [...files.keys()];
+  return {
+    filesSearched: files.size,
+    terms: coverage,
+    paths: paths.slice(0, MAX_LISTED_PATHS),
+    pathsTruncated: paths.length > MAX_LISTED_PATHS,
+  };
+}
+
 export function keywordSearch(
   files: IndexedFiles,
   terms: string[],

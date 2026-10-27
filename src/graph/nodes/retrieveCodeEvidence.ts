@@ -1,6 +1,6 @@
 import { retrieveCodeChunks } from "../../rag/retrieve.js";
 import { controlById } from "../controls.js";
-import { dedupeSnippets, keywordSearch, loadIndexedFiles } from "../evidence.js";
+import { dedupeSnippets, keywordSearch, loadIndexedFiles, searchCoverage } from "../evidence.js";
 import type { GraphDeps, ObligationStateType } from "../state.js";
 import type { EvidenceSnippet } from "../types.js";
 
@@ -13,7 +13,8 @@ export function retrieveCodeEvidenceNode(deps: GraphDeps) {
     const files = await loadIndexedFiles(deps.db, repo, commitSha);
 
     const catalogueTerms = obligation.controlId ? (controlById(obligation.controlId)?.searchTerms ?? []) : [];
-    const keyword = keywordSearch(files, [...obligation.technicalControls, ...catalogueTerms]);
+    const terms = [...obligation.technicalControls, ...catalogueTerms];
+    const keyword = keywordSearch(files, terms);
 
     const hits = await retrieveCodeChunks(
       deps.db,
@@ -31,6 +32,6 @@ export function retrieveCodeEvidenceNode(deps: GraphDeps) {
     }));
 
     // Vector chunks are wider, so list them first and let them absorb keyword windows they contain.
-    return { evidence: dedupeSnippets([...vector, ...keyword]) };
+    return { evidence: dedupeSnippets([...vector, ...keyword]), coverage: searchCoverage(files, terms) };
   };
 }

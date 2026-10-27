@@ -3,7 +3,7 @@ import type { RuleDigestRecord } from "../digest/digestRule.js";
 import type { Analyst, Budget } from "../llm/analyst.js";
 import type { Db } from "../db/client.js";
 import type { Embedder } from "../rag/embed.js";
-import type { Assessment, EvidenceSnippet, Finding, FindingSummary, Obligation } from "./types.js";
+import type { Assessment, EvidenceSnippet, Finding, FindingSummary, Obligation, SearchCoverage } from "./types.js";
 
 const concat = <T>(left: T[], right: T[] | T): T[] => left.concat(right);
 const sum = (left: number, right: number): number => left + right;
@@ -44,6 +44,7 @@ export type ObligationTask = { obligation: Obligation; repo: string; commitSha: 
 export const ObligationState = Annotation.Root({
   task: Annotation<ObligationTask>,
   evidence: Annotation<EvidenceSnippet[]>({ reducer: (_, next) => next, default: () => [] }),
+  coverage: Annotation<SearchCoverage | null>({ reducer: (_, next) => next, default: () => null }),
   assessment: Annotation<Assessment | null>({ reducer: (_, next) => next, default: () => null }),
   findings: Annotation<Finding[]>({ reducer: concat, default: () => [] }),
   errors: Annotation<string[]>({ reducer: concat, default: () => [] }),

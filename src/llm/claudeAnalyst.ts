@@ -10,7 +10,14 @@ import {
   RuleDigestSchema,
   type RuleChunkRef,
 } from "../graph/types.js";
-import { type Analyst, type AssessInput, type DigestInput, formatEvidence, formatRuleChunks } from "./analyst.js";
+import {
+  type Analyst,
+  type AssessInput,
+  type DigestInput,
+  formatCoverage,
+  formatEvidence,
+  formatRuleChunks,
+} from "./analyst.js";
 
 export const SMART_MODEL = "claude-sonnet-5-5";
 export const FAST_MODEL = "claude-haiku-5-5";
@@ -156,8 +163,12 @@ ${formatRuleChunks(input.ruleChunks)}
 Code evidence (the search covered the whole repository; these are the most relevant excerpts):
 ${input.evidence.length ? formatEvidence(input.evidence) : "(no relevant code was found)"}
 
+Repository-wide search (counts cover every indexed file, not only the excerpts above):
+${formatCoverage(input.coverage)}
+
 How to decide:
 - "violation": the code shown breaks the obligation, or a control the obligation requires is plainly absent from the place it would live. Cite the lines that show it.
+- Absence: the repository-wide search above is complete for the indexed files. If the terms that would reveal a required control match no file (or only files that plainly do something else), and the file list shows no module that could hold it, treat the control as absent rather than unknown: answer "violation" and cite the place it would normally live (for example the job scheduler for a missing retention job, or the handler that stores the data). Use "needs_review" only when the control could plausibly live outside the code, such as in infrastructure or a managed service the code configures.
 - "compliant": the code shown implements the obligation. Cite the lines that implement it.
 - "needs_review": the evidence is missing, ambiguous, or the obligation is organisational and cannot be judged from code.
 - Severity reflects the harm if the violation were exploited: critical for exposed personal data or credentials and for missing legally mandated notifications, high for missing safeguards, medium and low for lesser gaps.

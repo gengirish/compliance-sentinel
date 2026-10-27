@@ -77,6 +77,18 @@ export type RuleDigest = z.infer<typeof RuleDigestSchema>;
 export type RuleChunkRef = { id: number; ruleId: number; sectionRef: string | null; text: string };
 
 /** A slice of the audited repository shown to the analyst. Lines are 1-based and inclusive. */
+/**
+ * What a repository-wide keyword search found, so the judge can tell "not shown" from "absent".
+ * Counts are over every indexed file, not just the excerpts passed as evidence.
+ */
+export type SearchCoverage = {
+  filesSearched: number;
+  terms: { term: string; files: number }[];
+  /** Every indexed path, capped; lets the judge see where a missing control would have lived. */
+  paths: string[];
+  pathsTruncated: boolean;
+};
+
 export type EvidenceSnippet = {
   path: string;
   startLine: number;

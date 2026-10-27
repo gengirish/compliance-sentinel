@@ -1,11 +1,21 @@
 import type { Rule } from "../db/schema.js";
-import type { Assessment, EvidenceSnippet, Obligation, ObligationDraft, RuleChunkRef, RuleDigest } from "../graph/types.js";
+import type {
+  Assessment,
+  EvidenceSnippet,
+  Obligation,
+  ObligationDraft,
+  RuleChunkRef,
+  RuleDigest,
+  SearchCoverage,
+} from "../graph/types.js";
 
 export type AssessInput = {
   rule: Rule;
   obligation: Obligation;
   ruleChunks: RuleChunkRef[];
   evidence: EvidenceSnippet[];
+  /** Repository-wide keyword counts; absent in older callers and tests. */
+  coverage?: SearchCoverage | null;
 };
 
 export type DigestInput = {
@@ -58,6 +68,19 @@ export function formatEvidence(evidence: EvidenceSnippet[]): string {
       return `--- ${snippet.path} (lines ${snippet.startLine}-${snippet.endLine})\n${numbered}`;
     })
     .join("\n\n");
+}
+
+export function formatCoverage(coverage: SearchCoverage | null | undefined): string {
+  if (!coverage) return "(not available)";
+  const terms = coverage.terms.length
+    ? coverage.terms.map((t) => `  "${t.term}": ${t.files} of ${coverage.filesSearched} files`).join("\n")
+    : "  (no search terms)";
+  const paths = coverage.paths.join("\n  ");
+  return `Keyword matches across all ${coverage.filesSearched} indexed files:
+${terms}
+
+Indexed files${coverage.pathsTruncated ? ` (first ${coverage.paths.length})` : ""}:
+  ${paths}`;
 }
 
 export function formatRuleChunks(chunks: RuleChunkRef[]): string {
