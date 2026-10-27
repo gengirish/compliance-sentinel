@@ -118,7 +118,7 @@ describe("digest storage and the weekly round-up", () => {
     expect(weekly.records.filter((r) => r.reused).length).toBeGreaterThanOrEqual(5);
     expect(weekly.records.find((r) => r.title === "Rule")?.kind).toBe("amended");
     expect(weekly.notified).toEqual(["email"]);
-    expect(deliver).toHaveBeenCalledWith(expect.objectContaining({ records: weekly.records }));
+    expect(deliver).toHaveBeenCalledWith(expect.objectContaining({ records: weekly.records }), { subscribers: [] });
     const quiet = await runWeeklyDigest({ handle, analyst, days: 1, now: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000) });
     expect(quiet.records).toEqual([]);
   });

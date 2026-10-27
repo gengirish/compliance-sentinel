@@ -92,7 +92,11 @@ export const ListRulesQuery = z
 /** `true`/`false` switches the source; `null` hands it back to its SCRAPE_* flag. */
 export const SourceSettingBody = z.strictObject({ enabled: z.boolean().nullable() });
 
-export type RequestIssue = { path: string; message: string };
+export const SubscribeBody = z.strictObject({ email: z.email({ message: "expected an email address" }).max(254) });
+
+export const SubscriberTokenBody = z.strictObject({ token: z.string().min(16).max(128) });
+
+export type RequestIssue ={ path: string; message: string };
 
 export function describeIssues(error: z.ZodError): RequestIssue[] {
   return error.issues.map((i) => ({ path: i.path.join("."), message: i.message }));

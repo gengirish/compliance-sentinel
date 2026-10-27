@@ -5,6 +5,7 @@ import { errorMessage, log } from "../log.js";
 import { createAnalyst } from "../pipeline/run.js";
 import { deliverDigest, type DigestReport } from "./deliver.js";
 import { digestRule, rulesChangedSince, type RuleDigestRecord } from "./digestRule.js";
+import { activeSubscribers } from "./subscribers.js";
 
 export type WeeklyDigestOptions = {
   /** Look-back window in days; default DIGEST_DAYS. */
@@ -58,7 +59,9 @@ export async function runWeeklyDigest(opts: WeeklyDigestOptions = {}): Promise<W
       records,
       costUsd: budget.spent,
     };
-    const notified = opts.send ? await (opts.deliver ?? deliverDigest)(report) : [];
+    const notified = opts.send
+      ? await (opts.deliver ?? deliverDigest)(report, { subscribers: await activeSubscribers(handle.db) })
+      : [];
     log.info("weekly digest built", { rules: changed.length, digested: records.length, costUsd: budget.spent, notified, errors: errors.length });
     return { ...report, notified, errors };
   } finally {

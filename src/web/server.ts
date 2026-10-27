@@ -15,7 +15,15 @@ import { verifyGitHubSignature } from "../github/app.js";
 import { handleGitHubEvent } from "../github/webhook.js";
 import type { Severity, Status } from "../graph/types.js";
 import { errorMessage, log } from "../log.js";
-import { AgentMailClient, parseInboundCommand, senderAddress, verifyWebhookSignature, WebhookEvent } from "../notify/agentmail.js";
+import { buildConfirmationEmail, confirmSubscription, subscribe, unsubscribe } from "../digest/subscribers.js";
+import {
+  AgentMailClient,
+  type OutgoingMessage,
+  parseInboundCommand,
+  senderAddress,
+  verifyWebhookSignature,
+  WebhookEvent,
+} from "../notify/agentmail.js";
 import { failStaleRuns } from "../pipeline/watchdog.js";
 import { createQueue, enqueueManualAudit, INSTALL_JOB, type AuditJobData } from "../queue/queue.js";
 import { redactSecrets } from "../redact.js";
@@ -31,6 +39,8 @@ import {
   RunIdParams,
   type RunSort,
   SourceSettingBody,
+  SubscribeBody,
+  SubscriberTokenBody,
   TriggerRunQuery,
 } from "./schemas.js";
 
@@ -51,6 +61,8 @@ export type AppDeps = {
   };
   /** Secret of the GitHub App's webhook. Unset: the webhook route answers 503. */
   githubWebhookSecret?: string;
+  /** Sends subscription confirmations. Unset: sign-ups answer 503, since no one could confirm. */
+  sendMail?: (message: OutgoingMessage) => Promise<unknown>;
 };
 
 export const INBOUND_PATH = "/inbox/agentmail";
@@ -606,6 +618,49 @@ export function createApp(deps: AppDeps): Hono<Env> {
     return c.json((await describeSources()).find((s) => s.name === name));
   });
 
+  /**
+   * Weekly digest sign-ups, proxied by the dashboard's public pages. The answer to a sign-up
+   * is the same whether the address is new, pending or already active, so it does not reveal
+   * who subscribes. Subscriptions are global, not per tenant: the digest covers shared rules.
+   */
+  const jsonBody = async (c: Context<Env>) => {
+    try {
+      return await c.req.json();
+    } catch {
+      return undefined;
+    }
+  };
+
+  app.post("/subscribers", async (c) => {
+    const body = parseInput(c, SubscribeBody, await jsonBody(c));
+    if (!body.ok) return body.response;
+    if (!deps.sendMail) return c.json({ error: "email is not configured on this deployment" }, 503);
+    const outcome = await subscribe(deps.db, body.data.email);
+    if (outcome.kind === "confirm") {
+      await deps.sendMail({ to: [outcome.subscriber.email], ...buildConfirmationEmail(outcome.subscriber.token) });
+      log.info("digest confirmation sent");
+    }
+    return c.json({ ok: true }, 202);
+  });
+
+  app.post("/subscribers/confirm", async (c) => {
+    const body = parseInput(c, SubscriberTokenBody, await jsonBody(c));
+    if (!body.ok) return body.response;
+    const email = await confirmSubscription(deps.db, body.data.token);
+    if (!email) return c.json({ error: "this link is invalid or has been used to unsubscribe" }, 404);
+    log.info("digest subscription confirmed");
+    return c.json({ email });
+  });
+
+  app.post("/subscribers/unsubscribe", async (c) => {
+    const body = parseInput(c, SubscriberTokenBody, await jsonBody(c));
+    if (!body.ok) return body.response;
+    const email = await unsubscribe(deps.db, body.data.token);
+    if (!email) return c.json({ error: "this link is invalid" }, 404);
+    log.info("digest unsubscribed");
+    return c.json({ email });
+  });
+
   /** Redirects to a freshly signed download link, or streams the local file in dev. */
   app.get("/reports/:id", async (c) => {
     const params = parseInput(c, RunIdParams, c.req.param());
@@ -649,6 +704,7 @@ async function main() {
         mail ? mail.reply(messageId, { text }) : Promise.reject(new Error("AgentMail is not configured, reply skipped")),
     },
     githubWebhookSecret: config.GITHUB_WEBHOOK_SECRET,
+    sendMail: mail ? (message) => mail.send(message) : undefined,
   });
   serve({ fetch: app.fetch, port: config.PORT, hostname: "0.0.0.0" }, (info) => {
     log.info("web listening", { port: info.port });

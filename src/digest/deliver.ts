@@ -2,6 +2,7 @@ import { config } from "../config.js";
 import { errorMessage, log } from "../log.js";
 import { AgentMailClient } from "../notify/agentmail.js";
 import type { RuleDigestRecord } from "./digestRule.js";
+import { escapeHtml, unsubscribeUrl, type Subscriber } from "./subscribers.js";
 
 /** A round-up of rule changes over a period, ready to render for people. */
 export type DigestReport = {
@@ -11,10 +12,6 @@ export type DigestReport = {
   records: RuleDigestRecord[];
   costUsd: number;
 };
-
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
-}
 
 function bySource(records: RuleDigestRecord[]): Map<string, RuleDigestRecord[]> {
   const groups = new Map<string, RuleDigestRecord[]>();
@@ -50,7 +47,8 @@ export function buildDigestMarkdown(report: DigestReport): string {
   return lines.join("\n");
 }
 
-export function buildDigestEmail(report: DigestReport): { subject: string; html: string; text: string } {
+/** The email body; with `unsubscribe`, a footer linking to that subscriber's unsubscribe page. */
+export function buildDigestEmail(report: DigestReport, unsubscribe?: string): { subject: string; html: string; text: string } {
   const subject = `[Compliance Sentinel] ${digestHeadline(report)}`;
   const sections: string[] = [];
   if (report.records.length === 0) sections.push("<p>No tracked rule was added or amended in this period.</p>");
@@ -70,7 +68,12 @@ export function buildDigestEmail(report: DigestReport): { subject: string; html:
   const html = `<p>${escapeHtml(digestHeadline(report))}.</p>
 ${sections.join("\n")}
 <p style="color:#6b7280;font-size:12px">Automated summary of the rule text, not legal advice.</p>`;
-  return { subject, html, text: buildDigestMarkdown(report) };
+  if (!unsubscribe) return { subject, html, text: buildDigestMarkdown(report) };
+  return {
+    subject,
+    html: `${html}\n<p style="color:#6b7280;font-size:12px">You receive this because you subscribed to the weekly digest. <a href="${escapeHtml(unsubscribe)}">Unsubscribe</a></p>`,
+    text: `${buildDigestMarkdown(report)}\n\nUnsubscribe: ${unsubscribe}`,
+  };
 }
 
 /** Block Kit payload: the headline, then one section per rule (at most ten), then a note on the rest. */
@@ -98,12 +101,17 @@ export function buildDigestSlack(report: DigestReport) {
   return { text: digestHeadline(report), blocks };
 }
 
-export type DeliverOptions = { mail?: AgentMailClient | null; fetchImpl?: typeof fetch };
+export type DeliverOptions = {
+  mail?: AgentMailClient | null;
+  fetchImpl?: typeof fetch;
+  /** Confirmed website subscribers; each gets their own copy with an unsubscribe link. */
+  subscribers?: Subscriber[];
+};
 
 /**
  * Sends the digest to every configured channel: the AgentMail inbox to the
- * alert recipients, and the Slack webhook. Returns the channels that delivered;
- * an unconfigured channel is a logged dry run, a failing one does not stop the other.
+ * alert recipients and to each subscriber, and the Slack webhook. Returns the channels that
+ * delivered; an unconfigured channel is a logged dry run, a failing one does not stop the others.
  */
 export async function deliverDigest(report: DigestReport, opts: DeliverOptions = {}): Promise<string[]> {
   const fetchImpl = opts.fetchImpl ?? fetch;
@@ -111,9 +119,10 @@ export async function deliverDigest(report: DigestReport, opts: DeliverOptions =
   const delivered: string[] = [];
 
   const email = buildDigestEmail(report);
-  if (mail && config.ALERT_EMAIL_TO) {
+  const team = (config.ALERT_EMAIL_TO ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  if (mail && team.length > 0) {
     try {
-      const sent = await mail.send({ to: config.ALERT_EMAIL_TO.split(",").map((s) => s.trim()).filter(Boolean), ...email });
+      const sent = await mail.send({ to: team, ...email });
       log.info("digest email sent", { from: mail.inboxId, messageId: sent.messageId, rules: report.records.length });
       delivered.push("email");
     } catch (err) {
@@ -121,6 +130,28 @@ export async function deliverDigest(report: DigestReport, opts: DeliverOptions =
     }
   } else {
     log.info("digest email dry run: AgentMail or ALERT_EMAIL_TO not set", { subject: email.subject });
+  }
+
+  // One message per subscriber, so no one sees the list and each footer unsubscribes only its reader.
+  // The team already has its copy.
+  const teamSet = new Set(team.map((a) => a.toLowerCase()));
+  const subscribers = (opts.subscribers ?? []).filter((s) => !teamSet.has(s.email));
+  if (subscribers.length > 0) {
+    if (mail) {
+      let sentCount = 0;
+      for (const s of subscribers) {
+        try {
+          await mail.send({ to: [s.email], ...buildDigestEmail(report, unsubscribeUrl(s.token)) });
+          sentCount++;
+        } catch (err) {
+          log.error("digest subscriber email failed", { error: errorMessage(err) });
+        }
+      }
+      log.info("digest sent to subscribers", { sent: sentCount, of: subscribers.length });
+      if (sentCount > 0) delivered.push("subscribers");
+    } else {
+      log.info("digest subscriber dry run: AgentMail not set", { subscribers: subscribers.length });
+    }
   }
 
   if (config.SLACK_WEBHOOK_URL) {
