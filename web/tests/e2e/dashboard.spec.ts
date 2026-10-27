@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("landing page explains the product and links to the dashboard", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Down to the line");
-  await expect(page.getByText("src/routes/signup.js:10")).toBeVisible();
+  await expect(page.getByText("schema.sql:49")).toBeVisible();
   await page.getByRole("link", { name: "Open dashboard" }).first().click();
   await expect(page).toHaveURL(/\/overview$/);
   await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
