@@ -4,7 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { serve } from "@hono/node-server";
 import type { Queue } from "bullmq";
-import { and, asc, count, desc, eq, ilike, inArray, max, or, sql, type SQL } from "drizzle-orm";
+import { and, type AnyColumn, asc, count, desc, eq, gt, gte, ilike, inArray, lt, max, or, type SQL, sql } from "drizzle-orm";
 import { type Context, Hono } from "hono";
 import { ZodError, type z } from "zod";
 import { config } from "../config.js";
@@ -21,7 +21,7 @@ import { createQueue, enqueueManualAudit, INSTALL_JOB, type AuditJobData } from 
 import { redactSecrets } from "../redact.js";
 import { signReportUrl } from "../report/upload.js";
 import { findSource, setSourceEnabled, sourceStates } from "../scrape/registry.js";
-import { likeContains, likePrefix, pageOffset, rank, setTotal, type SortOrder } from "./listQuery.js";
+import { dayAfter, dayStart, likeContains, likePrefix, orderBy, pageOffset, rank, setTotal, type SortOrder } from "./listQuery.js";
 import {
   describeIssues,
   FINDING_SORTS,
@@ -30,6 +30,7 @@ import {
   ListRunsQuery,
   RULES_PAGE_LIMIT,
   RunIdParams,
+  type RunSort,
   SourceSettingBody,
   TriggerRunQuery,
 } from "./schemas.js";
@@ -277,9 +278,9 @@ export function createApp(deps: AppDeps): Hono<Env> {
   });
 
   /**
-   * Runs, newest first. `?page=` (1-based) and `?limit=` (20, 25, 50 or 100; default 20) page
-   * through them, and `x-total-count` carries the tenant's run count. The body stays a plain
-   * array, so a bare `GET /runs` is still the newest 20, as status polling expects.
+   * A page of this tenant's runs, filtered and sorted (docs/plan-filter-sort.md F1). With no
+   * parameters it is the newest 25, which the dashboard's run polling relies on. The unpaged
+   * count is in `x-total-count`.
    */
   app.get("/runs", async (c) => {
     const query = parseInput(c, ListRunsQuery, c.req.query());
@@ -289,19 +290,93 @@ export function createApp(deps: AppDeps): Hono<Env> {
       setTotal(c, 0);
       return c.json([]);
     }
-    const { page, limit } = query.data;
-    const mine = eq(auditRuns.tenantId, tenantId);
+    const q = query.data;
+
+    // Finding counts per run of this tenant, as one grouped subquery, so they can be sorted and filtered on.
+    const n = (alias: string, where?: SQL) =>
+      (where ? sql<number>`cast(count(*) filter (where ${where}) as int)` : sql<number>`cast(count(*) as int)`).as(alias);
+    const violation = eq(findings.status, "violation");
+    const critical = eq(findings.severity, "critical");
+    const counted = deps.db
+      .select({
+        runId: findings.runId,
+        total: n("total"),
+        compliant: n("compliant", eq(findings.status, "compliant")),
+        violation: n("violation", violation),
+        needsReview: n("needs_review", eq(findings.status, "needs_review")),
+        critical: n("critical", critical),
+        high: n("high", eq(findings.severity, "high")),
+        medium: n("medium", eq(findings.severity, "medium")),
+        low: n("low", eq(findings.severity, "low")),
+        criticalViolations: n("critical_violations", and(violation, critical)),
+      })
+      .from(findings)
+      .innerJoin(auditRuns, eq(findings.runId, auditRuns.id))
+      .where(eq(auditRuns.tenantId, tenantId))
+      .groupBy(findings.runId)
+      .as("counted");
+
+    const where: SQL[] = [eq(auditRuns.tenantId, tenantId)];
+    if (q.status.length) where.push(inArray(auditRuns.status, q.status));
+    if (q.trigger.length) where.push(inArray(auditRuns.trigger, q.trigger));
+    if (q.from) where.push(gte(auditRuns.startedAt, dayStart(q.from)));
+    if (q.to) where.push(lt(auditRuns.startedAt, dayAfter(q.to)));
+    if (q.critical) where.push(gt(counted.criticalViolations, 0));
+    if (q.repo !== undefined) where.push(eq(auditRuns.repoId, q.repo));
+
+    // A run with no findings counts as zero, not null, so it sorts with the zeros.
+    const sortColumns: Record<RunSort, AnyColumn | SQL> = {
+      started: auditRuns.startedAt,
+      duration: sql`${auditRuns.finishedAt} - ${auditRuns.startedAt}`,
+      cost: auditRuns.costUsd,
+      violations: sql`coalesce(${counted.violation}, 0)`,
+      critical: sql`coalesce(${counted.criticalViolations}, 0)`,
+    };
+    const order = orderBy(sortColumns, q.sort, q.order, auditRuns.id);
+    // A run still in progress has no duration yet: last in either direction.
+    if (q.sort === "duration") order.unshift(sql`${auditRuns.finishedAt} is null`);
+
     const [rows, [total]] = await Promise.all([
-      deps.db.select().from(auditRuns).where(mine).orderBy(desc(auditRuns.id)).limit(limit).offset(pageOffset(page, limit)),
-      deps.db.select({ n: count() }).from(auditRuns).where(mine),
+      deps.db
+        .select({
+          run: auditRuns,
+          counted: {
+            total: counted.total,
+            compliant: counted.compliant,
+            violation: counted.violation,
+            needsReview: counted.needsReview,
+            critical: counted.critical,
+            high: counted.high,
+            medium: counted.medium,
+            low: counted.low,
+            criticalViolations: counted.criticalViolations,
+          },
+        })
+        .from(auditRuns)
+        .leftJoin(counted, eq(counted.runId, auditRuns.id))
+        .where(and(...where))
+        .orderBy(...order)
+        .limit(q.limit)
+        .offset(pageOffset(q.page, q.limit)),
+      deps.db
+        .select({ n: count() })
+        .from(auditRuns)
+        .leftJoin(counted, eq(counted.runId, auditRuns.id))
+        .where(and(...where)),
     ]);
     setTotal(c, total?.n ?? 0);
-    if (!query.data.counts) return c.json(rows);
-    const counts = await countFindings(
-      deps.db,
-      rows.map((r) => r.id),
+    if (!q.counts) return c.json(rows.map((r) => r.run));
+    return c.json(
+      rows.map(({ run, counted: k }) => {
+        const counts: FindingCounts = {
+          total: k?.total ?? 0,
+          byStatus: { compliant: k?.compliant ?? 0, violation: k?.violation ?? 0, needs_review: k?.needsReview ?? 0 },
+          bySeverity: { critical: k?.critical ?? 0, high: k?.high ?? 0, medium: k?.medium ?? 0, low: k?.low ?? 0 },
+          criticalViolations: k?.criticalViolations ?? 0,
+        };
+        return { ...run, counts };
+      }),
     );
-    return c.json(rows.map((r) => ({ ...r, counts: counts.get(r.id) })));
   });
 
   /** Dashboard summary: the latest run of any status, and the latest completed run with its finding counts. */

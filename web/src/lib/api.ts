@@ -11,6 +11,8 @@ export const FINDING_STATUSES = ["violation", "needs_review", "compliant"] as co
 export const SEVERITIES = ["critical", "high", "medium", "low"] as const;
 export type FindingStatus = (typeof FINDING_STATUSES)[number];
 export type Severity = (typeof SEVERITIES)[number];
+export const RUN_STATUSES = ["running", "completed", "skipped", "failed"] as const;
+export type RunStatus = (typeof RUN_STATUSES)[number];
 export const TRIGGERS = ["cron", "manual", "install", "pull_request", "push"] as const;
 export type Trigger = (typeof TRIGGERS)[number];
 export const TRIGGER_LABEL: Record<Trigger, string> = {
@@ -32,7 +34,7 @@ const Run = z.object({
   id: z.number(),
   startedAt: z.string(),
   finishedAt: z.string().nullable(),
-  status: z.enum(["running", "completed", "skipped", "failed"]),
+  status: z.enum(RUN_STATUSES),
   trigger: z.enum(TRIGGERS),
   // Optional so the dashboard keeps working against an API deployed before tenancy.
   repoId: z.number().nullable().optional(),
@@ -183,11 +185,43 @@ export type FindingsFilter = {
 
 export type RulesFilter = { q?: string; source?: string[]; page?: number; limit?: number };
 
+export const RUN_SORTS = ["started", "duration", "cost", "violations", "critical"] as const;
+export type RunSort = (typeof RUN_SORTS)[number];
+
+/** `GET /runs` parameters; anything left undefined takes the API's default. */
+export type RunsQuery = {
+  status?: RunStatus[];
+  trigger?: Trigger[];
+  from?: string;
+  to?: string;
+  critical?: boolean;
+  repo?: number;
+  sort?: RunSort;
+  order?: "asc" | "desc";
+  page?: number;
+  limit?: number;
+};
+
 export const api = {
   stats: () => getJson("/stats", Stats),
-  /** A page of runs, newest first, with finding counts; `total` is every run of the tenant. */
-  runs: ({ page, limit }: { page?: number; limit?: number } = {}) =>
-    getList(withQuery("/runs", { counts: 1, page: page && page > 1 ? page : undefined, limit }), Run),
+  /** A filtered, sorted page of runs with their finding counts, and the unpaged total. */
+  runsPage: (query: RunsQuery = {}) =>
+    getList(
+      withQuery("/runs", {
+        counts: 1,
+        status: query.status?.join(","),
+        trigger: query.trigger?.join(","),
+        from: query.from,
+        to: query.to,
+        critical: query.critical ? 1 : undefined,
+        repo: query.repo,
+        sort: query.sort,
+        order: query.order,
+        page: query.page,
+        limit: query.limit,
+      }),
+      Run,
+    ),
   /** Just id and status of the recent runs, for cheap polling. */
   runStatuses: async () => (await getJson("/runs", z.array(Run))).map(({ id, status }) => ({ id, status })),
   run: (id: number) => getJson(`/runs/${id}`, Run),

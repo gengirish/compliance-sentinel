@@ -24,6 +24,8 @@ export function SortHeader<K extends string>({ path, params, current, sortKey, f
   const Icon = !active ? ArrowUpDown : current.order === "asc" ? ArrowUp : ArrowDown;
   return (
     <th
+      // Explicit, for tables that restyle into cards on small screens and lose their implicit roles.
+      role="columnheader"
       scope="col"
       aria-sort={active ? (current.order === "asc" ? "ascending" : "descending") : "none"}
       className={cn("px-4 py-3 font-semibold", align === "right" && "text-right")}

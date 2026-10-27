@@ -1,6 +1,7 @@
 import { z } from "zod";
+import { RUN_STATUSES, TRIGGERS } from "../db/schema.js";
 import { SEVERITIES, STATUSES } from "../graph/types.js";
-import { PAGE_LIMITS, searchQuery, sortQuery } from "./listQuery.js";
+import { dateQuery, PAGE_LIMITS, pageQuery, searchQuery, sortQuery } from "./listQuery.js";
 
 /** Request inputs for the HTTP API. Every route parses its params and query through one of these. */
 
@@ -33,15 +34,6 @@ function pageLimit(extra: readonly number[] = []) {
   return z.coerce.number().refine((n) => allowed.includes(n), { message: `limit must be one of ${allowed.join(", ")}` });
 }
 
-/** Runs before paging were the newest 20, and a plain `GET /runs` still is (status polling relies on it). */
-export const RUNS_DEFAULT_LIMIT = 20;
-
-export const ListRunsQuery = z.object({
-  counts: flag,
-  page: page.default(1),
-  limit: pageLimit([RUNS_DEFAULT_LIMIT]).default(RUNS_DEFAULT_LIMIT),
-});
-
 /** `?source=a,b`: source names (the catalog grows, so they are not a fixed enum here). */
 const sourceNames = z
   .string()
@@ -63,6 +55,24 @@ export const ListRulesQuery = z.object({
 });
 
 export const FINDING_SORTS = ["severity", "status", "rule", "path"] as const;
+export const RUN_SORTS = ["started", "duration", "cost", "violations", "critical"] as const;
+export type RunSort = (typeof RUN_SORTS)[number];
+
+/** `GET /runs`: with no parameters, the newest 25 runs. */
+export const ListRunsQuery = z
+  .object({
+    counts: flag,
+    status: commaList(RUN_STATUSES),
+    trigger: commaList(TRIGGERS),
+    from: dateQuery,
+    to: dateQuery,
+    /** Only runs with at least one critical violation. */
+    critical: flag,
+    repo: z.coerce.number().int().positive({ message: "repo must be a positive integer" }).optional(),
+    ...sortQuery(RUN_SORTS, { sort: "started", order: "desc" }),
+    ...pageQuery(25),
+  })
+  .refine((q) => !q.from || !q.to || q.from <= q.to, { path: ["to"], message: "to must not be before from" });
 
 export const FindingsQuery = z.object({
   status: commaList(STATUSES),

@@ -163,6 +163,8 @@ export const codeChunks = pgTable(
 export const TRIGGERS = ["cron", "manual", "install", "pull_request", "push"] as const;
 export type Trigger = (typeof TRIGGERS)[number];
 
+export const RUN_STATUSES = ["running", "completed", "skipped", "failed"] as const;
+
 export const auditRuns = pgTable("audit_runs", {
   id: id(),
   tenantId: bigint("tenant_id", { mode: "number" })
@@ -173,7 +175,7 @@ export const auditRuns = pgTable("audit_runs", {
   headSha: text("head_sha"),
   startedAt: ts("started_at").notNull().defaultNow(),
   finishedAt: ts("finished_at"),
-  status: text("status", { enum: ["running", "completed", "skipped", "failed"] }).notNull(),
+  status: text("status", { enum: RUN_STATUSES }).notNull(),
   trigger: text("trigger", { enum: TRIGGERS }).notNull(),
   rulesInScope: integer("rules_in_scope").array().notNull().default([]),
   reportUrl: text("report_url"),
