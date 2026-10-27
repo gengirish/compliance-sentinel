@@ -103,7 +103,7 @@ export const CONTROLS: Control[] = [
     appliesTo: "Network-facing services",
     severity: "high",
     searchTerms: ["https", "hsts", "helmet", "tls", "ssl", "x-forwarded-proto"],
-    violationPatterns: [/rejectUnauthorized\s*:\s*false|http:\/\/(?!localhost|127\.0\.0\.1)[\w.-]+\//i],
+    violationPatterns: [/rejectUnauthorized\s*:\s*false/i],
     compliantPatterns: [/hsts\s*:|x-forwarded-proto|req\.secure|rejectUnauthorized\s*:\s*true/i],
   },
   {
@@ -152,6 +152,18 @@ export const CONTROLS: Control[] = [
     violationPatterns: [/^\s*card_number\s+(?:text|varchar|char)/i],
     compliantPatterns: [/tokeni[sz]e\(|encryptPan|card_token/i],
     frameworkRefs: ["PCI DSS 3.5.1"],
+  },
+  {
+    id: "pci-pan-transmission",
+    ruleKeywords: /transmitted over open, public networks|Plain HTTP is never used/i,
+    obligation:
+      "Card numbers (PAN) must be protected with strong cryptography (TLS) whenever they are transmitted over open, public networks; plain HTTP must never carry account data.",
+    appliesTo: "Outbound calls to payment processors and other services that receive card data",
+    severity: "critical",
+    searchTerms: ["http://", "fetch(", "axios", "PROCESSOR_URL", "cardNumber"],
+    violationPatterns: [/["'`]http:\/\/(?!localhost|127\.0\.0\.1)[\w.-]+/i],
+    compliantPatterns: [/["'`]https:\/\/[\w.-]+/i],
+    frameworkRefs: ["PCI DSS 4.2.1"],
   },
   {
     id: "pci-shared-accounts",

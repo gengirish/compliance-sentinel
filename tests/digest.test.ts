@@ -91,7 +91,7 @@ describe("digest storage and the weekly round-up", () => {
       deps: { renderReport: async () => ({ url: "unused", path: "unused" }), notify: async () => [] },
     });
     expect(result.status).toBe("completed");
-    expect(result.digests).toHaveLength(5);
+    expect(result.digests).toHaveLength(loadDemoRules().flatMap((s) => s.rules).length);
     expect(result.summary).toBeNull();
     expect(result.reportUrl).toBeNull();
     expect(result.digests.every((d) => d.kind === "new" && !d.reused && d.digest.key_obligations.length > 0)).toBe(true);
