@@ -1,7 +1,7 @@
 import type { Queue } from "bullmq";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { openMigratedDb, type DbHandle } from "../src/db/client.js";
-import { auditRuns } from "../src/db/schema.js";
+import { auditRuns, LOCAL_TENANT_ID } from "../src/db/schema.js";
 import { aggregateFindings } from "../src/graph/nodes/aggregate.js";
 import { severityGate } from "../src/graph/nodes/notify.js";
 import type { AuditStateType, NotifyInput } from "../src/graph/state.js";
@@ -174,7 +174,7 @@ describe("report, web and worker against a real run", () => {
     });
     expect(res.status).toBe(202);
     expect(await res.json()).toEqual({ jobId: "job-7", demo: true });
-    expect(added).toEqual([["manual-audit", { demo: true, trigger: "manual" }]]);
+    expect(added).toEqual([["manual-audit", { demo: true, tenantId: LOCAL_TENANT_ID, trigger: "manual" }]]);
   });
 
   it("returns 404 for a run whose report file is gone and 400 for a bad id", async () => {

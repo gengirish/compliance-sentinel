@@ -11,6 +11,15 @@ export const FINDING_STATUSES = ["violation", "needs_review", "compliant"] as co
 export const SEVERITIES = ["critical", "high", "medium", "low"] as const;
 export type FindingStatus = (typeof FINDING_STATUSES)[number];
 export type Severity = (typeof SEVERITIES)[number];
+export const TRIGGERS = ["cron", "manual", "install", "pull_request", "push"] as const;
+export type Trigger = (typeof TRIGGERS)[number];
+export const TRIGGER_LABEL: Record<Trigger, string> = {
+  cron: "Scheduled",
+  manual: "Manual",
+  install: "Installed",
+  pull_request: "Pull request",
+  push: "Push",
+};
 
 const Counts = z.object({
   total: z.number(),
@@ -24,7 +33,10 @@ const Run = z.object({
   startedAt: z.string(),
   finishedAt: z.string().nullable(),
   status: z.enum(["running", "completed", "skipped", "failed"]),
-  trigger: z.enum(["cron", "manual"]),
+  trigger: z.enum(TRIGGERS),
+  // Optional so the dashboard keeps working against an API deployed before tenancy.
+  repoId: z.number().nullable().optional(),
+  headSha: z.string().nullable().optional(),
   rulesInScope: z.array(z.number()),
   reportUrl: z.string().nullable(),
   costUsd: z.number(),

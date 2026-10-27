@@ -6,7 +6,7 @@ import type { EvidenceSnippet, SearchCoverage } from "./types.js";
 /** path -> file lines, rebuilt from the index so evidence always matches the audited snapshot. */
 export type IndexedFiles = Map<string, string[]>;
 
-export async function loadIndexedFiles(db: Db, repo: string, commitSha: string): Promise<IndexedFiles> {
+export async function loadIndexedFiles(db: Db, repoId: number, commitSha: string): Promise<IndexedFiles> {
   const rows = await db
     .select({
       path: codeChunks.path,
@@ -14,7 +14,7 @@ export async function loadIndexedFiles(db: Db, repo: string, commitSha: string):
       text: codeChunks.text,
     })
     .from(codeChunks)
-    .where(and(eq(codeChunks.repo, repo), eq(codeChunks.commitSha, commitSha)))
+    .where(and(eq(codeChunks.repoId, repoId), eq(codeChunks.commitSha, commitSha)))
     .orderBy(asc(codeChunks.path), asc(codeChunks.startLine));
   const files: IndexedFiles = new Map();
   for (const row of rows) {

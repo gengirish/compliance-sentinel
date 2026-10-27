@@ -77,7 +77,7 @@ export async function retrieveCodeChunks(
   embedder: Embedder,
   query: string,
   k = 5,
-  opts: { repo: string; commitSha?: string },
+  opts: { repoId: number; commitSha?: string },
 ): Promise<CodeChunkHit[]> {
   const [vector] = await embedder.embed([query], "query");
   const distance = cosineDistance(codeChunks.embedding, vector!);
@@ -92,7 +92,7 @@ export async function retrieveCodeChunks(
     })
     .from(codeChunks)
     .where(
-      and(eq(codeChunks.repo, opts.repo), opts.commitSha ? eq(codeChunks.commitSha, opts.commitSha) : undefined),
+      and(eq(codeChunks.repoId, opts.repoId), opts.commitSha ? eq(codeChunks.commitSha, opts.commitSha) : undefined),
     )
     .orderBy(distance)
     .limit(k);

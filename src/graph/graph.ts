@@ -28,7 +28,7 @@ function buildObligationGraph(deps: GraphDeps) {
 function fanOut(state: AuditStateType): Send[] | "aggregate" {
   if (state.obligations.length === 0) return "aggregate";
   return state.obligations.map((obligation) => {
-    const task: ObligationTask = { obligation, repo: state.repo, commitSha: state.commitSha };
+    const task: ObligationTask = { obligation, repoId: state.repoId, commitSha: state.commitSha };
     return new Send("assess_obligation", { task });
   });
 }
@@ -59,7 +59,7 @@ export function buildAuditGraph(deps: GraphDeps, opts: { checkpointer?: BaseChec
 
 export type AuditGraph = ReturnType<typeof buildAuditGraph>;
 
-export type AuditInput = Pick<AuditStateType, "runId" | "trigger" | "ruleIds" | "repo" | "commitSha"> & {
+export type AuditInput = Pick<AuditStateType, "runId" | "trigger" | "ruleIds" | "repo" | "repoId" | "commitSha"> & {
   mode?: AuditStateType["mode"];
 };
 

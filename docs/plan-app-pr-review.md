@@ -177,6 +177,10 @@ About 14 working days for one person, close to the roadmap's three weeks. B1 can
 
 ---
 
+### Progress
+
+**2026-10-27.** A1 and A2 done, except for two parts moved later. The `GITHUB_*` config moves to A3, which is the first PR that reads it. `POST /runs` taking a `repoId` moves to A5, because there is nothing to pick until repos come from installs. Tests: `tests/tenancy.test.ts` (seed, repo rows, baseline retention, migrating a pre-tenancy database) and a cross-tenant block in `tests/webApi.test.ts`. **Next: A3**, which needs the GitHub App registered.
+
 ## 6. Risks
 
 | Risk | Mitigation |

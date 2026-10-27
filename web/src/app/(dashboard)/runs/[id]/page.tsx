@@ -8,7 +8,7 @@ import { EmptyState, PageHeader } from "@/components/page-header";
 import { RefreshWhileRunning } from "@/components/refresh-while";
 import { RunStatusBadge, STATUS_LABEL } from "@/components/status-badges";
 import { buttonVariants } from "@/components/ui/button";
-import { ApiError, api, FINDING_STATUSES, SEVERITIES, type Run } from "@/lib/api";
+import { ApiError, api, FINDING_STATUSES, SEVERITIES, TRIGGER_LABEL, type Run } from "@/lib/api";
 import { cn, formatDateTime, formatDuration, formatUsd } from "@/lib/utils";
 
 type Params = { id: string };
@@ -75,7 +75,7 @@ export default async function RunPage({
             Run #{run.id} <RunStatusBadge status={run.status} />
           </span>
         }
-        description={`${run.trigger === "cron" ? "Scheduled" : "Manual"} · started ${formatDateTime(run.startedAt)} · ${formatDuration(run.startedAt, run.finishedAt)} · ${run.rulesInScope.length} rules · ${formatUsd(run.costUsd)}`}
+        description={`${TRIGGER_LABEL[run.trigger]} · started ${formatDateTime(run.startedAt)} · ${formatDuration(run.startedAt, run.finishedAt)} · ${run.rulesInScope.length} rules · ${formatUsd(run.costUsd)}`}
         actions={
           run.reportUrl && (
             <a

@@ -9,7 +9,8 @@ import { type Context, Hono } from "hono";
 import type { z } from "zod";
 import { config } from "../config.js";
 import { openMigratedDb, type Db } from "../db/client.js";
-import { auditRuns, findings, ruleChunks, rules, sources } from "../db/schema.js";
+import { auditRuns, findings, LOCAL_TENANT_ID, ruleChunks, rules, sources } from "../db/schema.js";
+import { resolveTenantId, TENANT_HEADER } from "../db/tenants.js";
 import type { Severity, Status } from "../graph/types.js";
 import { errorMessage, log } from "../log.js";
 import { AgentMailClient, parseInboundCommand, senderAddress, verifyWebhookSignature, WebhookEvent } from "../notify/agentmail.js";
@@ -88,8 +89,10 @@ function tokenMatches(expected: string, header: string | undefined): boolean {
   return given.length === want.length && timingSafeEqual(given, want);
 }
 
-export function createApp(deps: AppDeps): Hono {
-  const app = new Hono();
+type Env = { Variables: { tenantId: number | null } };
+
+export function createApp(deps: AppDeps): Hono<Env> {
+  const app = new Hono<Env>();
 
   app.get("/health", (c) => c.json({ ok: true }));
 
@@ -126,7 +129,8 @@ export function createApp(deps: AppDeps): Hono {
       return c.body(null, 204);
     }
 
-    const jobId = await enqueueManualAudit(deps.getQueue(), { demo: command.demo });
+    // Mail commands come from the operator's alert recipients, so they act for the local tenant.
+    const jobId = await enqueueManualAudit(deps.getQueue(), { demo: command.demo, tenantId: LOCAL_TENANT_ID });
     log.info("manual audit enqueued by email", { jobId, demo: command.demo, from });
     const note = command.demo ? "A demo audit of the bundled rules is queued." : "An audit of the live sources is queued.";
     await inbound
@@ -156,20 +160,49 @@ export function createApp(deps: AppDeps): Hono {
     return next();
   });
 
+  /**
+   * Every route below acts for one tenant, named by the header the dashboard sets. A header
+   * that matches no tenant reads as empty and cannot trigger runs: it never falls back to
+   * another tenant's data.
+   */
+  app.use("*", async (c, next) => {
+    c.set("tenantId", await resolveTenantId(deps.db, c.req.header(TENANT_HEADER)));
+    return next();
+  });
+
+  /** A run of this tenant, or undefined when it does not exist or belongs to someone else. */
+  const findRun = async (tenantId: number | null, id: number) => {
+    if (tenantId === null) return undefined;
+    const [run] = await deps.db
+      .select()
+      .from(auditRuns)
+      .where(and(eq(auditRuns.id, id), eq(auditRuns.tenantId, tenantId)));
+    return run;
+  };
+
   /** Manual trigger. `?demo=1` forces the bundled demo rules through. */
   app.post("/runs", async (c) => {
     const query = parseInput(c, TriggerRunQuery, c.req.query());
     if (!query.ok) return query.response;
+    const tenantId = c.get("tenantId");
+    if (tenantId === null) return c.json({ error: "no tenant is linked to this account; install the GitHub App first" }, 409);
     const { demo } = query.data;
-    const jobId = await enqueueManualAudit(deps.getQueue(), { demo });
-    log.info("manual audit enqueued", { jobId, demo });
+    const jobId = await enqueueManualAudit(deps.getQueue(), { demo, tenantId });
+    log.info("manual audit enqueued", { jobId, demo, tenantId });
     return c.json({ jobId, demo }, 202);
   });
 
   app.get("/runs", async (c) => {
     const query = parseInput(c, ListRunsQuery, c.req.query());
     if (!query.ok) return query.response;
-    const rows = await deps.db.select().from(auditRuns).orderBy(desc(auditRuns.id)).limit(20);
+    const tenantId = c.get("tenantId");
+    if (tenantId === null) return c.json([]);
+    const rows = await deps.db
+      .select()
+      .from(auditRuns)
+      .where(eq(auditRuns.tenantId, tenantId))
+      .orderBy(desc(auditRuns.id))
+      .limit(20);
     if (!query.data.counts) return c.json(rows);
     const counts = await countFindings(
       deps.db,
@@ -180,15 +213,18 @@ export function createApp(deps: AppDeps): Hono {
 
   /** Dashboard summary: the latest run of any status, and the latest completed run with its finding counts. */
   app.get("/stats", async (c) => {
-    const [latestRun] = await deps.db.select().from(auditRuns).orderBy(desc(auditRuns.id)).limit(1);
+    // -1 matches no run: an unknown tenant gets zeros, not an error, so the dashboard can render.
+    const mine = eq(auditRuns.tenantId, c.get("tenantId") ?? -1);
+    const [latestRun] = await deps.db.select().from(auditRuns).where(mine).orderBy(desc(auditRuns.id)).limit(1);
     const [latestCompleted] = await deps.db
       .select()
       .from(auditRuns)
-      .where(eq(auditRuns.status, "completed"))
+      .where(and(mine, eq(auditRuns.status, "completed")))
       .orderBy(desc(auditRuns.id))
       .limit(1);
+    // Rule text is public and shared by every tenant.
     const [ruleCount] = await deps.db.select({ n: count() }).from(rules);
-    const [runCount] = await deps.db.select({ n: count() }).from(auditRuns);
+    const [runCount] = await deps.db.select({ n: count() }).from(auditRuns).where(mine);
     const counts = latestCompleted ? (await countFindings(deps.db, [latestCompleted.id])).get(latestCompleted.id) : undefined;
     return c.json({
       latestRun: latestRun ?? null,
@@ -201,7 +237,7 @@ export function createApp(deps: AppDeps): Hono {
     const params = parseInput(c, RunIdParams, c.req.param());
     if (!params.ok) return params.response;
     const { id } = params.data;
-    const [run] = await deps.db.select().from(auditRuns).where(eq(auditRuns.id, id));
+    const run = await findRun(c.get("tenantId"), id);
     if (!run) return c.json({ error: "run not found" }, 404);
     const counts = (await countFindings(deps.db, [id])).get(id);
     return c.json({ ...run, counts });
@@ -214,6 +250,7 @@ export function createApp(deps: AppDeps): Hono {
     const { id } = params.data;
     const query = parseInput(c, FindingsQuery, c.req.query());
     if (!query.ok) return query.response;
+    if (!(await findRun(c.get("tenantId"), id))) return c.json({ error: "run not found" }, 404);
     const { status: statuses, severity: severities } = query.data;
     const where: SQL[] = [eq(findings.runId, id)];
     if (statuses.length) where.push(inArray(findings.status, statuses));
@@ -249,9 +286,12 @@ export function createApp(deps: AppDeps): Hono {
 
   /** Tracked rules with their source and the last run that produced findings for them. */
   app.get("/rules", async (c) => {
+    // Rules are shared; which run last audited one is not.
     const lastAudited = deps.db
       .select({ ruleId: findings.ruleId, runId: max(findings.runId).as("last_run_id") })
       .from(findings)
+      .innerJoin(auditRuns, eq(findings.runId, auditRuns.id))
+      .where(eq(auditRuns.tenantId, c.get("tenantId") ?? -1))
       .groupBy(findings.ruleId)
       .as("last_audited");
     const rows = await deps.db
@@ -278,7 +318,7 @@ export function createApp(deps: AppDeps): Hono {
     const params = parseInput(c, RunIdParams, c.req.param());
     if (!params.ok) return params.response;
     const { id } = params.data;
-    const [run] = await deps.db.select().from(auditRuns).where(eq(auditRuns.id, id));
+    const run = await findRun(c.get("tenantId"), id);
     if (!run?.reportUrl) return c.json({ error: "no report for this run" }, 404);
 
     if (run.reportUrl.startsWith("s3://")) {

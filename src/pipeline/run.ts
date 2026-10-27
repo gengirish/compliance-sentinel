@@ -7,7 +7,7 @@ import { eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { config, resolveFromRoot, ROOT_DIR, targetRepoPath } from "../config.js";
 import { openMigratedDb, type DbHandle } from "../db/client.js";
-import { auditRuns, rules as rulesTable, type Rule } from "../db/schema.js";
+import { auditRuns, LOCAL_TENANT_ID, rules as rulesTable, type Rule, type Trigger } from "../db/schema.js";
 import type { RuleDigestRecord } from "../digest/digestRule.js";
 import { buildAuditGraph, runAuditGraph } from "../graph/graph.js";
 import type { AuditStateType, GraphDeps } from "../graph/state.js";
@@ -34,7 +34,9 @@ import { fetchSecRules, SEC_SOURCE } from "../scrape/secRules.js";
 const run = promisify(execFile);
 
 export type PipelineOptions = {
-  trigger: "cron" | "manual";
+  trigger: Trigger;
+  /** Whose run this is; defaults to the operator's local tenant. */
+  tenantId?: number;
   /** "audit" (default) maps obligations to code; "digest" only summarises the rules in scope. */
   mode?: "audit" | "digest";
   /** Force the bundled demo rules through, regardless of content hashes. */
@@ -219,6 +221,7 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
   const handle = opts.handle ?? (await openMigratedDb());
   const { db } = handle;
   const ownsHandle = !opts.handle;
+  const tenantId = opts.tenantId ?? LOCAL_TENANT_ID;
   let runId: number | undefined;
   let scope: number[] = [];
   let checkpointer: Awaited<ReturnType<typeof createCheckpointer>> | undefined;
@@ -231,7 +234,7 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
     if (changedRules.length === 0) {
       const [row] = await db
         .insert(auditRuns)
-        .values({ status: "skipped", trigger: opts.trigger, finishedAt: sql`now()`, note: SKIP_NOTE })
+        .values({ tenantId, status: "skipped", trigger: opts.trigger, finishedAt: sql`now()`, note: SKIP_NOTE })
         .returning({ id: auditRuns.id });
       log.info("no new or amended rules; audit skipped", { runId: row!.id });
       return {
@@ -251,15 +254,16 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
 
     const [row] = await db
       .insert(auditRuns)
-      .values({ status: "running", trigger: opts.trigger, rulesInScope })
+      .values({ tenantId, status: "running", trigger: opts.trigger, rulesInScope })
       .returning({ id: auditRuns.id });
     runId = row!.id;
-    log.info("audit run started", { runId, rules: rulesInScope.length, trigger: opts.trigger });
+    log.info("audit run started", { runId, tenantId, rules: rulesInScope.length, trigger: opts.trigger });
 
     const mode = opts.mode ?? "audit";
     const embedder = opts.embedder ?? createEmbedder(db);
     const analyst = opts.analyst ?? createAnalyst();
     let repo = "";
+    let repoId = 0;
     let commitSha = "";
     if (mode === "audit") {
       for (const rule of changedRules) {
@@ -267,9 +271,11 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
         log.info("rule embedded", { ruleId: rule.id, chunks });
       }
       const target = await resolveTargetRepo(opts);
-      const index = await indexRepo(db, embedder, target.path, target.name);
+      const index = await indexRepo(db, embedder, target.path, { repoName: target.name, tenantId });
       repo = index.repo;
+      repoId = index.repoId;
       commitSha = index.commitSha;
+      await db.update(auditRuns).set({ repoId, headSha: commitSha }).where(eq(auditRuns.id, runId));
     }
 
     checkpointer = await createCheckpointer(handle);
@@ -284,7 +290,7 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
     const graph = buildAuditGraph(deps, { checkpointer: checkpointer.saver });
     const state = await runAuditGraph(
       graph,
-      { runId, trigger: opts.trigger, mode, ruleIds: rulesInScope, repo, commitSha },
+      { runId, trigger: opts.trigger, mode, ruleIds: rulesInScope, repo, repoId, commitSha },
       { concurrency: config.AUDIT_CONCURRENCY },
     );
 

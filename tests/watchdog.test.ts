@@ -2,7 +2,7 @@
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { openMigratedDb, type DbHandle } from "../src/db/client.js";
-import { auditRuns, rules, sources } from "../src/db/schema.js";
+import { auditRuns, LOCAL_TENANT_ID, rules, sources } from "../src/db/schema.js";
 import { failStaleRuns } from "../src/pipeline/watchdog.js";
 import { createApp } from "../src/web/server.js";
 
@@ -17,6 +17,7 @@ describe("stale run watchdog", () => {
     const [row] = await handle.db
       .insert(auditRuns)
       .values({
+        tenantId: LOCAL_TENANT_ID,
         status: "running",
         trigger: "manual",
         rulesInScope,

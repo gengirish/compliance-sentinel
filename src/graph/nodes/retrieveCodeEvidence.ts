@@ -9,8 +9,8 @@ const VECTOR_K = 4;
 /** Hybrid retrieval: keyword hits for the obligation's technical controls plus vector neighbours. */
 export function retrieveCodeEvidenceNode(deps: GraphDeps) {
   return async (state: ObligationStateType): Promise<Partial<ObligationStateType>> => {
-    const { obligation, repo, commitSha } = state.task;
-    const files = await loadIndexedFiles(deps.db, repo, commitSha);
+    const { obligation, repoId, commitSha } = state.task;
+    const files = await loadIndexedFiles(deps.db, repoId, commitSha);
 
     const catalogueTerms = obligation.controlId ? (controlById(obligation.controlId)?.searchTerms ?? []) : [];
     const terms = [...obligation.technicalControls, ...catalogueTerms];
@@ -21,7 +21,7 @@ export function retrieveCodeEvidenceNode(deps: GraphDeps) {
       deps.embedder,
       `${obligation.obligation}\n${obligation.technicalControls.join(" ")}`,
       VECTOR_K,
-      { repo, commitSha },
+      { repoId, commitSha },
     );
     const vector: EvidenceSnippet[] = hits.map((hit) => ({
       path: hit.path,

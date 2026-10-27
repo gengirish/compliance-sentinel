@@ -2,6 +2,7 @@ import { Annotation } from "@langchain/langgraph";
 import type { RuleDigestRecord } from "../digest/digestRule.js";
 import type { Analyst, Budget } from "../llm/analyst.js";
 import type { Db } from "../db/client.js";
+import type { Trigger } from "../db/schema.js";
 import type { Embedder } from "../rag/embed.js";
 import type { Assessment, EvidenceSnippet, Finding, FindingSummary, Obligation, SearchCoverage } from "./types.js";
 
@@ -11,12 +12,15 @@ const sum = (left: number, right: number): number => left + right;
 /** Top-level state of one audit run. Everything here is JSON-serialisable for the checkpointer. */
 export const AuditState = Annotation.Root({
   runId: Annotation<number>,
-  trigger: Annotation<"cron" | "manual">,
+  trigger: Annotation<Trigger>,
   /** "audit" maps obligations to code; "digest" only summarises the rules for people. */
   mode: Annotation<"audit" | "digest">({ reducer: (_, next) => next, default: () => "audit" }),
   /** Ids of the new or amended rules in scope. */
   ruleIds: Annotation<number[]>,
+  /** Display name of the audited repository, for the report. */
   repo: Annotation<string>,
+  /** `repos.id`: code chunks are looked up by it, never by name. */
+  repoId: Annotation<number>,
   commitSha: Annotation<string>,
   /** Produced by `digest_rules` in digest mode. */
   digests: Annotation<RuleDigestRecord[]>({ reducer: (_, next) => next, default: () => [] }),
@@ -34,7 +38,7 @@ export const AuditState = Annotation.Root({
 });
 export type AuditStateType = typeof AuditState.State;
 
-export type ObligationTask = { obligation: Obligation; repo: string; commitSha: string };
+export type ObligationTask = { obligation: Obligation; repoId: number; commitSha: string };
 
 /**
  * State of the per-obligation branch (retrieve -> assess -> verify). Only

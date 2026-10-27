@@ -4,6 +4,7 @@ import path from "node:path";
 import type { Queue } from "bullmq";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { openMigratedDb, type DbHandle } from "../src/db/client.js";
+import { LOCAL_TENANT_ID } from "../src/db/schema.js";
 import type { NotifyInput } from "../src/graph/state.js";
 import {
   AgentMailClient,
@@ -200,12 +201,12 @@ describe("inbound email route", () => {
     reply.mockClear();
     const res = await app().request(INBOUND_PATH, signedRequest(received()));
     expect(res.status).toBe(204);
-    expect(added).toEqual([{ trigger: "manual", demo: false }]);
+    expect(added).toEqual([{ trigger: "manual", demo: false, tenantId: LOCAL_TENANT_ID }]);
     expect(reply).toHaveBeenCalledWith("<abc@agentmail.to>", expect.stringContaining("queued"));
 
     const demo = await app().request(INBOUND_PATH, signedRequest(received({ subject: "run the demo audit please" })));
     expect(demo.status).toBe(204);
-    expect(added[1]).toEqual({ trigger: "manual", demo: true });
+    expect(added[1]).toEqual({ trigger: "manual", demo: true, tenantId: LOCAL_TENANT_ID });
   });
 
   it("acknowledges but ignores other mail, other senders and other events", async () => {

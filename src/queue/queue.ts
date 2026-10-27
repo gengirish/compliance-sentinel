@@ -1,6 +1,7 @@
 import { Queue, type ConnectionOptions } from "bullmq";
 import { Redis } from "ioredis";
 import { config } from "../config.js";
+import type { Trigger } from "../db/schema.js";
 
 export const QUEUE_NAME = "compliance";
 export const DAILY_JOB = "daily-audit";
@@ -8,7 +9,9 @@ export const MANUAL_JOB = "manual-audit";
 export const DIGEST_JOB = "weekly-digest";
 
 export type AuditJobData = {
-  trigger: "cron" | "manual";
+  trigger: Trigger;
+  /** Whose audit this is; absent means the operator's local tenant. */
+  tenantId?: number;
   /** "audit" (default) runs the pipeline; "digest" sends the weekly round-up of rule changes. */
   kind?: "audit" | "digest";
   demo?: boolean;

@@ -85,7 +85,7 @@ export function verifyAssessment(obligation: Obligation, assessment: Assessment,
 
 export function verifyCitationsNode(deps: GraphDeps) {
   return async (state: ObligationStateType): Promise<Partial<ObligationStateType>> => {
-    const { obligation, repo, commitSha } = state.task;
+    const { obligation, repoId, commitSha } = state.task;
     const assessment = state.assessment;
     if (!assessment) return { errors: [`obligation ${obligation.id}: no assessment to verify`] };
 
@@ -96,7 +96,7 @@ export function verifyCitationsNode(deps: GraphDeps) {
           .from(ruleChunks)
           .where(inArray(ruleChunks.id, cited))
       : [];
-    const files = await loadIndexedFiles(deps.db, repo, commitSha);
+    const files = await loadIndexedFiles(deps.db, repoId, commitSha);
     const finding = verifyAssessment(obligation, assessment, {
       chunkRule: new Map(rows.map((r) => [r.id, r.ruleId])),
       files,

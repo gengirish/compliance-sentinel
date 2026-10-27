@@ -3,10 +3,11 @@ import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { promisify } from "node:util";
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, notInArray } from "drizzle-orm";
 import { config } from "../config.js";
 import type { Db } from "../db/client.js";
-import { codeChunks } from "../db/schema.js";
+import { codeChunks, LOCAL_TENANT_ID } from "../db/schema.js";
+import { ensureRepo } from "../db/tenants.js";
 import { log } from "../log.js";
 import { chunkCode } from "./chunker.js";
 import type { Embedder } from "./embed.js";
@@ -95,35 +96,50 @@ export function assertIndexable(files: RepoFile[], limits = { maxFiles: config.I
   if (files.length > limits.maxFiles || bytes > limits.maxBytes) throw new RepoTooLargeError(files.length, bytes);
 }
 
-export type IndexResult = { repo: string; commitSha: string; files: number; chunks: number; reindexed: boolean };
+export type IndexResult = { repo: string; repoId: number; commitSha: string; files: number; chunks: number; reindexed: boolean };
 
-/** Indexes the target repo into `code_chunks`; a no-op when this snapshot is already indexed. */
-export async function indexRepo(db: Db, embedder: Embedder, root: string, repoName?: string): Promise<IndexResult> {
-  const repo = repoName ?? path.basename(path.resolve(root));
+export type IndexOptions = {
+  /** Display name, e.g. "owner/name"; defaults to the folder name. */
+  repoName?: string;
+  /** Owner of the repository row; defaults to the local tenant. */
+  tenantId?: number;
+};
+
+/**
+ * Indexes the target repo into `code_chunks`; a no-op when this snapshot is already indexed.
+ * Older snapshots are dropped, except the repo's baseline, which PR runs are compared with.
+ */
+export async function indexRepo(db: Db, embedder: Embedder, root: string, opts: IndexOptions = {}): Promise<IndexResult> {
+  const repoName = opts.repoName ?? path.basename(path.resolve(root));
+  const repoRow = await ensureRepo(db, opts.tenantId ?? LOCAL_TENANT_ID, repoName);
+  const repoId = repoRow.id;
   const files = listRepoFiles(root);
   assertIndexable(files);
   const commitSha = await repoSnapshotId(root, files);
+  const result = { repo: repoName, repoId, commitSha, files: files.length };
 
   const existing = await db
     .select({ id: codeChunks.id })
     .from(codeChunks)
-    .where(and(eq(codeChunks.repo, repo), eq(codeChunks.commitSha, commitSha)))
+    .where(and(eq(codeChunks.repoId, repoId), eq(codeChunks.commitSha, commitSha)))
     .limit(1);
-  if (existing.length > 0) return { repo, commitSha, files: files.length, chunks: 0, reindexed: false };
+  if (existing.length > 0) return { ...result, chunks: 0, reindexed: false };
 
   const drafts = files.flatMap((file) =>
     chunkCode(file.text).map((chunk) => ({ path: file.path, ...chunk })),
   );
   const vectors = await embedder.embed(
-    drafts.map((d) => `${d.path}\n${d.text}`),
+    drafts.map((d) => `${d.path}
+${d.text}`),
     "document",
   );
+  const keep = [commitSha, ...(repoRow.baselineSha ? [repoRow.baselineSha] : [])];
   await db.transaction(async (tx) => {
-    await tx.delete(codeChunks).where(and(eq(codeChunks.repo, repo), ne(codeChunks.commitSha, commitSha)));
+    await tx.delete(codeChunks).where(and(eq(codeChunks.repoId, repoId), notInArray(codeChunks.commitSha, keep)));
     for (let i = 0; i < drafts.length; i += 50) {
       await tx.insert(codeChunks).values(
         drafts.slice(i, i + 50).map((d, j) => ({
-          repo,
+          repoId,
           commitSha,
           path: d.path,
           startLine: d.startLine,
@@ -134,6 +150,6 @@ export async function indexRepo(db: Db, embedder: Embedder, root: string, repoNa
       );
     }
   });
-  log.info("repo indexed", { repo, commitSha, files: files.length, chunks: drafts.length });
-  return { repo, commitSha, files: files.length, chunks: drafts.length, reindexed: true };
+  log.info("repo indexed", { repo: repoName, repoId, commitSha, files: files.length, chunks: drafts.length });
+  return { ...result, chunks: drafts.length, reindexed: true };
 }
