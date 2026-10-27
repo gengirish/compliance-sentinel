@@ -1,5 +1,6 @@
 // Stand-in for the Sentinel API during e2e runs: fixed fixtures, same routes and token check.
 import { createServer } from "node:http";
+import { routeFindings } from "./mock-findings.mjs";
 
 const PORT = Number(process.env.MOCK_API_PORT ?? 8099);
 const TOKEN = "e2e-token";
@@ -123,22 +124,13 @@ createServer((req, res) => {
   };
   if (url.pathname === "/health") return send(200, { ok: true });
   if (req.headers.authorization !== `Bearer ${TOKEN}`) return send(401, { error: "unauthorized" });
+  const fromFindings = routeFindings(req.method, url, findings);
+  if (fromFindings) return send(...fromFindings);
 
   const runMatch = url.pathname.match(/^\/runs\/(\d+)$/);
   if (req.method === "GET" && runMatch) {
     const found = runs.find((r) => r.id === Number(runMatch[1]));
     return found ? send(200, live(found)) : send(404, { error: "run not found" });
-  }
-  if (req.method === "GET" && /^\/runs\/\d+\/findings$/.test(url.pathname) && url.pathname !== "/runs/1/findings") {
-    return send(200, []);
-  }
-  if (req.method === "GET" && url.pathname === "/runs/1/findings") {
-    const status = url.searchParams.get("status")?.split(",");
-    const severity = url.searchParams.get("severity")?.split(",");
-    return send(
-      200,
-      findings.filter((f) => (!status || status.includes(f.status)) && (!severity || severity.includes(f.severity))),
-    );
   }
   const sourceMatch = url.pathname.match(/^\/settings\/sources\/([\w-]+)$/);
   if (req.method === "PUT" && sourceMatch) {

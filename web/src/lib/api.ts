@@ -167,19 +167,37 @@ export function withQuery(path: string, query: Record<string, string | number | 
   return qs ? `${path}?${qs}` : path;
 }
 
+export const FINDING_SORTS = ["severity", "status", "rule", "path"] as const;
+export type FindingSort = (typeof FINDING_SORTS)[number];
+export type FindingsFilter = {
+  status?: string[];
+  severity?: string[];
+  rule?: number;
+  path?: string;
+  q?: string;
+  sort?: FindingSort;
+  order?: "asc" | "desc";
+};
+
 export const api = {
   stats: () => getJson("/stats", Stats),
   runs: () => getJson("/runs?counts=1", z.array(Run)),
   /** Just id and status of the recent runs, for cheap polling. */
   runStatuses: async () => (await getJson("/runs", z.array(Run))).map(({ id, status }) => ({ id, status })),
   run: (id: number) => getJson(`/runs/${id}`, Run),
-  findings: (id: number, filter: { status?: string[]; severity?: string[] } = {}) => {
-    const q = new URLSearchParams();
-    if (filter.status?.length) q.set("status", filter.status.join(","));
-    if (filter.severity?.length) q.set("severity", filter.severity.join(","));
-    const qs = q.toString();
-    return getJson(`/runs/${id}/findings${qs ? `?${qs}` : ""}`, z.array(Finding));
-  },
+  findings: (id: number, filter: FindingsFilter = {}) =>
+    getJson(
+      withQuery(`/runs/${id}/findings`, {
+        status: filter.status?.join(","),
+        severity: filter.severity?.join(","),
+        rule: filter.rule,
+        path: filter.path,
+        q: filter.q,
+        sort: filter.sort,
+        order: filter.order,
+      }),
+      z.array(Finding),
+    ),
   rules: () => getJson("/rules", z.array(Rule)),
   /** The scraper switches. Only the operator may read them; the API answers 403 to anyone else. */
   sources: () => getJson("/settings/sources", z.array(Source)),

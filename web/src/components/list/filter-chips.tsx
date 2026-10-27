@@ -10,14 +10,16 @@ export function FilterChip({ href, active, children }: { href: string; active: b
     <Link
       href={href}
       prefetch={false}
-      aria-current={active ? "true" : undefined}
       scroll={false}
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm",
+        // min-h-11: a 44px touch target.
+        "inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 text-sm",
         active ? "border-primary-light/50 bg-primary/20 text-foreground" : "border-border text-muted hover:text-foreground",
       )}
     >
       {children}
+      {/* A link cannot be aria-pressed, and aria-current means "this page", so the on state is spoken as text. */}
+      {active && <span className="sr-only"> (filter on)</span>}
     </Link>
   );
 }
