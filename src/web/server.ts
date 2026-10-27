@@ -19,7 +19,8 @@ import { AgentMailClient, parseInboundCommand, senderAddress, verifyWebhookSigna
 import { failStaleRuns } from "../pipeline/watchdog.js";
 import { createQueue, enqueueManualAudit, INSTALL_JOB, type AuditJobData } from "../queue/queue.js";
 import { signReportUrl } from "../report/upload.js";
-import { describeIssues, FindingsQuery, ListRunsQuery, RunIdParams, TriggerRunQuery } from "./schemas.js";
+import { findSource, setSourceEnabled, sourceStates } from "../scrape/registry.js";
+import { describeIssues, FindingsQuery, ListRunsQuery, RunIdParams, SourceSettingBody, TriggerRunQuery } from "./schemas.js";
 
 export type AppDeps = {
   db: Db;
@@ -349,6 +350,62 @@ export function createApp(deps: AppDeps): Hono<Env> {
       .leftJoin(lastAudited, eq(lastAudited.ruleId, rules.id))
       .orderBy(desc(rules.lastChangedAt));
     return c.json(rows);
+  });
+
+  /**
+   * The scraper switches. They apply to the whole application, so only the operator (the
+   * local tenant: no tenant header) can see or change them.
+   */
+  const operatorOnly = (c: Context<Env>) =>
+    c.get("tenantId") === LOCAL_TENANT_ID ? null : c.json({ error: "only the operator can configure sources" }, 403);
+
+  const describeSources = async () => {
+    const states = await sourceStates(deps.db);
+    const stored = await deps.db
+      .select({ name: sources.name, lastCheckedAt: sources.lastCheckedAt, rules: count(rules.id) })
+      .from(sources)
+      .leftJoin(rules, eq(rules.sourceId, sources.id))
+      .groupBy(sources.id);
+    const byName = new Map(stored.map((s) => [s.name, s]));
+    return states.map(({ entry, enabled, defaultEnabled, overridden, updatedAt }) => ({
+      name: entry.def.name,
+      label: entry.label,
+      region: entry.region,
+      description: entry.description,
+      requires: entry.requires ?? null,
+      kind: entry.def.kind,
+      url: entry.def.url,
+      enabled,
+      defaultEnabled,
+      overridden,
+      updatedAt,
+      lastCheckedAt: byName.get(entry.def.name)?.lastCheckedAt ?? null,
+      rules: byName.get(entry.def.name)?.rules ?? 0,
+    }));
+  };
+
+  app.get("/settings/sources", async (c) => {
+    const denied = operatorOnly(c);
+    if (denied) return denied;
+    return c.json(await describeSources());
+  });
+
+  app.put("/settings/sources/:name", async (c) => {
+    const denied = operatorOnly(c);
+    if (denied) return denied;
+    const name = c.req.param("name");
+    if (!findSource(name)) return c.json({ error: `unknown source "${name}"` }, 404);
+    let json: unknown;
+    try {
+      json = await c.req.json();
+    } catch {
+      return c.json({ error: "invalid JSON" }, 400);
+    }
+    const body = parseInput(c, SourceSettingBody, json);
+    if (!body.ok) return body.response;
+    await setSourceEnabled(deps.db, name, body.data.enabled);
+    log.info("source switched", { source: name, enabled: body.data.enabled });
+    return c.json((await describeSources()).find((s) => s.name === name));
   });
 
   /** Redirects to a freshly signed download link, or streams the local file in dev. */

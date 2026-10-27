@@ -23,15 +23,8 @@ import { createEmbedder, type Embedder } from "../rag/embed.js";
 import { indexRepo } from "../rag/indexRepo.js";
 import { embedRule, getRulesByIds } from "../rag/retrieve.js";
 import { renderReport } from "../report/render.js";
-import { ASIC_SOURCE, fetchAsicRules } from "../scrape/asicTracker.js";
 import { persistChanges, upsertSource, type ScrapedRule, type SourceDef } from "../scrape/diff.js";
-import { ESMA_SOURCE, fetchEsmaRules } from "../scrape/esmaNews.js";
-import { EUR_LEX_SOURCE, scrapeEurLex } from "../scrape/eurLex.playwright.js";
-import { FCA_SOURCE, fetchFcaRules } from "../scrape/fcaPublications.js";
-import { FEDERAL_REGISTER_SOURCE, fetchFederalRegisterRules } from "../scrape/federalRegister.js";
-import { fetchFinraRules, FINRA_SOURCE } from "../scrape/finraNotices.js";
-import { MAS_SOURCE, scrapeMasCirculars } from "../scrape/masCirculars.playwright.js";
-import { fetchSecRules, SEC_SOURCE } from "../scrape/secRules.js";
+import { enabledSources } from "../scrape/registry.js";
 
 const run = promisify(execFile);
 
@@ -119,20 +112,6 @@ export function loadDemoRules(dir = path.join(ROOT_DIR, "fixtures", "rules"), on
     bySource.set(name, entry);
   }
   return [...bySource.values()];
-}
-
-export function defaultSources(): NonNullable<PipelineOptions["sources"]> {
-  const sources: NonNullable<PipelineOptions["sources"]> = [
-    { def: FEDERAL_REGISTER_SOURCE, fetch: () => fetchFederalRegisterRules() },
-  ];
-  if (config.SCRAPE_SEC) sources.push({ def: SEC_SOURCE, fetch: () => fetchSecRules() });
-  if (config.SCRAPE_FINRA) sources.push({ def: FINRA_SOURCE, fetch: () => fetchFinraRules() });
-  if (config.SCRAPE_FCA) sources.push({ def: FCA_SOURCE, fetch: () => fetchFcaRules() });
-  if (config.SCRAPE_ESMA) sources.push({ def: ESMA_SOURCE, fetch: () => fetchEsmaRules() });
-  if (config.SCRAPE_ASIC) sources.push({ def: ASIC_SOURCE, fetch: () => fetchAsicRules() });
-  if (config.SCRAPE_EURLEX) sources.push({ def: EUR_LEX_SOURCE, fetch: () => scrapeEurLex() });
-  if (config.SCRAPE_MAS) sources.push({ def: MAS_SOURCE, fetch: () => scrapeMasCirculars() });
-  return sources;
 }
 
 export function createAnalyst(): Analyst {
@@ -253,7 +232,11 @@ async function collectChangedRules(handle: DbHandle, opts: PipelineOptions): Pro
     return changed;
   }
 
-  for (const source of opts.sources ?? defaultSources()) {
+  // Read each run, so a switch flipped on the dashboard applies to the next scrape.
+  const sources = opts.sources ?? (await enabledSources(db));
+  if (sources.length === 0) log.warn("every source is disabled; nothing will be scraped");
+  log.info("scraping sources", { sources: sources.map((s) => s.def.name) });
+  for (const source of sources) {
     try {
       const scraped = await source.fetch();
       if (scraped.length === 0) log.warn("source returned zero rules; the scraper may be broken", { source: source.def.name });

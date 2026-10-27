@@ -66,6 +66,13 @@ export const sources = pgTable("sources", {
   lastCheckedAt: ts("last_checked_at"),
 });
 
+/** Dashboard switches for the scrapers, by source name. No row: the SCRAPE_* flag decides. */
+export const sourceSettings = pgTable("source_settings", {
+  name: text("name").primaryKey(),
+  enabled: boolean("enabled").notNull(),
+  updatedAt: ts("updated_at").notNull().defaultNow(),
+});
+
 export const rules = pgTable(
   "rules",
   {

@@ -31,7 +31,10 @@ export const FindingsQuery = z.object({
   severity: commaList(SEVERITIES),
 });
 
-export type RequestIssue = { path: string; message: string };
+/** `true`/`false` switches the source; `null` hands it back to its SCRAPE_* flag. */
+export const SourceSettingBody = z.strictObject({ enabled: z.boolean().nullable() });
+
+export type RequestIssue ={ path: string; message: string };
 
 export function describeIssues(error: z.ZodError): RequestIssue[] {
   return error.issues.map((i) => ({ path: i.path.join("."), message: i.message }));

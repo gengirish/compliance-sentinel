@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { History, LayoutDashboard, ScrollText } from "lucide-react";
+import { History, LayoutDashboard, ScrollText, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const LINKS = [
   { href: "/overview", label: "Overview", icon: LayoutDashboard },
   { href: "/runs", label: "Runs", icon: History },
   { href: "/rules", label: "Rules", icon: ScrollText },
+  { href: "/settings", label: "Settings", icon: SlidersHorizontal },
 ];
 
 export function Nav() {

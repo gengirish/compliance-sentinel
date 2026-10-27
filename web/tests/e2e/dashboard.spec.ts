@@ -50,6 +50,23 @@ test("runs and rules tables render", async ({ page }) => {
   await expect(page.getByText("Demo Safeguards Rule")).toBeVisible();
 });
 
+test("sources can be switched on and off, and reset to their default", async ({ page }) => {
+  await page.goto("/settings");
+  await expect(page.getByRole("heading", { name: "Regulatory sources" })).toBeVisible();
+  const mas = page.getByRole("switch", { name: "Scrape MAS" });
+  await expect(mas).toHaveAttribute("aria-checked", "false");
+  await expect(page.getByText(/needs Chromium/)).toBeVisible();
+
+  await mas.click();
+  await expect(mas).toHaveAttribute("aria-checked", "true");
+  const row = page.getByRole("listitem").filter({ hasText: "MAS" });
+  await expect(row.getByText("Set here")).toBeVisible();
+
+  await row.getByRole("button", { name: "Reset" }).click();
+  await expect(mas).toHaveAttribute("aria-checked", "false");
+  await expect(row.getByText("Default")).toBeVisible();
+});
+
 test("run audit button queues a job", async ({ page }) => {
   await page.goto("/overview");
   await page.getByRole("button", { name: "Run audit" }).click();
@@ -93,6 +110,7 @@ test("every dashboard page has its own title", async ({ page }) => {
     ["/runs", "Runs"],
     ["/runs/1", "Run #1"],
     ["/rules", "Rules"],
+    ["/settings", "Settings"],
   ]) {
     await page.goto(path);
     await expect(page).toHaveTitle(`${title} · Compliance Sentinel`);

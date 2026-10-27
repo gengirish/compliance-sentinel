@@ -80,7 +80,24 @@ const Rule = z.object({
   lastAuditedRunId: z.number().nullable(),
 });
 
+const Source = z.object({
+  name: z.string(),
+  label: z.string(),
+  region: z.string(),
+  description: z.string(),
+  requires: z.string().nullable(),
+  kind: z.string(),
+  url: z.string(),
+  enabled: z.boolean(),
+  defaultEnabled: z.boolean(),
+  overridden: z.boolean(),
+  updatedAt: z.string().nullable(),
+  lastCheckedAt: z.string().nullable(),
+  rules: z.number(),
+});
+
 export type Run = z.infer<typeof Run>;
+export type Source = z.infer<typeof Source>;
 export type Stats = z.infer<typeof Stats>;
 export type Finding = z.infer<typeof Finding>;
 export type Rule = z.infer<typeof Rule>;
@@ -141,4 +158,6 @@ export const api = {
     return getJson(`/runs/${id}/findings${qs ? `?${qs}` : ""}`, z.array(Finding));
   },
   rules: () => getJson("/rules", z.array(Rule)),
+  /** The scraper switches. Only the operator may read them; the API answers 403 to anyone else. */
+  sources: () => getJson("/settings/sources", z.array(Source)),
 };

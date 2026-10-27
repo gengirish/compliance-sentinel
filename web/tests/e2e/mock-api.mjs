@@ -78,7 +78,25 @@ const findings = [
   finding(3, "compliant", "medium", "Log access to customer records"),
 ];
 
+const source = (name, label, region, enabled, requires = null) => ({
+  name,
+  label,
+  region,
+  description: `${label} test source.`,
+  requires,
+  kind: "api",
+  url: `https://example.com/${name}`,
+  enabled,
+  defaultEnabled: enabled,
+  overridden: false,
+  updatedAt: null,
+  lastCheckedAt: null,
+  rules: 0,
+});
+const sources = [source("federal-register", "Federal Register", "US", true), source("mas", "MAS", "SG", false, "Chromium (Playwright) and pdftotext")];
+
 const routes = {
+  "GET /settings/sources": () => sources,
   "GET /stats": () => ({ latestRun: live(runs[0]), latestCompletedRun: run, totals: { rules: 1, runs: 1 } }),
   "GET /runs": () => runs.map(live),
   "GET /rules": () => [
@@ -121,6 +139,19 @@ createServer((req, res) => {
       200,
       findings.filter((f) => (!status || status.includes(f.status)) && (!severity || severity.includes(f.severity))),
     );
+  }
+  const sourceMatch = url.pathname.match(/^\/settings\/sources\/([\w-]+)$/);
+  if (req.method === "PUT" && sourceMatch) {
+    const found = sources.find((s) => s.name === sourceMatch[1]);
+    if (!found) return send(404, { error: "unknown source" });
+    let raw = "";
+    req.on("data", (d) => (raw += d));
+    req.on("end", () => {
+      const { enabled } = JSON.parse(raw);
+      Object.assign(found, enabled === null ? { enabled: found.defaultEnabled, overridden: false } : { enabled, overridden: true });
+      send(200, found);
+    });
+    return;
   }
   if (req.method === "GET" && url.pathname === "/reports/1") {
     res.writeHead(200, { "content-type": "text/html; charset=utf-8" });

@@ -88,7 +88,7 @@ These change the design. Each is handled in the PRs below.
 
 ## 3. Phase B: PR trigger (about 5 days)
 
-### B1. Obligation cache and stable signatures: `0005_pr.sql`
+### B1. Obligation cache and stable signatures: `0006_pr.sql`
 
 - `rule_obligations` (rule_id, content_hash, analyst, obligations jsonb, cost_usd, created_at), unique on `(rule_id, content_hash, analyst)`. It is global, because rule text is public. [extractObligations.ts](../src/graph/nodes/extractObligations.ts) reads it first and skips both `isRelevant` and extraction on a hit, storing irrelevant rules as an empty list. Obligation ids are fixed at first extraction, which settles item 8.
 - `findings.signature text`: sha256 of `rule_id | normalised obligation | primary evidence path` (or `absent` when there is no evidence). Computed in `aggregate` and indexed with `run_id`. Phase C reuses this same column, so it is defined once here.

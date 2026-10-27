@@ -70,6 +70,11 @@ const EnvSchema = z.object({
   REPORTS_DIR: z.string().default("reports"),
   PGLITE_DIR: z.string().default(".data/pglite"),
   WEASYPRINT_BIN: z.string().default("weasyprint"),
+  /**
+   * SCRAPE_* flags are the defaults; the dashboard's Settings page overrides them per source
+   * (the source_settings table), without a restart.
+   */
+  SCRAPE_FEDERAL_REGISTER: flag("true"),
   FEDREG_TERM: z.string().default("data security privacy safeguards"),
   FEDREG_AGENCIES: z.string().default("federal-trade-commission"),
   FEDREG_PER_PAGE: z.coerce.number().int().positive().max(50).default(5),

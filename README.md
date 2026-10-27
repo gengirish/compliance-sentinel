@@ -144,6 +144,8 @@ pnpm test
 
 `pnpm audit:run` (no flag) scrapes the live sources instead; it needs `npx playwright install chromium` once, or `SCRAPE_EURLEX=false`. `SCRAPE_SEC` and `SCRAPE_FCA` default to on and need no browser; `SCRAPE_MAS` defaults to off and needs the browser plus `pdftotext`.
 
+Those flags are only defaults. The dashboard's **Settings** page has a switch per source, saved in the `source_settings` table and read at the start of every run, so a change needs no restart; **Reset** hands a source back to its flag. A switched-off source is not fetched, so its rules stop changing and never enter an audit. Demo runs use the bundled rules and ignore the switches. Only the operator (requests without a tenant header) can see or change them: `GET /settings/sources`, `PUT /settings/sources/:name` with `{"enabled": true | false | null}`.
+
 Other commands:
 
 | Command | What it does |
