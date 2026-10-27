@@ -95,10 +95,11 @@ test("report link streams the report without exposing the token", async ({ reque
   expect(await res.text()).toContain("Demo report");
 });
 
-test("unknown run shows not found, without a title naming the run", async ({ page }) => {
-  for (const path of ["/runs/999", "/runs/abc"]) {
-    // The status stays 200: the (dashboard) loading boundary streams before notFound() runs.
-    await page.goto(path);
+test("unknown run shows not found with a 404, without a title naming the run", async ({ page }) => {
+  for (const path of ["/runs/999", "/runs/abc", "/runs/-1"]) {
+    // A 404, not a soft 200: no loading boundary sits above the run lookup.
+    const res = await page.goto(path);
+    expect(res?.status()).toBe(404);
     await expect(page.getByText("doesn't exist")).toBeVisible();
     await expect(page).toHaveTitle("Run not found · Compliance Sentinel");
   }

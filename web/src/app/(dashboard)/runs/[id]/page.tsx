@@ -1,4 +1,4 @@
-import { cache } from "react";
+import { cache, Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -21,6 +21,7 @@ import {
   TRIGGER_LABEL,
   type Finding,
   type FindingSort,
+  type FindingsFilter,
   type Run,
 } from "@/lib/api";
 import { hasAny, hrefWith, pickList, pickSearch, pickSort, toggleValue, type SearchParams } from "@/lib/list-params";
@@ -153,34 +154,92 @@ export default async function RunPage({
         </FilterChips>
       </div>
 
-      {total > 0 && (
-        <FilterBar active={[rule, path, q].filter((v) => v !== undefined).length}>
-          <SelectFilter label="Rule" param="rule" options={rules} allLabel="All rules" />
-          <SearchBox label="File path starts with" placeholder="File path, e.g. src/payments" param="path" />
-          <SearchBox label="Search findings" placeholder="Search obligations" />
-          <SortSelect options={[...SORT_OPTIONS]} defaults={DEFAULT_SORT} />
-        </FilterBar>
-      )}
+      {/* Unkeyed, so the search boxes keep focus and their text while the list below reloads. */}
+      <Suspense fallback={null}>
+        <FindingsFilterBar run={run} active={[rule, path, q].filter((v) => v !== undefined).length} />
+      </Suspense>
 
-      {total > 0 && filtered && (
+      <h2 className="sr-only">Findings</h2>
+      <Suspense key={JSON.stringify(filter)} fallback={<FindingsSkeleton />}>
+        <FindingsList run={run} filter={filtered || !sort.isDefault ? filter : null} narrowed={filtered} base={base} />
+      </Suspense>
+    </>
+  );
+}
+
+/** Every finding of a run, unfiltered. Cached so the filter bar and an unfiltered list share one call. */
+const getAllFindings = cache((id: number) => api.findings(id));
+
+/** The rule select lists every rule of the run, so it needs the unfiltered findings. */
+async function FindingsFilterBar({ run, active }: { run: Run; active: number }) {
+  const all = await getAllFindings(run.id);
+  if ((run.counts?.total ?? all.length) === 0) return null;
+  return (
+    <FilterBar active={active}>
+      <SelectFilter label="Rule" param="rule" options={ruleOptions(all)} allLabel="All rules" />
+      <SearchBox label="File path starts with" placeholder="File path, e.g. src/payments" param="path" />
+      <SearchBox label="Search findings" placeholder="Search obligations" />
+      <SortSelect options={[...SORT_OPTIONS]} defaults={DEFAULT_SORT} />
+    </FilterBar>
+  );
+}
+
+/** `filter` is null for the default view, which is the unfiltered list in its default order. */
+async function FindingsList({
+  run,
+  filter,
+  narrowed,
+  base,
+}: {
+  run: Run;
+  filter: FindingsFilter | null;
+  narrowed: boolean;
+  base: string;
+}) {
+  const findings = filter ? await api.findings(run.id, filter) : await getAllFindings(run.id);
+  const total = run.counts?.total ?? findings.length;
+
+  if (findings.length === 0) {
+    const title = total
+      ? "No findings match these filters"
+      : run.status === "running"
+        ? "Audit in progress. Findings appear here when it finishes."
+        : "This run produced no findings";
+    return <EmptyState title={title}>{total > 0 && <ClearFilters href={base} />}</EmptyState>;
+  }
+  return (
+    <>
+      {total > 0 && narrowed && (
         <p className="mb-4 text-sm text-muted" aria-live="polite">
           {findings.length} of {total} findings
         </p>
       )}
-
-      <h2 className="sr-only">Findings</h2>
-      {findings.length === 0 ? (
-        <EmptyState title={total ? "No findings match these filters" : "This run produced no findings"}>
-          {total > 0 && <ClearFilters href={base} />}
-        </EmptyState>
-      ) : (
-        <div className="space-y-4">
-          {findings.map((f) => (
-            <FindingCard key={f.id} finding={f} repoUrl={run.repo?.url} sha={run.headSha ?? undefined} />
-          ))}
-        </div>
-      )}
+      <div className="space-y-4">
+        {findings.map((f) => (
+          <FindingCard key={f.id} finding={f} repoUrl={run.repo?.url} sha={run.headSha ?? undefined} />
+        ))}
+      </div>
     </>
+  );
+}
+
+/** The cards half of the old route skeleton; the header above is already real by then. */
+function FindingsSkeleton() {
+  return (
+    <div className="space-y-4" role="status" aria-busy="true">
+      <span className="sr-only">Loading findings…</span>
+      {Array.from({ length: 3 }, (_, i) => (
+        <div key={i} className="space-y-3 rounded-xl border border-border bg-surface p-5">
+          <div className="flex gap-2">
+            <div className="h-5 w-20 animate-pulse rounded-full bg-surface-light" />
+            <div className="h-5 w-16 animate-pulse rounded-full bg-surface-light" />
+          </div>
+          <div className="h-5 w-2/3 animate-pulse rounded bg-surface-light" />
+          <div className="h-3 w-full animate-pulse rounded bg-surface-light" />
+          <div className="h-3 w-5/6 animate-pulse rounded bg-surface-light" />
+        </div>
+      ))}
+    </div>
   );
 }
 
