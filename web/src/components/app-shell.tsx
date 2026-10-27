@@ -14,7 +14,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </a>
       <header className="sticky top-0 z-10 border-b border-border bg-background/85 backdrop-blur">
         <div className="mx-auto flex h-14 max-w-6xl items-center gap-2 px-4 sm:gap-4">
-          <Link href="/overview" prefetch={false} className="flex items-center gap-2 font-bold">
+          <Link href="/overview" prefetch={false} className="flex min-h-11 items-center gap-2 font-bold">
             <ShieldCheck className="size-5 text-primary-light" aria-hidden />
             <span className="gradient-text hidden md:inline">Compliance Sentinel</span>
           </Link>

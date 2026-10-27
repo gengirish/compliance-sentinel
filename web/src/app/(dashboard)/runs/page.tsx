@@ -95,7 +95,7 @@ export default async function RunsPage({ searchParams }: { searchParams: Promise
                   className="relative grid grid-cols-2 gap-x-4 gap-y-3 p-4 hover:bg-surface/60 sm:table-row sm:p-0"
                 >
                   <td role="cell" className={cn(cell, "col-span-2 pr-12 sm:pr-4")}>
-                    <Link href={`/runs/${run.id}`} prefetch={false} className="font-medium text-accent hover:underline">
+                    <Link href={`/runs/${run.id}`} prefetch={false} className="relative font-medium text-accent hover:underline before:absolute before:-inset-x-2 before:-inset-y-3.5">
                       #{run.id}
                     </Link>
                     <span className="ml-2 text-xs text-muted">{TRIGGER_LABEL[run.trigger]}</span>
@@ -103,7 +103,7 @@ export default async function RunsPage({ searchParams }: { searchParams: Promise
                   <td role="cell" data-label="Status" className={cn(cell, labelled, "col-span-2")} title={reason(run)}>
                     <RunStatusBadge status={run.status} />
                     {(run.status === "skipped" || run.status === "failed") && reason(run) && (
-                      <p className="mt-1 max-w-full truncate text-xs text-muted sm:max-w-56">{reason(run)}</p>
+                      <p className="mt-1 max-w-full text-xs text-muted sm:max-w-56 sm:truncate">{reason(run)}</p>
                     )}
                   </td>
                   <td role="cell" data-label="Started" className={cn(cell, labelled, "text-muted")}>

@@ -59,7 +59,7 @@ export function FindingCard({
                 <li key={c.id}>
                   {/* The evidence is the point of a finding, so the first of each kind starts open. */}
                   <details open={i === 0} className="rounded-lg bg-surface-light/60 px-3 py-2 text-sm">
-                    <summary className="font-medium">{c.sectionRef ?? `Chunk ${c.id}`}</summary>
+                    <summary className="-my-2 py-3.5 font-medium">{c.sectionRef ?? `Chunk ${c.id}`}</summary>
                     <p className="mt-2 whitespace-pre-line text-muted">{c.excerpt}</p>
                   </details>
                 </li>
@@ -82,7 +82,7 @@ export function FindingCard({
                 return (
                   <li key={`${e.path}:${e.start_line}`} className="relative">
                     <details open={i === 0} className="rounded-lg bg-surface-light/60 px-3 py-2 text-sm">
-                      <summary className={`break-all font-mono text-xs text-accent ${href ? "pr-10" : ""}`}>
+                      <summary className={`-my-2 py-3.5 break-all font-mono text-xs text-accent ${href ? "pr-10" : ""}`}>
                         {e.path}:{e.start_line}
                         {e.end_line !== e.start_line && `-${e.end_line}`}
                       </summary>

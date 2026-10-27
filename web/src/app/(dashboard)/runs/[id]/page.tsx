@@ -103,7 +103,7 @@ export default async function RunPage({
 
   return (
     <>
-      <Link href="/runs" className="mb-4 inline-flex items-center gap-1 text-sm text-muted hover:text-foreground">
+      <Link href="/runs" className="mb-2 inline-flex min-h-11 items-center gap-1 text-sm text-muted hover:text-foreground">
         <ArrowLeft className="size-4" aria-hidden /> All runs
       </Link>
       <RefreshWhileRunning runId={run.id} status={run.status} />
