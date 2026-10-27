@@ -24,7 +24,7 @@ export async function forward(path: string, body: unknown): Promise<NextResponse
 }
 
 /** Confirms or cancels a subscription by its emailed token, for the server-rendered confirm page. */
-export async function useToken(action: "confirm" | "unsubscribe", token: string): Promise<SubscriptionResult> {
+export async function redeemToken(action: "confirm" | "unsubscribe", token: string): Promise<SubscriptionResult> {
   try {
     const res = await apiFetch(`/subscribers/${action}`, {
       method: "POST",

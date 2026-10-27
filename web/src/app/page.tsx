@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   Workflow,
 } from "lucide-react";
+import { DigestSignup } from "@/components/digest-signup";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -101,6 +102,9 @@ export default function LandingPage() {
             <a href="#results" className="hover:text-foreground">
               Results
             </a>
+            <a href="#digest" className="hover:text-foreground">
+              Digest
+            </a>
           </nav>
           <Link href="/overview" className={cn(buttonVariants({ variant: "secondary", size: "sm" }), "ml-auto")}>
             Open dashboard
@@ -172,7 +176,11 @@ export default function LandingPage() {
             </ol>
             <p className="mt-8 max-w-3xl text-sm text-muted">
               The hosted app also watches eight regulatory sources each day, including the Federal Register, SEC, FCA,
-              EUR-Lex and MAS, and sends a weekly digest of rule changes.
+              EUR-Lex and MAS, and sends a{" "}
+              <a href="#digest" className="text-accent underline-offset-4 hover:underline">
+                weekly digest
+              </a>{" "}
+              of rule changes.
             </p>
           </div>
         </section>
@@ -222,6 +230,17 @@ export default function LandingPage() {
                 </Card>
               ))}
             </div>
+          </div>
+        </section>
+
+        <section id="digest" className="scroll-mt-20 border-t border-border bg-surface/40">
+          <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-20 lg:grid-cols-2">
+            <SectionHeading
+              eyebrow="Weekly digest"
+              title="New and amended rules, in your inbox every Monday"
+              description="A plain-language summary of each rule change from the eight sources we watch: what changed, who it applies to, the key obligations and the effective date, with a link to the source text."
+            />
+            <DigestSignup />
           </div>
         </section>
 

@@ -7,6 +7,7 @@ import { handleRules } from "./mock-rules.mjs";
 
 const PORT = Number(process.env.MOCK_API_PORT ?? 8099);
 const TOKEN = "e2e-token";
+const E2E_SUBSCRIBER_TOKEN = "e2e-subscriber-token-0001";
 
 const counts = {
   total: 3,
@@ -135,6 +136,18 @@ createServer((req, res) => {
       const { enabled } = JSON.parse(raw);
       Object.assign(found, enabled === null ? { enabled: found.defaultEnabled, overridden: false } : { enabled, overridden: true });
       send(200, found);
+    });
+    return;
+  }
+  // Digest sign-ups: any address is accepted; only E2E_SUBSCRIBER_TOKEN confirms or unsubscribes.
+  if (req.method === "POST" && url.pathname.startsWith("/subscribers")) {
+    let raw = "";
+    req.on("data", (d) => (raw += d));
+    req.on("end", () => {
+      const body = JSON.parse(raw || "{}");
+      if (url.pathname === "/subscribers") return send(202, { ok: true });
+      if (!["/subscribers/confirm", "/subscribers/unsubscribe"].includes(url.pathname)) return send(404, { error: "not found" });
+      return body.token === E2E_SUBSCRIBER_TOKEN ? send(200, { email: "reader@example.com" }) : send(404, { error: "invalid link" });
     });
     return;
   }
