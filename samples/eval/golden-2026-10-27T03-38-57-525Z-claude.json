@@ -1,0 +1,45 @@
+{
+  "startedAt": "2026-10-27T03:38:57.525Z",
+  "wallSeconds": 87.759,
+  "analyst": "claude",
+  "models": {
+    "assess": "claude-sonnet-5-5",
+    "fast": "claude-haiku-5-5"
+  },
+  "embedder": "local-hash-1024",
+  "costUsd": 0.45210779999999995,
+  "findings": {
+    "compliant": 0,
+    "violation": 18,
+    "needs_review": 14
+  },
+  "recall": 1,
+  "precision": 0.7777777777777778,
+  "precisionWithConfirmedGaps": 0.9444444444444444,
+  "violations": 18,
+  "found": [
+    "pii-in-logs",
+    "no-retention-job",
+    "plaintext-secrets",
+    "missing-consent",
+    "no-breach-notification"
+  ],
+  "missed": [],
+  "confirmedGaps": [
+    "no-mfa",
+    "no-consent-withdrawal",
+    "no-activity-audit-log"
+  ],
+  "falselyFlagged": [],
+  "falsePositives": [
+    {
+      "obligation": "Apply security patches to address vulnerabilities in every system within a timeframe commensurate with the risk of each vulnerability.",
+      "severity": "high",
+      "evidence": [
+        "package.json:7-13"
+      ],
+      "rationale": "MAS Notice 655 para 4.2 (chunk 8) requires security patches to be applied to every system within a risk-commensurate timeframe. The repository has no automated dependency or vulnerability management: no Dependabot, Renovate, npm audit, CVE or scan references appear in any of the 14 indexed files. package.json declares caret-ranged dependencies with no lockfile or audit script, so there is no mechanism to identify or apply patches. The single \"patch\" keyword match is the unrelated PATCH route in admin.js. Patching could partly live in CI or infrastructure outside the repository, but the dependency manifest is where such a control would normally appear and it is absent."
+    }
+  ],
+  "errors": []
+}

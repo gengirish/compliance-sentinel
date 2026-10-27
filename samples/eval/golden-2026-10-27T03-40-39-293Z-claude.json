@@ -1,0 +1,54 @@
+{
+  "startedAt": "2026-10-27T03:40:39.293Z",
+  "wallSeconds": 89.788,
+  "analyst": "claude",
+  "models": {
+    "assess": "claude-sonnet-5-5",
+    "fast": "claude-haiku-5-5"
+  },
+  "embedder": "local-hash-1024",
+  "costUsd": 0.4462508,
+  "findings": {
+    "compliant": 1,
+    "violation": 17,
+    "needs_review": 12
+  },
+  "recall": 1,
+  "precision": 0.7647058823529411,
+  "precisionWithConfirmedGaps": 0.8823529411764706,
+  "violations": 17,
+  "found": [
+    "pii-in-logs",
+    "no-retention-job",
+    "plaintext-secrets",
+    "missing-consent",
+    "no-breach-notification"
+  ],
+  "missed": [],
+  "confirmedGaps": [
+    "no-consent-withdrawal",
+    "no-activity-audit-log"
+  ],
+  "falselyFlagged": [],
+  "falsePositives": [
+    {
+      "obligation": "Maintain a register of important business services whose disruption could cause intolerable client harm or threaten market stability.",
+      "severity": "high",
+      "evidence": [
+        "schema.sql:1-36",
+        "src/server.js:19-22"
+      ],
+      "rationale": "SYSC 15A.2.1 requires the firm to identify its important business services, and the obligation is to maintain a register of them. A repository-wide search for service catalogue, registry, business service, criticality and service owner terms matched 0 of 14 files, and no indexed module or table could hold such a register. The schema holds only users, patients, visit_notes, appointments and security_incidents, and server.js mounts only signup, patients, admin and incidents routes, so the register appears absent. A register could in principle be kept outside this codebase, so a reviewer should confirm that."
+    },
+    {
+      "obligation": "Define and store an impact tolerance (maximum tolerable disruption duration and level) for each important business service, and use it to drive alerting and recovery targets.",
+      "severity": "high",
+      "evidence": [
+        "src/jobs/index.js:5-8",
+        "schema.sql:38-43"
+      ],
+      "rationale": "SYSC 15A.2.5 requires an impact tolerance (maximum tolerable disruption duration and level) for each important business service, and 15A.2.7 requires the firm to be able to stay within it. The repository search finds no impact tolerance, RTO/RPO, SLO or max-downtime terms in any of the 14 indexed files. The job scheduler and the schema, where such targets or alerting thresholds would be configured or stored, hold none. Whether the clinic's services count as important business services under the rules is a scoping question outside the code, but the required control is absent."
+    }
+  ],
+  "errors": []
+}

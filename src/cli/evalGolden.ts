@@ -52,11 +52,15 @@ try {
     );
     console.log(`  precision : ${(score.precision * 100).toFixed(0)}% of reported violations match a planted one`);
     console.log(
+      `  precision : ${(score.precisionWithConfirmedGaps * 100).toFixed(0)}% match a planted violation or a confirmed real gap`,
+    );
+    console.log(`  confirmed real gaps found: ${score.confirmedGaps.length ? score.confirmedGaps.join(", ") : "none"}`);
+    console.log(
       `  compliant areas wrongly flagged: ${score.falselyFlagged.length ? score.falselyFlagged.join(", ") : "none"}`,
     );
     console.log(`  model cost: $${result.costUsd.toFixed(4)}`);
-    for (const finding of score.unexpected) {
-      console.log(`  unexpected violation: ${finding.obligation.slice(0, 100)} @ ${finding.evidence[0]?.path ?? "?"}`);
+    for (const finding of score.unexplained) {
+      console.log(`  false positive: ${finding.obligation.slice(0, 100)} @ ${finding.evidence[0]?.path ?? "?"}`);
     }
 
     const counts = { compliant: 0, violation: 0, needs_review: 0 };
@@ -71,10 +75,13 @@ try {
       findings: counts,
       recall: score.recall,
       precision: score.precision,
+      precisionWithConfirmedGaps: score.precisionWithConfirmedGaps,
+      violations: counts.violation,
       found: score.found,
       missed: score.missed,
+      confirmedGaps: score.confirmedGaps,
       falselyFlagged: score.falselyFlagged,
-      unexpected: score.unexpected.map((f) => ({
+      falsePositives: score.unexplained.map((f) => ({
         obligation: f.obligation,
         severity: f.severity,
         evidence: f.evidence.map((e) => `${e.path}:${e.start_line}-${e.end_line}`),

@@ -22,7 +22,9 @@ Give it a rule (or let it pick up new and amended rules from eight regulatory so
 | Regulatory change digest (graph node) and weekly digest delivery | Verified against Neon: `pnpm digest:run --demo` digested the 5 demo rules (run 14) and the weekly digest covered 17 rule changes, reusing stored digests, and was delivered by email from the AgentMail inbox. Digests stored before the API key was set are the offline baseline; new rule versions are digested by Claude |
 | Full run on live sources, then a second run that correctly skips | Verified locally |
 | Neon Postgres with pgvector, including the Postgres checkpointer | Verified: migrations and a demo audit ran against Neon |
-| Audit with Claude (`claude-sonnet-5-5`, `claude-haiku-5-5`) and Voyage `voyage-law-2` | Implemented, **not yet run**: needs API keys |
+| Audit with Claude (`claude-sonnet-5-5`, `claude-haiku-5-5`) | Verified: golden eval run three times, 5/5 recall each time, about $0.45 per run (see [Evaluation](#evaluation)) |
+| Voyage `voyage-law-2` embeddings | Implemented, **not yet run**: needs `VOYAGE_API_KEY`. The eval above used the local hash embedder |
+| Audits of real open-source repositories (`pnpm audit:real`) | Plumbing verified offline on three pinned repos; **Claude results not yet published** |
 | Docker image and PDF rendering with WeasyPrint | Verified in CI on every push (image builds, demo report renders to a 17-page PDF) |
 | BullMQ worker and cron | Implemented and typechecked; **not yet run against Redis** |
 | Fly.io deployment | Deployed at <https://compliance-sentinel-gengirish.fly.dev> (`/health` returns 200; other routes need the token) |
@@ -198,12 +200,18 @@ fly logs --process-group worker
 
 Compliant areas that must not be flagged: TLS enforcement (`src/middleware/https.js`) and access control (`src/middleware/auth.js`).
 
-| Analyst | Recall | Precision | Compliant areas flagged |
-|---|---|---|---|
-| Offline keyword baseline | 5/5 | 100% | 0 |
-| Claude (`claude-sonnet-5-5`) | not yet measured | not yet measured | not yet measured |
+Claude also reported gaps the demo app really has but that were never planted: no multi-factor authentication, no way to withdraw marketing consent, and no audit trail of user activity. Each was confirmed by reading the code and is listed in `CONFIRMED_GAPS` in [src/eval/golden.ts](src/eval/golden.ts). Precision is reported two ways: strictly against the planted list, and counting those confirmed gaps as correct.
 
-The offline number shows that the pipeline, retrieval and citation checks work. It says little about reasoning quality, because the baseline's patterns were written with this demo app in view. Run `pnpm eval:golden` with `ANTHROPIC_API_KEY` set to get the real figures, and the cost per run, which is also not yet measured.
+| Analyst | Runs | Recall | Precision, planted only | Precision, incl. confirmed gaps | False positives per run | Compliant areas flagged | Cost per run |
+|---|---|---|---|---|---|---|---|
+| Offline keyword baseline | 1 | 5/5 | 100% | 100% | 0 | 0 | $0 |
+| Claude (`claude-sonnet-5-5` assess, `claude-haiku-5-5` relevance) | 3 | 5/5, 5/5, 5/5 | 78%, 76%, 82% | 94%, 88%, 100% | 1, 2, 0 | 0 | $0.45, $0.45, $0.44 |
+
+Measured 2026-10-27 with the local hash embedder, because `VOYAGE_API_KEY` was not set; about 90 seconds per run. The raw results are in [samples/eval/](samples/eval). The three false positives were all governance duties that do not live in code (a patching timeframe, a register of important business services, an impact tolerance). They should be `needs_review`; that is the next prompt fix.
+
+The offline row shows that the pipeline, retrieval and citation checks work. It says little about reasoning quality, because the baseline's patterns were written with this demo app in view.
+
+Before these runs, Claude found the planted violations 4, 4 and 3 times out of 5. It always missed the retention job: it saw no deletion code but would not call it absent from a repository it had seen only in excerpts. The judge now also gets a repository-wide keyword count per search term and the list of indexed files, so "absent" is a measured fact rather than a guess.
 
 The test suite additionally checks that a model returning invented citations ends with every finding downgraded to `needs_review` and no alert sent.
 

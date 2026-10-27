@@ -1,0 +1,36 @@
+{
+  "startedAt": "2026-10-27T03:42:23.226Z",
+  "wallSeconds": 87.416,
+  "analyst": "claude",
+  "models": {
+    "assess": "claude-sonnet-5-5",
+    "fast": "claude-haiku-5-5"
+  },
+  "embedder": "local-hash-1024",
+  "costUsd": 0.4438683,
+  "findings": {
+    "compliant": 0,
+    "violation": 17,
+    "needs_review": 13
+  },
+  "recall": 1,
+  "precision": 0.8235294117647058,
+  "precisionWithConfirmedGaps": 1,
+  "violations": 17,
+  "found": [
+    "pii-in-logs",
+    "no-retention-job",
+    "plaintext-secrets",
+    "missing-consent",
+    "no-breach-notification"
+  ],
+  "missed": [],
+  "confirmedGaps": [
+    "no-consent-withdrawal",
+    "no-activity-audit-log",
+    "no-retention-job-at-registration"
+  ],
+  "falselyFlagged": [],
+  "falsePositives": [],
+  "errors": []
+}

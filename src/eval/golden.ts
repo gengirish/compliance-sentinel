@@ -43,6 +43,39 @@ export const PLANTED_VIOLATIONS: PlantedViolation[] = [
   },
 ];
 
+/**
+ * Real gaps in demo-target-app that were not deliberately planted. Claude reported them in the
+ * 2026-10-27 eval runs and each was confirmed by reading the code. A violation that matches one is
+ * correct, so it is scored separately from the planted set rather than counted as a false positive.
+ * The strict planted-only precision is still reported, so earlier runs stay comparable.
+ */
+export const CONFIRMED_GAPS: PlantedViolation[] = [
+  {
+    id: "no-mfa",
+    description: "No multi-factor authentication: requireAuth checks a bearer JWT only",
+    files: ["src/middleware/auth.js", "src/routes/admin.js", "src/routes/signup.js", "src/server.js"],
+    topic: /multi-?factor|\bmfa\b|two-?factor|\b2fa\b/i,
+  },
+  {
+    id: "no-consent-withdrawal",
+    description: "No route or job lets a user withdraw marketing consent",
+    files: ["src/routes/signup.js", "src/jobs/reminders.js", "src/jobs/index.js", "schema.sql", "src/server.js"],
+    topic: /withdraw|opt-?out|unsubscribe/i,
+  },
+  {
+    id: "no-activity-audit-log",
+    description: "No audit trail of authorised users' activity; the only logging is console.log",
+    files: ["src/server.js", "src/middleware/auth.js", "src/routes/admin.js", "src/routes/patients.js", "src/routes/incidents.js"],
+    topic: /monitor|audit (?:log|trail)|log(?:ging)? (?:the )?activity|activity of authori[sz]ed users/i,
+  },
+  {
+    id: "no-retention-job-at-registration",
+    description: "No retention or disposal job, cited where jobs are registered (src/server.js calls registerJobs)",
+    files: ["src/server.js"],
+    topic: /retention|dispos|delet|storage limitation|no longer than/i,
+  },
+];
+
 /** Areas of the demo app that implement their control and must not be reported as violations. */
 export const COMPLIANT_AREAS = [
   { id: "tls-enforced", files: ["src/middleware/https.js"] },
@@ -54,10 +87,17 @@ export type GoldenScore = {
   missed: string[];
   /** Violation findings that match no planted violation. */
   unexpected: Finding[];
-  /** Compliant areas wrongly reported as violations. */
+  /** Compliant areas wrongly reported as violations (a confirmed gap in that file does not count). */
   falselyFlagged: string[];
+  /** Planted-only precision: share of violations that match a planted violation. */
   precision: number;
   recall: number;
+  /** Confirmed gaps that at least one violation matched. */
+  confirmedGaps: string[];
+  /** Violations matching neither a planted violation nor a confirmed gap: the false positives. */
+  unexplained: Finding[];
+  /** Share of violations that match a planted violation or a confirmed gap. */
+  precisionWithConfirmedGaps: number;
 };
 
 function matches(finding: Finding, planted: PlantedViolation): boolean {
@@ -70,15 +110,23 @@ export function scoreGolden(findings: Finding[]): GoldenScore {
   const found = PLANTED_VIOLATIONS.filter((p) => violations.some((f) => matches(f, p))).map((p) => p.id);
   const missed = PLANTED_VIOLATIONS.filter((p) => !found.includes(p.id)).map((p) => p.id);
   const unexpected = violations.filter((f) => !PLANTED_VIOLATIONS.some((p) => matches(f, p)));
+  const isConfirmedGap = (f: Finding) => CONFIRMED_GAPS.some((g) => matches(f, g));
   const falselyFlagged = COMPLIANT_AREAS.filter((area) =>
-    violations.some((f) => f.evidence.length > 0 && f.evidence.every((e) => area.files.includes(e.path))),
+    violations.some(
+      (f) => f.evidence.length > 0 && f.evidence.every((e) => area.files.includes(e.path)) && !isConfirmedGap(f),
+    ),
   ).map((area) => area.id);
+  const confirmedGaps = CONFIRMED_GAPS.filter((g) => unexpected.some((f) => matches(f, g))).map((g) => g.id);
+  const unexplained = unexpected.filter((f) => !isConfirmedGap(f));
 
   return {
     found,
     missed,
     unexpected,
     falselyFlagged,
+    confirmedGaps,
+    unexplained,
+    precisionWithConfirmedGaps: violations.length ? (violations.length - unexplained.length) / violations.length : 1,
     precision: violations.length ? (violations.length - unexpected.length) / violations.length : 1,
     recall: found.length / PLANTED_VIOLATIONS.length,
   };
