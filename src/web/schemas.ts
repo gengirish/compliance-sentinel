@@ -14,7 +14,7 @@ const flag = z
   .transform((v) => v === "1" || v === "true");
 
 /** `?key=a,b` against a fixed set. Unknown values are rejected rather than dropped, so typos surface. */
-function commaList<T extends readonly [string, ...string[]]>(allowed: T) {
+export function commaList<T extends readonly [string, ...string[]]>(allowed: T) {
   return z
     .string()
     .optional()
@@ -34,7 +34,7 @@ export const FindingsQuery = z.object({
 /** `true`/`false` switches the source; `null` hands it back to its SCRAPE_* flag. */
 export const SourceSettingBody = z.strictObject({ enabled: z.boolean().nullable() });
 
-export type RequestIssue ={ path: string; message: string };
+export type RequestIssue = { path: string; message: string };
 
 export function describeIssues(error: z.ZodError): RequestIssue[] {
   return error.issues.map((i) => ({ path: i.path.join("."), message: i.message }));

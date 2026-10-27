@@ -144,6 +144,29 @@ async function getJson<T>(path: string, schema: z.ZodType<T>): Promise<T> {
   return schema.parse(await res.json());
 }
 
+/** A page of a list route: the rows, and the unpaged count from the `x-total-count` header. */
+export type ListPage<T> = { items: T[]; total: number };
+
+export async function getList<T>(path: string, schema: z.ZodType<T>): Promise<ListPage<T>> {
+  const res = await apiFetch(path);
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new ApiError(body.error ?? `Sentinel API returned ${res.status}`, res.status);
+  }
+  const items = z.array(schema).parse(await res.json());
+  // An API from before paging sends no header; then the page is everything there is.
+  const header = Number(res.headers.get("x-total-count"));
+  return { items, total: Number.isFinite(header) && res.headers.has("x-total-count") ? header : items.length };
+}
+
+/** `/path?a=1&b=2` from a query object, leaving out empty values. */
+export function withQuery(path: string, query: Record<string, string | number | undefined | null>): string {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(query)) if (v !== undefined && v !== null && v !== "") q.set(k, String(v));
+  const qs = q.toString();
+  return qs ? `${path}?${qs}` : path;
+}
+
 export const api = {
   stats: () => getJson("/stats", Stats),
   runs: () => getJson("/runs?counts=1", z.array(Run)),
