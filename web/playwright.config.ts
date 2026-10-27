@@ -1,7 +1,8 @@
 import { defineConfig } from "@playwright/test";
 
 const E2E_PORT = process.env.E2E_PORT || "3100";
-const MOCK_API_PORT = "8099";
+// Both ports can be overridden, so several checkouts can run the suite at once.
+const MOCK_API_PORT = process.env.MOCK_API_PORT || "8099";
 const baseURL = `http://localhost:${E2E_PORT}`;
 
 // The dashboard runs against tests/e2e/mock-api.mjs, so the suite needs neither the
