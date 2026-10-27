@@ -1,5 +1,6 @@
 // Stand-in for the Sentinel API during e2e runs: fixed fixtures, same routes and token check.
 import { createServer } from "node:http";
+import { handleRules } from "./mock-rules.mjs";
 
 const PORT = Number(process.env.MOCK_API_PORT ?? 8099);
 const TOKEN = "e2e-token";
@@ -99,16 +100,6 @@ const routes = {
   "GET /settings/sources": () => sources,
   "GET /stats": () => ({ latestRun: live(runs[0]), latestCompletedRun: run, totals: { rules: 1, runs: 1 } }),
   "GET /runs": () => runs.map(live),
-  "GET /rules": () => [
-    {
-      ...rule,
-      effectiveDate: "2026-01-01",
-      firstSeenAt: run.startedAt,
-      lastChangedAt: run.startedAt,
-      source: { name: "fixture-demo", kind: "fixture" },
-      lastAuditedRunId: 1,
-    },
-  ],
   "POST /runs": () => {
     queueRun();
     return [202, { jobId: "e2e-job", demo: true }];
@@ -123,6 +114,7 @@ createServer((req, res) => {
   };
   if (url.pathname === "/health") return send(200, { ok: true });
   if (req.headers.authorization !== `Bearer ${TOKEN}`) return send(401, { error: "unauthorized" });
+  if (handleRules(req, url, res)) return;
 
   const runMatch = url.pathname.match(/^\/runs\/(\d+)$/);
   if (req.method === "GET" && runMatch) {

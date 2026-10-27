@@ -4,7 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { serve } from "@hono/node-server";
 import type { Queue } from "bullmq";
-import { and, count, desc, eq, inArray, max, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, gte, ilike, inArray, isNotNull, isNull, max, or, sql, type SQL } from "drizzle-orm";
 import { type Context, Hono } from "hono";
 import { ZodError, type z } from "zod";
 import { config } from "../config.js";
@@ -20,7 +20,8 @@ import { failStaleRuns } from "../pipeline/watchdog.js";
 import { createQueue, enqueueManualAudit, INSTALL_JOB, type AuditJobData } from "../queue/queue.js";
 import { signReportUrl } from "../report/upload.js";
 import { findSource, setSourceEnabled, sourceStates } from "../scrape/registry.js";
-import { describeIssues, FindingsQuery, ListRunsQuery, RunIdParams, SourceSettingBody, TriggerRunQuery } from "./schemas.js";
+import { likeContains, orderBy, pageOffset, setTotal } from "./listQuery.js";
+import { describeIssues, FindingsQuery, ListRulesQuery, ListRunsQuery, RunIdParams, SourceSettingBody, TriggerRunQuery } from "./schemas.js";
 
 export type AppDeps = {
   db: Db;
@@ -43,6 +44,9 @@ export type AppDeps = {
 
 export const INBOUND_PATH = "/inbox/agentmail";
 export const GITHUB_WEBHOOK_PATH = "/github/webhook";
+
+/** A `YYYY-MM-DD` effective date, the only form a date range or sort can use. */
+const ISO_DAY = "^\\d{4}-\\d{2}-\\d{2}$";
 
 /** Run reads sweep for orphaned runs at most this often, so the dashboard never shows one as live. */
 const SWEEP_EVERY_MS = 60_000;
@@ -323,8 +327,14 @@ export function createApp(deps: AppDeps): Hono<Env> {
     );
   });
 
-  /** Tracked rules with their source and the last run that produced findings for them. */
+  /**
+   * Tracked rules with their source and the last run that produced findings for them, filtered
+   * by `q`, `source`, `audited`, `changed` (days) and an effective-date range, sorted and paged.
+   */
   app.get("/rules", async (c) => {
+    const query = parseInput(c, ListRulesQuery, c.req.query());
+    if (!query.ok) return query.response;
+    const { q, source, audited, changed, from, to, sort, order, page, limit } = query.data;
     // Rules are shared; which run last audited one is not.
     const lastAudited = deps.db
       .select({ ruleId: findings.ruleId, runId: max(findings.runId).as("last_run_id") })
@@ -333,6 +343,38 @@ export function createApp(deps: AppDeps): Hono<Env> {
       .where(eq(auditRuns.tenantId, c.get("tenantId") ?? -1))
       .groupBy(findings.ruleId)
       .as("last_audited");
+
+    // effective_date is free text: ISO days from most sources, "1 January 2025" from EUR-Lex.
+    // Only ISO days compare as dates (as text, which orders them correctly); the rest match no
+    // range and sort with the rules that have no date.
+    const isoEffective = sql`CASE WHEN ${rules.effectiveDate} ~ ${ISO_DAY} THEN ${rules.effectiveDate} END`;
+    const where: SQL[] = [];
+    if (q) {
+      const term = likeContains(q);
+      where.push(or(ilike(rules.title, term), ilike(rules.externalId, term))!);
+    }
+    if (source.length) where.push(inArray(sources.name, source));
+    if (audited) where.push(audited === "yes" ? isNotNull(lastAudited.runId) : isNull(lastAudited.runId));
+    if (changed) where.push(gte(rules.lastChangedAt, new Date(Date.now() - changed * 24 * 60 * 60 * 1000)));
+    if (from) where.push(sql`${isoEffective} >= ${from}`);
+    if (to) where.push(sql`${isoEffective} <= ${to}`);
+
+    const sortColumns = {
+      changed: rules.lastChangedAt,
+      first_seen: rules.firstSeenAt,
+      effective: isoEffective,
+      title: rules.title,
+      source: sources.name,
+    };
+    // Rules without a usable effective date go last in either direction.
+    const nullsLast = sort === "effective" ? [sql`${isoEffective} IS NULL`] : [];
+
+    const [total] = await deps.db
+      .select({ n: count() })
+      .from(rules)
+      .innerJoin(sources, eq(rules.sourceId, sources.id))
+      .leftJoin(lastAudited, eq(lastAudited.ruleId, rules.id))
+      .where(and(...where));
     const rows = await deps.db
       .select({
         id: rules.id,
@@ -348,7 +390,22 @@ export function createApp(deps: AppDeps): Hono<Env> {
       .from(rules)
       .innerJoin(sources, eq(rules.sourceId, sources.id))
       .leftJoin(lastAudited, eq(lastAudited.ruleId, rules.id))
-      .orderBy(desc(rules.lastChangedAt));
+      .where(and(...where))
+      .orderBy(...nullsLast, ...orderBy(sortColumns, sort, order, rules.id))
+      .limit(limit)
+      .offset(pageOffset(page, limit));
+    setTotal(c, total?.n ?? 0);
+    return c.json(rows);
+  });
+
+  /** The sources that have rules, with how many: the dashboard's source filter. Rules are shared, so this is too. */
+  app.get("/rules/sources", async (c) => {
+    const rows = await deps.db
+      .select({ name: sources.name, kind: sources.kind, rules: count(rules.id) })
+      .from(sources)
+      .innerJoin(rules, eq(rules.sourceId, sources.id))
+      .groupBy(sources.id)
+      .orderBy(sources.name);
     return c.json(rows);
   });
 
