@@ -18,7 +18,7 @@ Give it a rule (or let it pick up new and amended rules from eight regulatory so
 | FCA publications RSS source | Verified against the live feed (publication pages fetched and reduced to body text) |
 | MAS circulars source (Playwright + pdftotext) | Verified locally against the live site (2 circulars, page text plus PDF text); **not yet run inside the Docker image**. Off by default (`SCRAPE_MAS=true`) |
 | ESMA news, FINRA notices, ASIC regulatory tracker sources | Verified against the live sites (ESMA and FINRA items with page text; ASIC regulatory guides with page and PDF text, capped at `ASIC_MAX_CHARS`) |
-| Regulatory change digest (graph node) and weekly digest delivery | Verified against Neon: `pnpm digest:run --demo` digested the 5 demo rules (run 14) and the weekly digest covered 17 rule changes, reusing stored digests; delivery not yet sent live (needs the AgentMail key). Offline baseline digests until `ANTHROPIC_API_KEY` is set |
+| Regulatory change digest (graph node) and weekly digest delivery | Verified against Neon: `pnpm digest:run --demo` digested the 5 demo rules (run 14) and the weekly digest covered 17 rule changes, reusing stored digests, and was delivered by email from the AgentMail inbox. Digests stored before the API key was set are the offline baseline; new rule versions are digested by Claude |
 | Full run on live sources, then a second run that correctly skips | Verified locally |
 | Neon Postgres with pgvector, including the Postgres checkpointer | Verified: migrations and a demo audit ran against Neon |
 | Audit with Claude (`claude-sonnet-5-5`, `claude-haiku-5-5`) and Voyage `voyage-law-2` | Implemented, **not yet run**: needs API keys |
