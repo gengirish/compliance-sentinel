@@ -1,0 +1,407 @@
+[
+  {
+    "key": "violation|Detect personal data breaches and support notification to the supervisory authority without undue delay and within 72 hours of awareness, unless unlikely to result in risk.|config/initializers/sentry.rb:7-11,app/controllers/api/v1/base_controller.rb:218-220",
+    "status": "violation",
+    "severity": "critical",
+    "obligation": "Detect personal data breaches and support notification to the supervisory authority without undue delay and within 72 hours of awareness, unless unlikely to result in risk.",
+    "evidence": [
+      "config/initializers/sentry.rb:7-11",
+      "app/controllers/api/v1/base_controller.rb:218-220"
+    ],
+    "rationale": "Article 33 requires breach detection and notification to the supervisory authority within 72 hours, plus documentation of breaches. The repository-wide search finds no files mentioning \"breach\", \"incident\", \"notify\", \"72 hours\" or \"security event\", and no indexed module handles breach response or authority notification. The only monitoring is generic Sentry sampling and an API access log, neither of which detects breaches, tracks the 72-hour deadline, or records breach facts.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "violation|Notify each affected individual whose sensitive customer information was or is reasonably likely to have been accessed without authorization, as soon as practicable and within 30 days of becoming aware, unless a reasonable investigation finds no likely substantial harm.|app/controllers/concerns/notifiable.rb:10-16",
+    "status": "violation",
+    "severity": "critical",
+    "obligation": "Notify each affected individual whose sensitive customer information was or is reasonably likely to have been accessed without authorization, as soon as practicable and within 30 days of becoming aware, unless a reasonable investigation finds no likely substantial harm.",
+    "evidence": [
+      "app/controllers/concerns/notifiable.rb:10-16"
+    ],
+    "rationale": "Regulation S-P (chunk 9, 248.30(a)(3)(iii) and (a)(4)) requires notifying each affected individual within 30 days of becoming aware of unauthorized access to sensitive customer information. The repository search finds no breach-notification, affected-user, deadline, incident-timestamp or harm-assessment terms across 940 files. The only 'notification' code, Notifiable, renders in-app flash messages and is unrelated to incident notices, and the mailers cover only email confirmation, invitations and passwords. The required notification workflow appears to be absent.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "violation|Carry out scenario testing of the ability to stay within impact tolerance across a range of severe but plausible adverse scenarios of varying nature, severity and duration.|test/controllers/webhooks_controller_test.rb:1-7,test/models/family_export_test.rb:1-7",
+    "status": "violation",
+    "severity": "high",
+    "obligation": "Carry out scenario testing of the ability to stay within impact tolerance across a range of severe but plausible adverse scenarios of varying nature, severity and duration.",
+    "evidence": [
+      "test/controllers/webhooks_controller_test.rb:1-7",
+      "test/models/family_export_test.rb:1-7"
+    ],
+    "rationale": "SYSC 15A.5.1 requires scenario testing of the ability to remain within impact tolerance across a range of adverse circumstances varying in nature, severity and duration. The repository-wide search finds no scenario, chaos, fault-injection, failover, DR drill or game-day artefacts in 940 files. The test files that could hold such testing are empty or commented-out stubs, so the control is absent rather than merely unseen. Scenario testing can be run outside the code, which is why this rests on absence from the repository, but the instructions treat that absence as a violation.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "violation|Encrypt all customer information both in transit over external networks and at rest.|config/environments/production.rb:45-45,config/application.rb:32-35,app/models/plaid_item.rb:7-9,app/models/api_key.rb:4-5",
+    "status": "violation",
+    "severity": "high",
+    "obligation": "Encrypt all customer information both in transit over external networks and at rest.",
+    "evidence": [
+      "config/environments/production.rb:45-45",
+      "config/application.rb:32-35",
+      "app/models/plaid_item.rb:7-9",
+      "app/models/api_key.rb:4-5"
+    ],
+    "rationale": "Section 314.4(c)(3) requires encryption of all customer information in transit over external networks and at rest. In production.rb, force_ssl is on by default but can be switched off through RAILS_FORCE_SSL. At-rest encryption is applied only to a few fields (api_key display_key, plaid_item access_token), and the Plaid token is encrypted only when active_record_encryption credentials are present. config/application.rb makes those credentials optional, and no other encryption was found (8 of 940 files mention it), so financial data is not broadly encrypted at rest.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "violation|Securely dispose of customer information no later than two years after its last use in providing a product or service, unless a legitimate business, legal retention, or infeasibility exception applies.|app/jobs/user_purge_job.rb:1-7,app/models/balance/materializer.rb:74-80",
+    "status": "violation",
+    "severity": "high",
+    "obligation": "Securely dispose of customer information no later than two years after its last use in providing a product or service, unless a legitimate business, legal retention, or infeasibility exception applies.",
+    "evidence": [
+      "app/jobs/user_purge_job.rb:1-7",
+      "app/models/balance/materializer.rb:74-80"
+    ],
+    "rationale": "§ 314.4(c)(6)(i) requires procedures to securely dispose of customer information within two years of its last use, unless an exception applies. The repository search finds zero matches for \"retention\" or \"dispose\" and no scheduled data-aging job. The only purge-like code is UserPurgeJob, which purges a user on demand, and Balance::Materializer#purge_stale_balances, which removes balances outside a calculated date range as part of recalculation. Neither disposes of data based on time since last use. Cited code is where such a disposal mechanism would live.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "violation|Be able to demonstrate that the data subject consented where processing relies on consent, e.g. by recording consent evidence.|app/models/provider/plaid.rb:56-61,db/migrate/20240201184212_create_users.rb:8-12",
+    "status": "violation",
+    "severity": "high",
+    "obligation": "Be able to demonstrate that the data subject consented where processing relies on consent, e.g. by recording consent evidence.",
+    "evidence": [
+      "app/models/provider/plaid.rb:56-61",
+      "db/migrate/20240201184212_create_users.rb:8-12"
+    ],
+    "rationale": "Article 7(1) requires the controller to be able to demonstrate consent. The repository has no consent log, opt-in, or consent-version artifact (0 matches each), and the 'consent' hits are mostly Plaid-related. Plaid Link token creation passes consented products but stores no record of the user's consent (timestamp, version, or text), and no migration or model holds such evidence. The users and families tables hold only basic fields and timestamps.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "violation|Implement multi-factor authentication for administrative accounts on critical systems and for all accounts on systems used to access customer information through the internet.|app/controllers/sessions_controller.rb:10-14,app/controllers/api/v1/auth_controller.rb:67-75,app/controllers/mfa_controller.rb:5-8",
+    "status": "violation",
+    "severity": "high",
+    "obligation": "Implement multi-factor authentication for administrative accounts on critical systems and for all accounts on systems used to access customer information through the internet.",
+    "evidence": [
+      "app/controllers/sessions_controller.rb:10-14",
+      "app/controllers/api/v1/auth_controller.rb:67-75",
+      "app/controllers/mfa_controller.rb:5-8"
+    ],
+    "rationale": "Chunk 8 (4.6) requires MFA for all administrative accounts on critical systems and for all accounts on systems used to access customer information through the internet. The code implements TOTP MFA (ROTP) at login for web sessions and the API, but only when a user has opted in, since both checks are conditional on user.otp_required?. Nothing in the evidence requires or enforces MFA enrollment for admin accounts or for all accounts (no require_mfa or step-up matches), so accounts without MFA can authenticate with a password alone.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "violation|Detect unauthorized access to or use of customer information and assess its nature and scope, including which systems and types of customer information were affected.|test/controllers/api/v1/base_controller_test.rb:263-280,app/controllers/api/v1/test_controller.rb:15-25",
+    "status": "violation",
+    "severity": "high",
+    "obligation": "Detect unauthorized access to or use of customer information and assess its nature and scope, including which systems and types of customer information were affected.",
+    "evidence": [
+      "test/controllers/api/v1/base_controller_test.rb:263-280",
+      "app/controllers/api/v1/test_controller.rb:15-25"
+    ],
+    "rationale": "Rule 248.30(a)(3)(i) requires detecting unauthorized access to customer information and assessing its nature and scope, including which systems and data types were affected. The only monitoring evidence is API request logging that is asserted in tests, and nothing analyzes those logs to detect unauthorized access or scope an incident. Repository searches for audit_log, intrusion_detection, siem, incident, access_log and anomaly return zero matches, and the \"alert\" hits are UI components, so detection and scoping capability appears absent.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Define and record an impact tolerance (maximum tolerable disruption and duration) for each important business service, and monitor against it.|config/routes.rb:262-264",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Define and record an impact tolerance (maximum tolerable disruption and duration) for each important business service, and monitor against it.",
+    "evidence": [
+      "config/routes.rb:262-264"
+    ],
+    "rationale": "SYSC 15A.2.5 requires an impact tolerance (maximum disruption and duration) per important business service. Searches found no 'impact_tolerance', 'max_downtime', 'maximum_tolerable_disruption' or 'alert_threshold' terms, and the only related code is the generic Rails health endpoint, which reports liveness and defines no tolerance. However, impact tolerances and their monitoring are largely organisational and may be recorded in governance documents or in external monitoring infrastructure outside the repository, so the absence in code cannot be treated as a definitive violation.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Ensure each important business service can remain within its impact tolerance during severe but plausible disruption, through resilience measures such as redundancy, failover and recovery.|compose.example.yml:3-7",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Ensure each important business service can remain within its impact tolerance during severe but plausible disruption, through resilience measures such as redundancy, failover and recovery.",
+    "evidence": [
+      "compose.example.yml:3-7"
+    ],
+    "rationale": "Searches found no failover, redundancy, disaster recovery, high availability, multi-region or circuit breaker terms in 940 files, and the excerpts show no resilience controls. This is a self-hostable Rails app (compose.example.yml), and resilience for an important business service (15A.2.7) is mostly delivered through infrastructure, deployment and organisational measures that the code cannot show. Whether this repository supports an important business service, and what its impact tolerance is, is also unknown. A violation cannot be asserted from code alone, so a human reviewer should check the deployment architecture and the firm's service mapping.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Maintain internal and external communication capability to give timely information to clients, market participants and the FCA during operational disruptions.|app/controllers/concerns/notifiable.rb:10-16,app/views/pwa/service-worker.js:1-6",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Maintain internal and external communication capability to give timely information to clients, market participants and the FCA during operational disruptions.",
+    "evidence": [
+      "app/controllers/concerns/notifiable.rb:10-16",
+      "app/views/pwa/service-worker.js:1-6"
+    ],
+    "rationale": "SYSC 15A.8.1 requires a communication strategy for timely information to clients, market participants and the FCA during disruptions. The repo is a personal finance app. Searches for incident notification, status page, customer notification, escalation, alerting and communication plan match no files, and the excerpts show only UI flash notifications and a commented-out push worker. However, a communication strategy is largely organisational and may live outside code (status pages, runbooks, managed services), and it is unclear that this application is itself an FCA-regulated firm's service. Absence of code is therefore not conclusive, so a human reviewer should confirm.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Monitor and log activity of authorized users and detect unauthorized access to, use of, or tampering with customer information.|app/controllers/api/v1/base_controller.rb:218-220,test/controllers/api/v1/base_controller_test.rb:263-280,config/environments/production.rb:62-69",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Monitor and log activity of authorized users and detect unauthorized access to, use of, or tampering with customer information.",
+    "evidence": [
+      "app/controllers/api/v1/base_controller.rb:218-220",
+      "test/controllers/api/v1/base_controller_test.rb:263-280",
+      "config/environments/production.rb:62-69"
+    ],
+    "rationale": "Some activity logging exists: the API base controller has a log_api_access method, and a test asserts that API requests log the method, path and user email. Production logging is request_id-tagged at a reduced level. The repository also has impersonation_session_log.rb, and the search found no audit_log, audit_trail, tamper or SIEM matches. The excerpts do not show whether web (non-API) access and modifications of customer data are logged, nor any detection of unauthorized access or tampering, and the cited code cannot settle that. A human should confirm coverage and whether detection or monitoring is handled outside the code.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Notify the FTC as soon as possible, and no later than 30 days after discovery, of a notification event involving the information of at least 500 consumers.|",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Notify the FTC as soon as possible, and no later than 30 days after discovery, of a notification event involving the information of at least 500 consumers.",
+    "evidence": [],
+    "rationale": "Section 314.4(j) requires FTC notification within 30 days of discovering a notification event involving at least 500 consumers. Repository searches found no 'breach', 'incident', or 'incident_response' terms, and 'ftc' appears in one file; the 'notification' hits are flash/UI and push-notification code, unrelated to regulator reporting. This duty is largely organisational and could live in external incident-response runbooks outside the code, and no excerpt shows a place where such a control would plainly reside, so I cannot call it a code violation.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Keep personal data in identifiable form no longer than necessary for its purposes, by defining retention periods and deleting or anonymising data afterwards.|app/jobs/user_purge_job.rb:1-7",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Keep personal data in identifiable form no longer than necessary for its purposes, by defining retention periods and deleting or anonymising data afterwards.",
+    "evidence": [
+      "app/jobs/user_purge_job.rb:1-7"
+    ],
+    "rationale": "The search shows no retention-period definition (0 files for \"retention\", \"anonymize\", \"archive\") and no scheduled cleanup, which points to a storage-limitation gap under Article 5(1)(e). But there is some deletion machinery: UserPurgeJob purges a user, and the file list includes SyncCleanerJob and FamilyResetJob. The excerpts do not show what these delete or when, and retention could also be enforced by infrastructure or through user-initiated deletion. A human reviewer should confirm whether any time-based deletion or anonymisation exists for personal data, including backups and logs.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Implement security measures appropriate to the risk, including pseudonymisation and encryption of personal data, and ensure ongoing confidentiality, integrity, availability and resilience of processing systems.|app/models/api_key.rb:4-5,app/models/plaid_item.rb:7-9,config/application.rb:32-35",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Implement security measures appropriate to the risk, including pseudonymisation and encryption of personal data, and ensure ongoing confidentiality, integrity, availability and resilience of processing systems.",
+    "evidence": [
+      "app/models/api_key.rb:4-5",
+      "app/models/plaid_item.rb:7-9",
+      "config/application.rb:32-35"
+    ],
+    "rationale": "Article 32(1)(a) is partly met: ActiveRecord encryption is applied to ApiKey#display_key and, only when encryption credentials are configured, to PlaidItem#access_token. The config comment describes keys as optional for self-hosters, so protection of other personal data (e.g. financial records) is not evident, and no pseudonymisation was found. Evidence on resilience and availability, TLS and key management is absent or may sit in infrastructure, so a compliant or violation verdict cannot be reached from this excerpt.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Let data subjects withdraw consent at any time, as easily as giving it, and stop processing accordingly.|app/controllers/settings/preferences_controller.rb:1-3",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Let data subjects withdraw consent at any time, as easily as giving it, and stop processing accordingly.",
+    "evidence": [
+      "app/controllers/settings/preferences_controller.rb:1-3"
+    ],
+    "rationale": "Article 7(3) requires that consent can be withdrawn as easily as it was given. The excerpts show no consent-recording or withdrawal feature: the only matches are OAuth token revocation and API key revocation, which concern session and credential management rather than data-subject consent. The keyword \"consent\" appears in 9 files but none of those excerpts were provided. It is unclear whether the application relies on consent as a legal basis, for example for AI chat or Plaid data sharing, so I cannot decide between a missing control and a non-applicable obligation.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Document every personal data breach, including the facts, its effects and the remedial action taken.|",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Document every personal data breach, including the facts, its effects and the remedial action taken.",
+    "evidence": [],
+    "rationale": "Article 33(5) requires the controller to document each personal data breach, including the facts, effects and remedial action. Searches for incident log, breach register, remediation, postmortem, audit trail and incident report matched none of the 940 indexed files, and the indexed files show no incident or breach model. The excerpts provided (balance calculators and their tests) are unrelated to breach records, so no code location can be cited as the place where this control would live. Breach documentation is typically an organisational process kept in a ticketing system, a wiki or a register outside the repository, so absence from the code does not show a violation. A reviewer should confirm whether such a process exists outside the codebase.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Be able to demonstrate compliance with the processing principles through records and evidence (accountability).|config/initializers/filter_parameter_logging.rb:3-7,config/environments/production.rb:67-69",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Be able to demonstrate compliance with the processing principles through records and evidence (accountability).",
+    "evidence": [
+      "config/initializers/filter_parameter_logging.rb:3-7",
+      "config/environments/production.rb:67-69"
+    ],
+    "rationale": "Article 5(2) requires the controller to be able to demonstrate compliance, which is largely organisational (policies, records of processing, DPIAs) and cannot be settled from code alone. The code shows some supporting technical measures, such as parameter filtering of sensitive fields in logs and a production log-level comment about avoiding PII exposure. The repository also contains impersonation_session_log.rb and enrichment logging, but the excerpts do not show them. Searches for 'audit log', 'records of processing' and 'compliance evidence' returned no matches. That absence does not prove a violation, because accountability records may be kept outside the code. A human reviewer should check for external documentation and evidence.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Secure every administrative account on operating systems, databases, applications, security appliances and network devices against unauthorised access or use.|app/controllers/family_exports_controller.rb:42-46,app/controllers/impersonation_sessions_controller.rb:51-53,app/controllers/api/v1/auth_controller.rb:39-43",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Secure every administrative account on operating systems, databases, applications, security appliances and network devices against unauthorised access or use.",
+    "evidence": [
+      "app/controllers/family_exports_controller.rb:42-46",
+      "app/controllers/impersonation_sessions_controller.rb:51-53",
+      "app/controllers/api/v1/auth_controller.rb:39-43"
+    ],
+    "rationale": "The application has some admin-role gating (require_admin in family_exports_controller, require_super_admin! for impersonation) and there are MFA, password and session controllers in the file list. However, the obligation (chunk 8, 4.1) covers administrative accounts on operating systems, databases, security appliances and network devices, which live in infrastructure outside this code. The excerpts show authorization checks, not how admin accounts are secured (password policy, MFA enforcement, credential protection), and the API auth controller creates an admin user on signup. A reviewer must inspect infrastructure and the authentication code before a verdict.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Apply security patches to address vulnerabilities in every system within a timeframe commensurate with the risk of each vulnerability.|",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Apply security patches to address vulnerabilities in every system within a timeframe commensurate with the risk of each vulnerability.",
+    "evidence": [],
+    "rationale": "Chunk 8 (clause 4.2) requires security patches to be applied within a timeframe commensurate with risk. The indexed file list includes .github/dependabot.yml, but its contents were not provided, so it is unclear whether it automates dependency updates or how it is configured. The keyword search for 'dependabot' returned 0 matches, which conflicts with that file's existence. None of the excerpts show patching of the OS, base images or dependencies, or any risk-based timeline. Patching may also happen in infrastructure outside the code, so a reviewer should inspect dependabot.yml, the CI workflows and the deployment process.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Maintain written security standards for every system, ensure systems conform to them, and assess, mitigate and formally approve any deviation. Implement network perimeter controls that restrict all unauthorised network traffic.|config/initializers/content_security_policy.rb:7-17,config/initializers/content_security_policy.rb:7-25",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Maintain written security standards for every system, ensure systems conform to them, and assess, mitigate and formally approve any deviation. Implement network perimeter controls that restrict all unauthorised network traffic.",
+    "evidence": [
+      "config/initializers/content_security_policy.rb:7-17",
+      "config/initializers/content_security_policy.rb:7-25"
+    ],
+    "rationale": "Chunk 8 (section 4.3) requires written security standards for every system, conformance to them, and assessed, mitigated and approved deviations. The keyword searches for security_standard, hardening, CIS benchmark, config_drift, waiver and policy_as_code matched no files, and the excerpts are unrelated (a Plaid security resolver, a commented-out CSP, error handlers). Written standards and deviation approval are largely organisational and could live in documents or infrastructure outside the code, so absence from the repository does not establish a violation. The excerpts also contain no code that enforces or documents conformance, so a human reviewer should confirm whether such standards exist elsewhere. Chunk 8 (section 4.4) requires controls at the network perimeter to restrict unauthorised traffic. The repository search found no firewall, security_group, ingress, iptables or network_policy terms, and only minor allowlist and WAF matches. Perimeter controls usually live in infrastructure such as cloud networking, a load balancer or a managed WAF, not in this application code, so absence here does not show that none exist. The only related excerpt, the content security policy initializer, is fully commented out, but it is a browser-side header and not a network perimeter control. The evidence cannot support a compliant or violation verdict.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Implement malware protection measures on every system where such measures are available and can be implemented.|",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Implement malware protection measures on every system where such measures are available and can be implemented.",
+    "evidence": [],
+    "rationale": "Chunk 8 (section 4.5) requires malware protection on every system where it is available and can be implemented. The repository search finds no antivirus, malware, ClamAV, virus-scan, upload-scan or quarantine terms, and the app accepts file uploads (import uploads controller, file_upload_controller.js). However, endpoint and server malware protection (EDR, host antivirus, container or cloud scanning) usually lives in infrastructure outside application code, so absence from the repository does not show it is missing. The excerpts shown are unrelated to malware controls and the evidence is insufficient to give a violation verdict.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Protect the security, confidentiality and integrity of customer information with technical safeguards that guard against anticipated threats and unauthorized access or use.|app/controllers/api/v1/auth_controller.rb:67-75,config/initializers/doorkeeper.rb:200-205,config/initializers/doorkeeper.rb:111-111,config/application.rb:32-35,app/controllers/api/v1/base_controller.rb:15-19",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Protect the security, confidentiality and integrity of customer information with technical safeguards that guard against anticipated threats and unauthorized access or use.",
+    "evidence": [
+      "app/controllers/api/v1/auth_controller.rb:67-75",
+      "config/initializers/doorkeeper.rb:200-205",
+      "config/initializers/doorkeeper.rb:111-111",
+      "config/application.rb:32-35",
+      "app/controllers/api/v1/base_controller.rb:15-19"
+    ],
+    "rationale": "The code shows several technical safeguards: MFA for login and API auth, hashed Doorkeeper token and application secrets outside tests, per-request authentication with API key rate limiting, and optional ActiveRecord encryption. Some settings weaken them, such as access tokens that live for 1 year and encryption that is only configured if credentials are present. The excerpts cannot show whether the safeguards are adequate for the anticipated threats, whether TLS and at-rest protections are enforced, or whether the written policies, incident response and service provider oversight exist. A human reviewer should confirm these.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Contain and control security incidents to prevent further unauthorized access to or use of customer information.|app/controllers/api/v1/auth_controller.rb:188-189,app/controllers/api/v1/auth_controller.rb:128-129,app/controllers/settings/api_keys_controller.rb:24-26",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Contain and control security incidents to prevent further unauthorized access to or use of customer information.",
+    "evidence": [
+      "app/controllers/api/v1/auth_controller.rb:188-189",
+      "app/controllers/api/v1/auth_controller.rb:128-129",
+      "app/controllers/settings/api_keys_controller.rb:24-26"
+    ],
+    "rationale": "Chunk 9 requires procedures to contain and control incidents. The code has token revocation (access token revoke on refresh, device.revoke_all_tokens!, API key revocation) that could serve as containment primitives. However, there is no incident response tooling (no incident_response, runbook, quarantine, or kill_switch matches), and the incident response program is largely organisational and may live outside the code, so it can't be judged as compliant or violating from code alone.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Include required content in breach notices: general incident description, type of sensitive information affected, date or estimated date, contact information, and recommendation to review account statements and consider a fraud alert or security freeze.|",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Include required content in breach notices: general incident description, type of sensitive information affected, date or estimated date, contact information, and recommendation to review account statements and consider a fraud alert or security freeze.",
+    "evidence": [],
+    "rationale": "Chunk 9 (248.30(a)(4)) requires breach notices to include a general incident description, type of sensitive information, date, contact information, and a recommendation to review statements and consider a fraud alert or security freeze. Searches for notice_template, incident_date, contact_info, fraud_alert, security_freeze and letter_template matched 0 of 940 files, and the excerpts shown (market data importer, price importer tests) concern unrelated functionality. The repo has mailers, but none shown is a breach notice, and notification could be handled outside the code, so the absence cannot be conclusively judged as a violation. No cited code location actually relates to breach notices, so a violation verdict cannot be supported with evidence; human review is needed.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Oversee service providers through due diligence and monitoring, and require them to protect customer information and notify the institution within 72 hours of becoming aware of a breach of a system they maintain.|app/controllers/api/v1/base_controller.rb:17-21",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Oversee service providers through due diligence and monitoring, and require them to protect customer information and notify the institution within 72 hours of becoming aware of a breach of a system they maintain.",
+    "evidence": [
+      "app/controllers/api/v1/base_controller.rb:17-21"
+    ],
+    "rationale": "Regulation S-P 248.30(a)(5) requires service provider oversight (due diligence, monitoring) and a 72-hour breach notification requirement. The searches found no vendor-risk, service_provider, third_party or 72_hours terms, and the excerpts show only API key authentication and unrelated code. Service provider oversight is largely organisational (contracts, due diligence records) and could live outside the code, and the repo does integrate with providers such as Plaid and Stripe, so the absence of code cannot conclusively show a violation. A human reviewer should check vendor contracts and oversight documentation.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Dispose of consumer and customer information properly, with reasonable measures to prevent unauthorized access or use during disposal.|app/jobs/user_purge_job.rb:1-7,app/controllers/users_controller.rb:22-22,app/models/balance/materializer.rb:74-80",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Dispose of consumer and customer information properly, with reasonable measures to prevent unauthorized access or use during disposal.",
+    "evidence": [
+      "app/jobs/user_purge_job.rb:1-7",
+      "app/controllers/users_controller.rb:22-22",
+      "app/models/balance/materializer.rb:74-80"
+    ],
+    "rationale": "The code has deletion paths (UserPurgeJob calling user.purge, profile image purge, stale balance deletion), but none shows measures that protect against unauthorized access during disposal, such as secure erasure, backup expiry or media sanitization. Searches for retention, secure_erase, shred, data_disposal and backup_expiry match nothing. Disposal of backups, storage volumes and devices could be handled in infrastructure or by a managed service outside this code, and the body of user.purge is not shown. A human reviewer should confirm those controls before a verdict is reached.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Make and maintain written records documenting compliance, including policies and procedures, detected unauthorized access and the response, and service provider oversight.|app/models/application_record.rb:1-3",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Make and maintain written records documenting compliance, including policies and procedures, detected unauthorized access and the response, and service provider oversight.",
+    "evidence": [
+      "app/models/application_record.rb:1-3"
+    ],
+    "rationale": "Regulation S-P 248.30(c) requires written records of policies, incident response, and service provider oversight. Keyword searches for incident logs, audit trails, policy documents, vendor reviews and evidence match no files, and the excerpts shown (ApplicationRecord, a chart controller, Doorkeeper config) are unrelated to recordkeeping. Such records are largely organisational documents and may live outside the repository, so absence from code cannot establish a violation; the repository does contain an impersonation_session_log model, which was not shown. A human reviewer should confirm where these records are maintained.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Maintain a registry of identified important business services whose disruption could cause intolerable harm to clients or market stability.|",
+    "status": "needs_review",
+    "severity": "low",
+    "obligation": "Maintain a registry of identified important business services whose disruption could cause intolerable harm to clients or market stability.",
+    "evidence": [],
+    "rationale": "SYSC 15A.2.1 requires a firm to identify its important business services, but a registry of these is largely an organisational artefact (policy documents, governance records) that may legitimately live outside the code. Searches for terms such as important_business_service, service_registry, service_catalog and business_service matched 0 of 940 files, and the excerpts shown (a currencies fetch service, merchant-detection prompts, a VCR cassette, a message test) are unrelated to any service registry. Absence in code is not conclusive for this obligation, so a human reviewer should confirm whether the firm maintains the registry elsewhere. No excerpt shows a registry, so no code location can be cited.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Identify and document the people, processes, technology, facilities and information needed to deliver each important business service, in enough detail to find vulnerabilities and test tolerances.|",
+    "status": "needs_review",
+    "severity": "low",
+    "obligation": "Identify and document the people, processes, technology, facilities and information needed to deliver each important business service, in enough detail to find vulnerabilities and test tolerances.",
+    "evidence": [],
+    "rationale": "SYSC 15A.3.1 requires documented mapping of people, processes, technology, facilities and information for each important business service. The repository search found no dependency map, asset inventory, CMDB or architecture diagram, and the excerpts are unrelated tests (account type mapping, a Stripe cassette). Mapping is largely an organisational document that could be held outside the codebase, and the code does not define the firm's important business services, so a violation cannot be concluded from code alone. The evidence cited does not show a mapping, so a human reviewer should confirm where the mapping is kept.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Where testing shows tolerance cannot be met, implement the necessary remediation and record lessons learned.|",
+    "status": "needs_review",
+    "severity": "low",
+    "obligation": "Where testing shows tolerance cannot be met, implement the necessary remediation and record lessons learned.",
+    "evidence": [],
+    "rationale": "SYSC 15A.5.3 requires firms to make changes and record lessons learned where scenario testing shows impact tolerance cannot be met. Searches for remediation, lessons-learned, post-mortem and action-item terms match no files, but this duty is organisational and the records could sit in wikis, issue trackers or governance documents outside the code. The test excerpts are stubs or ordinary unit tests with no link to impact-tolerance scenario testing, so a code-based verdict would be a guess.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Keep an up-to-date written self-assessment covering services, tolerances, mapping, testing, lessons learned and remediation, approved by the governing body and retained for at least six years.|",
+    "status": "needs_review",
+    "severity": "low",
+    "obligation": "Keep an up-to-date written self-assessment covering services, tolerances, mapping, testing, lessons learned and remediation, approved by the governing body and retained for at least six years.",
+    "evidence": [],
+    "rationale": "SYSC 15A.6.1 requires a written self-assessment approved by the governing body and retained for six years. The searches found no self-assessment, retention, governing-body or archive terms in any of the 940 files. The cited excerpts are unrelated finance-app logic, so they cannot show a missing control. A self-assessment is an organisational document that probably lives outside this personal-finance application's code, so it cannot be judged from code alone and a human reviewer should confirm.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Collect and process only the personal data that is adequate, relevant and necessary for the stated purposes (data minimisation).|app/models/plaid_item/accounts_snapshot.rb:1-21",
+    "status": "needs_review",
+    "severity": "low",
+    "obligation": "Collect and process only the personal data that is adequate, relevant and necessary for the stated purposes (data minimisation).",
+    "evidence": [
+      "app/models/plaid_item/accounts_snapshot.rb:1-21"
+    ],
+    "rationale": "Data minimisation under Article 5(1)(c) depends on whether each collected field is necessary for a stated purpose, and that cannot be judged from these excerpts. The Plaid snapshot code fetches item-level data (accounts, transactions, investments, liabilities) and then scopes it per account, which may or may not be proportionate. The excerpts include no purpose statement, field-level collection rules, or request-scoping parameters. The rest of the evidence (chart scaling, UI helpers, test helpers, migrations) is unrelated to personal data collection. No clear breach or clear control is shown.",
+    "label": null,
+    "note": ""
+  }
+]

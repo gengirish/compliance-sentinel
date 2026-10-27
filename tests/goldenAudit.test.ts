@@ -39,7 +39,7 @@ describe("golden audit of demo-target-app (offline analyst)", () => {
   });
   afterAll(() => handle.close());
 
-  it("finds all five planted violations", () => {
+  it("finds every planted violation", () => {
     const score = scoreGolden(result.state!.finalFindings);
     expect(score.missed).toEqual([]);
     expect(score.found).toHaveLength(PLANTED_VIOLATIONS.length);
@@ -75,7 +75,7 @@ describe("golden audit of demo-target-app (offline analyst)", () => {
   });
 
   it("points the PII finding at the exact log statements", () => {
-    const pii = result.state!.finalFindings.find((f) => f.status === "violation" && /logs/.test(f.obligation))!;
+    const pii = result.state!.finalFindings.find((f) => f.status === "violation" && /application logs/.test(f.obligation))!;
     const cited = pii.evidence.map((e) => `${e.path}:${e.start_line}`);
     expect(cited).toContain("src/routes/signup.js:10");
     expect(cited).toContain("src/routes/patients.js:12");

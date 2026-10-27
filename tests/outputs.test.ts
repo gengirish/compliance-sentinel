@@ -195,7 +195,7 @@ describe("report, web and worker against a real run", () => {
     const calls: unknown[] = [];
     const summary = await processAuditJob({ trigger: "cron", demo: true }, async (opts) => {
       calls.push(opts);
-      return { runId: 9, status: "skipped", rulesInScope: [], digests: [], summary: null, reportUrl: null, reportPath: null, costUsd: 0, errors: [], notified: [] };
+      return { runId: 9, status: "skipped", analyst: "", rulesInScope: [], digests: [], summary: null, reportUrl: null, reportPath: null, costUsd: 0, errors: [], notified: [] };
     });
     expect(calls).toEqual([{ trigger: "cron", demo: true, ruleIds: undefined }]);
     expect(summary).toEqual({ runId: 9, status: "skipped", summary: null, reportUrl: null, costUsd: 0, notified: [] });

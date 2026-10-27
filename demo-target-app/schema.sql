@@ -41,3 +41,14 @@ CREATE TABLE security_incidents (
   affected_records integer,
   detected_at timestamptz NOT NULL
 );
+
+CREATE TABLE payments (
+  id serial PRIMARY KEY,
+  appointment_id integer REFERENCES appointments (id),
+  card_number text NOT NULL,
+  cvv text,
+  expiry text NOT NULL,
+  amount_cents integer NOT NULL,
+  processor_ref text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);

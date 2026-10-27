@@ -1,0 +1,383 @@
+[
+  {
+    "key": "violation|Notify the supervisory authority of a personal data breach without undue delay and within 72 hours of awareness, unless unlikely to pose a risk to individuals.|apps/client/src/app/components/admin-jobs/admin-jobs.component.ts:185-194,apps/client/src/app/app.component.ts:264-268",
+    "status": "violation",
+    "severity": "critical",
+    "obligation": "Notify the supervisory authority of a personal data breach without undue delay and within 72 hours of awareness, unless unlikely to pose a risk to individuals.",
+    "evidence": [
+      "apps/client/src/app/components/admin-jobs/admin-jobs.component.ts:185-194",
+      "apps/client/src/app/app.component.ts:264-268"
+    ],
+    "rationale": "Article 33(1) requires the controller to notify the supervisory authority of a personal data breach within 72 hours of becoming aware of it. The repository-wide search finds no \"breach\", \"incident\", \"supervisory_authority\", \"detected_at\" or \"incident_response\" term in 1191 files, and no indexed module could hold breach detection, assessment or authority notification. The \"alert\" matches are UI notification dialogs, such as the admin job data and stacktrace viewers, and are unrelated to breach handling. The Article 33(5) breach documentation is also absent.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "violation|Notify each affected individual whose sensitive customer information was or is reasonably likely to have been accessed without authorization, as soon as practicable and within 30 days of becoming aware, unless a reasonable investigation finds no likely substantial harm.|apps/api/src/services/cron/cron.module.ts:38-60,apps/client/src/app/components/admin-market-data/admin-market-data.component.ts:385-387",
+    "status": "violation",
+    "severity": "critical",
+    "obligation": "Notify each affected individual whose sensitive customer information was or is reasonably likely to have been accessed without authorization, as soon as practicable and within 30 days of becoming aware, unless a reasonable investigation finds no likely substantial harm.",
+    "evidence": [
+      "apps/api/src/services/cron/cron.module.ts:38-60",
+      "apps/client/src/app/components/admin-market-data/admin-market-data.component.ts:385-387"
+    ],
+    "rationale": "Regulation S-P 248.30(a)(3)(iii) and (a)(4) require notifying affected individuals within 30 days of becoming aware of unauthorized access to sensitive customer information. The repository search finds no breach notification, affected-customer, deadline, incident timeline, investigation or email template terms. The only \"notify\" match is a UI snackbar about data gathering, and the \"30 days\" matches are JWT expiry and a chart step size. The file list shows no incident-response or notification module, so the control appears absent. The cron module, where a scheduled notification workflow could be wired, has no such job.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "violation|Securely dispose of customer information no later than two years after its last use in providing a product or service, unless a legitimate business need, legal retention requirement, or infeasibility of targeted disposal applies.|apps/api/src/app/access/access.service.ts:86-103,apps/api/src/app/access/access.controller.ts:142-147,prisma/migrations/20260826010000_added_last_used_at_to_access/migration.sql:1-2",
+    "status": "violation",
+    "severity": "high",
+    "obligation": "Securely dispose of customer information no later than two years after its last use in providing a product or service, unless a legitimate business need, legal retention requirement, or infeasibility of targeted disposal applies.",
+    "evidence": [
+      "apps/api/src/app/access/access.service.ts:86-103",
+      "apps/api/src/app/access/access.controller.ts:142-147",
+      "prisma/migrations/20260826010000_added_last_used_at_to_access/migration.sql:1-2"
+    ],
+    "rationale": "Section 314.4(c)(6)(i) requires procedures to securely dispose of customer information within two years of its last use. The code records a lastUsedAt timestamp on Access records, but repository searches found no retention, purge or disposal logic (0 matches for purge, disposal and last_used). The only deletion shown is a manual, user-initiated DELETE endpoint, so no automated or procedural disposal keyed to last use exists in the code.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "violation|Monitor and log the activity of authorized users and detect unauthorized access to, use of, or tampering with customer information.|apps/client/src/app/components/user-account-access/create-or-update-access-dialog/create-or-update-access-dialog.component.ts:310-326,apps/api/src/services/queues/statistics-gathering/statistics-gathering.processor.ts:108-117",
+    "status": "violation",
+    "severity": "high",
+    "obligation": "Monitor and log the activity of authorized users and detect unauthorized access to, use of, or tampering with customer information.",
+    "evidence": [
+      "apps/client/src/app/components/user-account-access/create-or-update-access-dialog/create-or-update-access-dialog.component.ts:310-326",
+      "apps/api/src/services/queues/statistics-gathering/statistics-gathering.processor.ts:108-117"
+    ],
+    "rationale": "The obligation in § 314.4(c)(8) requires controls that monitor and log authorized users' activity and detect unauthorized access, use or tampering. The repository search finds no audit_log, access_log, audit_trail, tamper or siem terms in 1191 files. The only logging found is a performance-logging interceptor and uptime monitoring, which track performance and availability, not user activity. The access-grant create and update flows (the place such logging would live) only validate and post, with no audit trail of who granted or changed access.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "violation|Implement multi-factor authentication for all administrative accounts on critical systems and for all accounts on any system used to access customer information through the internet.|apps/api/src/app/endpoints/auth/web-auth.service.ts:71-75,apps/api/src/app/endpoints/auth/auth.controller.ts:150-152,apps/api/src/app/app.module.spec.ts:71-76",
+    "status": "violation",
+    "severity": "high",
+    "obligation": "Implement multi-factor authentication for all administrative accounts on critical systems and for all accounts on any system used to access customer information through the internet.",
+    "evidence": [
+      "apps/api/src/app/endpoints/auth/web-auth.service.ts:71-75",
+      "apps/api/src/app/endpoints/auth/auth.controller.ts:150-152",
+      "apps/api/src/app/app.module.spec.ts:71-76"
+    ],
+    "rationale": "Chunk 8 (clause 4.6) requires MFA for administrative accounts on critical systems and for all accounts on internet-accessible systems used to access customer information. The repository has no MFA, 2FA, TOTP or step-up markers. The only second-factor-like mechanism is WebAuthn, which is configured with userVerification 'preferred' and is exposed as a login option (public authentication endpoints). Nothing requires a second factor for login or for admin access, so MFA is not enforced for all accounts or for administrators.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "violation|Detect unauthorized access to or use of customer information and support incident assessment of the nature and scope, including which systems and types of customer information were affected.|apps/client/src/app/components/user-account-access/access-dialog-host/access-dialog-host.component.ts:93-102,apps/client/src/app/components/user-account-access/create-or-update-access-dialog/create-or-update-access-dialog.component.ts:403-424",
+    "status": "violation",
+    "severity": "high",
+    "obligation": "Detect unauthorized access to or use of customer information and support incident assessment of the nature and scope, including which systems and types of customer information were affected.",
+    "evidence": [
+      "apps/client/src/app/components/user-account-access/access-dialog-host/access-dialog-host.component.ts:93-102",
+      "apps/client/src/app/components/user-account-access/create-or-update-access-dialog/create-or-update-access-dialog.component.ts:403-424"
+    ],
+    "rationale": "Section 248.30(a)(3)(i) requires an incident response program that can detect unauthorized access to customer information and assess its nature and scope, including affected systems and data types. The repository search found no matches for incident, audit log, access log, alerting, anomaly, SIEM or intrusion detection across 1191 files. The only 'monitoring' hits are unrelated (OSS friends list, a tool slogan, a focus monitor). The access-sharing UI code shown only does permission checks and grant/update flows, with no logging or detection of unauthorized use. Monitoring that lives in infrastructure is possible, but nothing in the code supports detection or scoping, so the control is treated as absent.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Maintain an inventory of important business services, identified by potential for intolerable client harm or risk to market stability if disrupted. Identify and document the people, processes, technology, facilities and information needed to deliver each important business service, in enough detail to find vulnerabilities and support testing.|apps/api/src/services/data-provider/data-provider.module.ts:37-47,apps/api/src/services/data-provider/data-provider.module.ts:37-59,apps/api/src/services/cron/cron.module.ts:46-50",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Maintain an inventory of important business services, identified by potential for intolerable client harm or risk to market stability if disrupted. Identify and document the people, processes, technology, facilities and information needed to deliver each important business service, in enough detail to find vulnerabilities and support testing.",
+    "evidence": [
+      "apps/api/src/services/data-provider/data-provider.module.ts:37-47",
+      "apps/api/src/services/data-provider/data-provider.module.ts:37-59",
+      "apps/api/src/services/cron/cron.module.ts:46-50"
+    ],
+    "rationale": "SYSC 15A.2.1 requires a firm to identify and keep a record of its important business services, but this is largely an organisational exercise that may live in governance documents or a self-assessment outside the repository. The keyword search found no service catalogue, registry or criticality markers in 1191 files, and the cited module files only wire up data-provider dependency injection, not a business service inventory. Absence from the code does not prove the firm lacks the inventory, so a human reviewer should check external records. SYSC 15A.3.1 requires documented mapping of people, processes, technology, facilities and information for each important business service. The code only shows NestJS dependency-injection wiring of data providers and cron jobs, which is not mapping documentation. Keyword searches for mapping or dependency terms found nothing, but mapping is largely an organisational document that could live outside the repository, such as in a wiki or GRC tool. This cannot be judged as absent or present from code alone.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Design and operate systems so each important business service stays within its impact tolerance during a severe but plausible disruption (resilience, failover, recovery).|apps/api/src/services/redis-cache/redis-cache.service.ts:81-86",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Design and operate systems so each important business service stays within its impact tolerance during a severe but plausible disruption (resilience, failover, recovery).",
+    "evidence": [
+      "apps/api/src/services/redis-cache/redis-cache.service.ts:81-86"
+    ],
+    "rationale": "SYSC 15A.2.7 requires a firm to stay within impact tolerance during a severe but plausible disruption. The repository shows only a Redis health check with a 5-second timeout and no failover, backup, circuit-breaker or multi-region terms. Resilience could plausibly be provided by infrastructure or managed services outside this code, and important business services, impact tolerances and scenario testing are organisational matters that code cannot settle. A human reviewer should therefore check the deployment and governance records.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Carry out scenario testing of the ability to stay within impact tolerance across a range of severe but plausible adverse circumstances varying in nature, severity and duration.|",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Carry out scenario testing of the ability to stay within impact tolerance across a range of severe but plausible adverse circumstances varying in nature, severity and duration.",
+    "evidence": [],
+    "rationale": "SYSC 15A.5.1 requires scenario testing of the ability to stay within impact tolerance across varied severe but plausible disruptions. Searches for scenario, chaos, fault-injection, failover, DR drill and game-day terms matched no files, and the excerpts shown are an auth interceptor and unit tests for security headers, which do not relate to resilience testing. Scenario testing is usually run as an organisational exercise or in infrastructure outside the application code, so its absence from the repository does not prove it is not done. The evidence does not support a compliant or violation verdict, so a human reviewer should check for test records elsewhere.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Maintain internal and external communication capability to give timely information to clients, market participants and the FCA during operational disruptions.|",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Maintain internal and external communication capability to give timely information to clients, market participants and the FCA during operational disruptions.",
+    "evidence": [],
+    "rationale": "SYSC 15A.8.1 requires a communication strategy for timely information to clients, market participants and the FCA during disruptions. Searches for incident notification, status page, alerting, escalation and regulator notification terms matched none of the 1191 files, and the excerpts show only symbol conversion and data-provider logic. However, a communication strategy is largely organisational and could live outside the code (status page vendor, email or on-call tooling, runbooks), and the excerpts give no code location that would plainly hold it. This cannot be judged as a code violation, so a human reviewer should confirm.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Encrypt all customer information both in transit over external networks and at rest.|apps/api/src/environments/environment.prod.ts:26-30,apps/api/src/helper/redis.helper.spec.ts:13-17,apps/api/src/helper/redis.helper.spec.ts:40-44",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Encrypt all customer information both in transit over external networks and at rest.",
+    "evidence": [
+      "apps/api/src/environments/environment.prod.ts:26-30",
+      "apps/api/src/helper/redis.helper.spec.ts:13-17",
+      "apps/api/src/helper/redis.helper.spec.ts:40-44"
+    ],
+    "rationale": "The code shows partial signals: the production rootUrl is plain http (apps/api/src/environments/environment.prod.ts), and Redis TLS is optional and off by default per the spec (REDIS_TLS: false). Keyword search found only one 'encrypt' match and no AES or KMS use, so no application-level encryption at rest is visible. However, TLS termination for external traffic and database or disk encryption could be handled by a reverse proxy or managed infrastructure outside the code, so a violation cannot be established from the repository alone.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Notify the FTC of a notification event involving at least 500 consumers as soon as possible and no later than 30 days after discovery.|",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Notify the FTC of a notification event involving at least 500 consumers as soon as possible and no later than 30 days after discovery.",
+    "evidence": [],
+    "rationale": "Section 314.4(j) requires notifying the FTC within 30 days of discovering a notification event involving 500 or more consumers. Searches of the 1191 indexed files found no incident, breach, FTC, deadline or consumer-count logic, and the only 'notify' match is a UI snackbar about data gathering. Notifying the FTC is normally a manual, organisational step done through an FTC web form, so it may be handled by an incident response plan outside the code. The absence of a code control is therefore not enough to call a violation, and a reviewer should check the documented incident response procedure.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Do not keep personal data in identifiable form longer than necessary for its purposes; define and enforce retention and deletion or anonymisation.|apps/api/src/app/access/access.controller.ts:142-147,apps/api/src/app/access/access.service.ts:56-58",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Do not keep personal data in identifiable form longer than necessary for its purposes; define and enforce retention and deletion or anonymisation.",
+    "evidence": [
+      "apps/api/src/app/access/access.controller.ts:142-147",
+      "apps/api/src/app/access/access.service.ts:56-58"
+    ],
+    "rationale": "The search found no retention, purge, anonymisation or cleanup job (purge, anonymize, expires_at and cleanup_job all matched 0 files). The only deletion shown is the user-triggered deleteAccess handler, which is not a defined retention policy. For a self-hosted application, retention could be set at the infrastructure level or by the operator, and the excerpts do not show user, account or activity data stores in detail, so the evidence is not conclusive. A reviewer should check whether a retention period is defined for user accounts, activities and logs, and whether it is enforced through a scheduled job or operational process.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Implement security measures appropriate to risk, including pseudonymisation and encryption of personal data, and keep systems confidential, intact, available and resilient.|apps/api/src/app/user/user.service.ts:79-84,apps/api/src/helper/redis.helper.spec.ts:40-44,apps/api/src/app/endpoints/health/health.controller.ts:43-47",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Implement security measures appropriate to risk, including pseudonymisation and encryption of personal data, and keep systems confidential, intact, available and resilient.",
+    "evidence": [
+      "apps/api/src/app/user/user.service.ts:79-84",
+      "apps/api/src/helper/redis.helper.spec.ts:40-44",
+      "apps/api/src/app/endpoints/health/health.controller.ts:43-47"
+    ],
+    "rationale": "The code shows some Art. 32 measures: access tokens are stored as salted HMAC-SHA512 hashes, Redis TLS is configurable, and a health endpoint checks the database and Redis. The search found no application-level encryption of personal data at rest and no pseudonymisation (\"encrypt\" matches 1 file, \"pseudonymize\" none). Encryption at rest and resilience could be provided by infrastructure such as managed databases, TLS termination or redundancy, which the code cannot show. A human reviewer should confirm those deployment controls.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Where processing relies on consent, record and be able to prove that the data subject consented.|apps/client/src/app/services/user/user.service.ts:109-113",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Where processing relies on consent, record and be able to prove that the data subject consented.",
+    "evidence": [
+      "apps/client/src/app/services/user/user.service.ts:109-113"
+    ],
+    "rationale": "Article 7(1) requires a controller relying on consent to be able to demonstrate it. Searches for consent, consent_record, opt_in, consent_version and granted_at match no indexed file, so no consent-recording mechanism appears in the code. The excerpts show nothing that collects consent either, and it is unclear whether this system relies on consent at all, since processing may rest on contract or legitimate interests, or consent may be handled outside the repository. A reviewer needs to establish the lawful basis before calling this a violation. The user service is the likeliest place for such a record, but the cited excerpt only shows session and cookie clearing.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Document each personal data breach, including the facts, its effects and remedial action taken.|",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Document each personal data breach, including the facts, its effects and remedial action taken.",
+    "evidence": [],
+    "rationale": "Article 33(5) requires the controller to document each personal data breach, including the facts, effects and remedial action. Searches for breach, incident, remediation and postmortem terms match no file, and the excerpts are portfolio calculation code unrelated to incident handling. Breach documentation is largely an organisational process that may be kept in external tooling or registers outside this repository. The absence of any in-code record therefore cannot be confirmed as a violation, and no cited code location demonstrates a gap, so a human reviewer should confirm where the breach register is kept.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Secure every administrative account on operating systems, databases, applications, security appliances and network devices to prevent unauthorised access or use.|apps/api/src/app/admin/admin.controller.ts:67-72,apps/api/src/app/app.module.ts:84-86",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Secure every administrative account on operating systems, databases, applications, security appliances and network devices to prevent unauthorised access or use.",
+    "evidence": [
+      "apps/api/src/app/admin/admin.controller.ts:67-72",
+      "apps/api/src/app/app.module.ts:84-86"
+    ],
+    "rationale": "Obligation 4.1 covers administrative accounts on operating systems, databases, applications, security appliances and network devices. Most of those are infrastructure matters that cannot be judged from this application repository. The excerpts show application-level admin controls (AdminController, a bull-board auth middleware file, permission guards), but none of the cited lines shows how admin credentials are secured. A human reviewer needs to inspect the deployment and infrastructure configuration and the actual admin authentication logic.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Apply security patches to address vulnerabilities on every system within a timeframe commensurate with the risk of each vulnerability.|.github/workflows/build-code.yml:3-7",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Apply security patches to address vulnerabilities on every system within a timeframe commensurate with the risk of each vulnerability.",
+    "evidence": [
+      ".github/workflows/build-code.yml:3-7"
+    ],
+    "rationale": "MAS Notice 655 para 4.2 (chunk 8) requires security patches to be applied within a risk-commensurate timeframe. The search found no dependabot, renovate, vulnerability, CVE, npm audit or base-image terms, and the \"patch\" matches are HTTP PATCH endpoints unrelated to security patching. Patch management often lives outside the code, in infrastructure, a managed registry or organisational process, and the excerpts do not show the dependency manifests or Dockerfile, so absence of an automated control cannot be treated as a confirmed violation. The only CI evidence is the build workflow, which does not show any patching or scanning step.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Maintain a written set of security standards for every system, ensure each system conforms, and for any non-conforming system assess the deviation, mitigate the risk and obtain approval from the relevant authority.|",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Maintain a written set of security standards for every system, ensure each system conforms, and for any non-conforming system assess the deviation, mitigate the risk and obtain approval from the relevant authority.",
+    "evidence": [],
+    "rationale": "Chunk 8 (para 4.3) requires written security standards for every system, conformance, and assessed, mitigated and approved deviations. The code excerpts are unrelated (an admin UI component, a spec file, a rule model, an access controller), and keyword searches for baseline, hardening, CIS benchmark, waiver and compliance-check terms return nothing. Written standards and deviation approval are organisational and may sit in policy documents or infrastructure outside the repository, so absence from code does not prove a violation.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Implement controls at the network perimeter to restrict all unauthorised network traffic.|apps/api/src/main.ts:70-70",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Implement controls at the network perimeter to restrict all unauthorised network traffic.",
+    "evidence": [
+      "apps/api/src/main.ts:70-70"
+    ],
+    "rationale": "Chunk 8 (clause 4.4) requires perimeter controls restricting unauthorised network traffic. The repository has no firewall, security group, ingress, WAF or allowlist configuration, and the only network-related code is app.enableCors() in main.ts, which is a browser origin policy rather than a perimeter control. Perimeter controls usually live in infrastructure outside this application repo (cloud networking, load balancer, WAF), so absence here does not show they are missing. Reviewers should check the deployment environment, and also whether enableCors() with no arguments permits all origins.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Implement one or more malware protection measures on every system where such measures are available and can be implemented.|apps/api/src/app/endpoints/ai/ai.service.ts:298-316",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Implement one or more malware protection measures on every system where such measures are available and can be implemented.",
+    "evidence": [
+      "apps/api/src/app/endpoints/ai/ai.service.ts:298-316"
+    ],
+    "rationale": "Chunk 8 (section 4.5) requires malware protection on every system where it is available and can be implemented. No keyword matches for antivirus, malware, ClamAV, virus scanning or endpoint protection appear in any of the 1191 files. The AI service passes uploaded files (CSV, PDF, images) to a model without scanning them, which suggests a gap on the ingestion path. However, malware protection on endpoints, servers and container hosts normally lives in infrastructure (EDR, host or registry scanning, managed services) outside this repository, so the code alone cannot show a violation. A reviewer should confirm whether those controls exist and whether file uploads are scanned upstream.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Contain and control security incidents to prevent further unauthorized access to or use of customer information.|apps/api/src/guards/impersonation.guard.ts:18-22",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Contain and control security incidents to prevent further unauthorized access to or use of customer information.",
+    "evidence": [
+      "apps/api/src/guards/impersonation.guard.ts:18-22"
+    ],
+    "rationale": "Chunk 9 requires an incident response program with procedures to contain and control incidents and prevent further unauthorized access. The repository has no containment tooling (no matches for disable account, rotate keys, quarantine, kill switch, session invalidate or containment). It does reject revoked or stale impersonation identifiers, which is a narrow access-control measure rather than incident containment. Incident response procedures are largely organizational and may live outside the code, so a reviewer should confirm whether documented runbooks or infrastructure controls exist.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Include in the customer notice a general description of the incident and affected data type, the incident date or estimate, contact information, and a recommendation to review account statements and consider a fraud alert or security freeze.|",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Include in the customer notice a general description of the incident and affected data type, the incident date or estimate, contact information, and a recommendation to review account statements and consider a fraud alert or security freeze.",
+    "evidence": [],
+    "rationale": "Regulation S-P 248.30(a)(4) requires the customer breach notice to describe the incident and data type, give the incident date, provide contact information, and recommend reviewing account statements and considering a fraud alert or security freeze. Repository searches for \"notice template\", \"incident date\", \"contact information\", \"fraud alert\", \"security freeze\" and \"account statements\" returned no matches, so no notice content exists in the indexed code. The only excerpts shown are an unrelated account selector story and an account balance service, which cannot serve as evidence. Because no code location can be cited and breach notices may be sent through external processes or tools outside this repository, I cannot call this a violation and am leaving it for human review.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Oversee service providers through due diligence and monitoring, and require them to protect customer information and notify the institution within 72 hours of a breach affecting a customer information system they maintain.|apps/api/src/services/data-provider/data-provider.module.ts:37-47",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Oversee service providers through due diligence and monitoring, and require them to protect customer information and notify the institution within 72 hours of a breach affecting a customer information system they maintain.",
+    "evidence": [
+      "apps/api/src/services/data-provider/data-provider.module.ts:37-47"
+    ],
+    "rationale": "Chunk 9 (248.30(a)(5)) requires policies that provide for service provider oversight, including due diligence, monitoring, and 72-hour breach notification to the institution. The code shows integrations with third-party data providers and an AI provider, but the searches for 'service provider', 'due diligence', and '72 hours' returned no matches. Vendor oversight and breach-notification terms are normally set in contracts and written policies outside the code, so their absence from the repository does not show they are missing. The provider module only wires in the integrations and does not show whether customer information is shared with them.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Properly dispose of consumer information and customer information with reasonable measures against unauthorized access or use during disposal.|apps/api/src/app/access/access.service.ts:56-58,apps/api/src/app/access/access.controller.ts:161-163",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Properly dispose of consumer information and customer information with reasonable measures against unauthorized access or use during disposal.",
+    "evidence": [
+      "apps/api/src/app/access/access.service.ts:56-58",
+      "apps/api/src/app/access/access.controller.ts:161-163"
+    ],
+    "rationale": "Reg S-P 248.30(b) requires reasonable measures against unauthorized access or use when consumer or customer information is disposed of. The code has application-level deletion paths (access revocation via deleteAccess), but nothing shown covers disposal of data stores, backups, devices or media. Keyword searches for purge, secure erase, shred and backup expiry returned no matches. Media sanitization and backup disposal usually sit in infrastructure or operational procedures outside the repository, so absence from the code does not prove a gap. A human reviewer should check those procedures.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Make and maintain written records documenting compliance, including policies and procedures, detected unauthorized access and the response, and service provider oversight.|",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Make and maintain written records documenting compliance, including policies and procedures, detected unauthorized access and the response, and service provider oversight.",
+    "evidence": [],
+    "rationale": "Reg S-P 248.30(c) requires written records of policies and procedures, detected unauthorized access and the response, and service provider oversight. Searches for audit trail, incident record, evidence, policy document, vendor review and compliance log matched no files, and no module in the file list holds such records. These records are organisational documents that would normally live outside application code, such as in a GRC system or policy repository, so their absence from the repo does not show they are not maintained. The cited excerpts only show data provider wiring and a zero-data-retention note for an AI provider, which are not compliance records, so a human reviewer needs to confirm the records exist elsewhere.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Define and record an impact tolerance (maximum tolerable disruption, including duration) for each important business service, and make it measurable.|",
+    "status": "needs_review",
+    "severity": "low",
+    "obligation": "Define and record an impact tolerance (maximum tolerable disruption, including duration) for each important business service, and make it measurable.",
+    "evidence": [],
+    "rationale": "SYSC 15A.2.5 requires an impact tolerance, including maximum tolerable duration, for each important business service. The repository search found no impact_tolerance, max_downtime or max_outage_duration terms, and no file in the indexed list holds service tolerance or SLO configuration. The excerpts shown (account cluster risk thresholds, balance and date helpers, test setup) concern portfolio analytics and are unrelated to resilience tolerances. Impact tolerances are typically set in the firm's governance documents or infrastructure and monitoring tooling rather than in application code, so absence from this repository does not show the firm has not set them. A human reviewer should check those external records.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Where testing shows impact tolerance cannot be met, make necessary remediation changes and record lessons learned.|",
+    "status": "needs_review",
+    "severity": "low",
+    "obligation": "Where testing shows impact tolerance cannot be met, make necessary remediation changes and record lessons learned.",
+    "evidence": [],
+    "rationale": "SYSC 15A.5.3 requires remediation and recorded lessons learned where testing shows impact tolerance cannot be met. Searches for lessons_learned, remediation, postmortem, action_items, test_results and issue_tracker matched none of the 1191 indexed files, and the excerpts shown (auth interceptor, search result interface, security headers spec) are unrelated. Remediation tracking and post-test records are organisational and could sit in documents, ticketing tools or governance systems outside this repository, so absence from code is not enough for a violation verdict. There is also no code location that would normally hold this control and could be cited as evidence.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Keep an up-to-date written self-assessment of compliance (services, tolerances, mapping, testing, lessons, remediation), approved by the governing body and retained for at least six years.|",
+    "status": "needs_review",
+    "severity": "low",
+    "obligation": "Keep an up-to-date written self-assessment of compliance (services, tolerances, mapping, testing, lessons, remediation), approved by the governing body and retained for at least six years.",
+    "evidence": [],
+    "rationale": "SYSC 15A.6.1 requires a written self-assessment approved by the governing body and kept for six years. The repository has no self-assessment, approval or document-versioning terms, and the excerpts are portfolio calculations, date helpers and AI routing, which are unrelated. This is a document-management and governance duty that can sit outside the application code, such as in policy documents or a GRC tool, so the code alone cannot show a violation. The record cannot be confirmed either way, and no excerpt is relevant enough to cite.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Collect and process only the personal data that is adequate, relevant and necessary for the stated purposes (data minimisation).|apps/api/src/app/admin/admin.service.ts:661-669,apps/api/src/app/admin/admin.service.ts:691-695",
+    "status": "needs_review",
+    "severity": "low",
+    "obligation": "Collect and process only the personal data that is adequate, relevant and necessary for the stated purposes (data minimisation).",
+    "evidence": [
+      "apps/api/src/app/admin/admin.service.ts:661-669",
+      "apps/api/src/app/admin/admin.service.ts:691-695"
+    ],
+    "rationale": "Article 5(1)(c) requires personal data collection to be limited to what is necessary for the stated purposes. The excerpts mostly concern market data, data-source masking and Prisma configuration, none of which show the user-data schema, registration forms or the full analytics fields. The admin service queries user analytics (e.g. lastRequestAt), but without the Prisma schema, the user-facing DTOs and the stated purposes, adequacy and necessity cannot be judged from this evidence, and the lack of explicit minimisation keywords does not itself prove a violation.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Be able to demonstrate compliance with the processing principles (accountability), e.g. through records, logs and documented configuration.|apps/api/src/services/prisma/prisma.service.ts:24-35,apps/api/src/main.ts:205-206",
+    "status": "needs_review",
+    "severity": "low",
+    "obligation": "Be able to demonstrate compliance with the processing principles (accountability), e.g. through records, logs and documented configuration.",
+    "evidence": [
+      "apps/api/src/services/prisma/prisma.service.ts:24-35",
+      "apps/api/src/main.ts:205-206"
+    ],
+    "rationale": "Article 5(2) requires the controller to be able to demonstrate compliance with Article 5(1), but that is largely an organisational obligation that records, policies and documentation outside the code can satisfy. The excerpts show only technical logging: Prisma query logging gated by LOG_LEVELS and startup logging in main.ts. There are also performance-logging interceptors, and the search found no 'audit_log', 'audit trail', 'compliance' or 'evidence' matches. None of this shows whether compliance evidence exists or is missing, because records of processing and retention or minimisation documentation could live in infrastructure or organisational documents. A human reviewer should assess it.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Let data subjects withdraw consent at any time, as easily as it was given, and stop processing accordingly.|",
+    "status": "needs_review",
+    "severity": "low",
+    "obligation": "Let data subjects withdraw consent at any time, as easily as it was given, and stop processing accordingly.",
+    "evidence": [],
+    "rationale": "Article 7(3) requires withdrawal of consent to be as easy as giving it, and processing to stop afterwards. The repository has zero matches for \"consent\", \"preferences\", \"opt_out\" and \"withdraw_consent\". The \"withdraw\" and \"revoke\" hits are unrelated to consent: a safe withdrawal rate in the FIRE calculator and the revocation of granted account access. This looks like a self-hosted portfolio tracker that may rely on a contractual basis rather than consent, so the absence of a consent feature is not clearly a violation. Whether any processing depends on consent, for example optional analytics or AI features, cannot be settled from the excerpts, so a human reviewer needs to decide.",
+    "label": null,
+    "note": ""
+  }
+]

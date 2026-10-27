@@ -1,0 +1,1368 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Compliance Sentinel audit report, run 1</title>
+<style>
+  @page {
+    size: A4;
+    margin: 22mm 18mm 20mm 18mm;
+    @top-left { content: "Compliance Sentinel"; font: 8pt "DejaVu Sans", Arial, sans-serif; color: #6b7280; }
+    @top-right { content: "Audit run 1 · 2026-10-27"; font: 8pt "DejaVu Sans", Arial, sans-serif; color: #6b7280; }
+    @bottom-center { content: "Page " counter(page) " of " counter(pages); font: 8pt "DejaVu Sans", Arial, sans-serif; color: #6b7280; }
+    @bottom-left { content: "Decision support, not legal advice"; font: 8pt "DejaVu Sans", Arial, sans-serif; color: #6b7280; }
+  }
+  @page cover { margin: 0; @top-left { content: none; } @top-right { content: none; } @bottom-center { content: none; } @bottom-left { content: none; } }
+
+  * { box-sizing: border-box; }
+  body { font: 10pt/1.45 "DejaVu Sans", Arial, Helvetica, sans-serif; color: #111827; margin: 0; }
+  h1 { font-size: 20pt; margin: 0 0 6mm; }
+  h2 { font-size: 14pt; margin: 0 0 4mm; padding-bottom: 2mm; border-bottom: 1px solid #d1d5db; }
+  h3 { font-size: 11pt; margin: 0 0 2mm; }
+  p { margin: 0 0 3mm; }
+  a { color: #1d4ed8; text-decoration: none; }
+  section { page-break-before: always; }
+  .muted { color: #6b7280; }
+  .small { font-size: 8.5pt; }
+
+  .cover { page: cover; page-break-before: avoid; height: 297mm; padding: 60mm 24mm 24mm; background: #0f172a; color: #f8fafc; }
+  .cover .kicker { font-size: 10pt; letter-spacing: 0.12em; text-transform: uppercase; color: #94a3b8; }
+  .cover h1 { font-size: 30pt; margin: 6mm 0 10mm; }
+  .cover table { width: 100%; border-collapse: collapse; margin-top: 16mm; }
+  .cover td { padding: 2.5mm 0; border-bottom: 1px solid #334155; font-size: 10pt; vertical-align: top; }
+  .cover td:first-child { width: 42mm; color: #94a3b8; }
+  .cover .verdict { margin-top: 14mm; padding: 5mm 6mm; border-left: 4px solid #f87171; background: #1e293b; font-size: 11pt; }
+  .cover .verdict.ok { border-left-color: #4ade80; }
+
+  table.grid { width: 100%; border-collapse: collapse; margin: 0 0 5mm; }
+  table.grid th, table.grid td { border: 1px solid #e5e7eb; padding: 2mm 2.5mm; text-align: left; vertical-align: top; }
+  table.grid th { background: #f3f4f6; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.04em; }
+  td.num { text-align: right; width: 22mm; }
+
+  .badge { display: inline-block; padding: 0.4mm 2.2mm; border-radius: 2mm; font-size: 8pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.04em; color: #fff; }
+  .badge.critical { background: #b91c1c; }
+  .badge.high { background: #c2410c; }
+  .badge.medium { background: #a16207; }
+  .badge.low { background: #4b5563; }
+  .badge.compliant { background: #15803d; }
+  .badge.needs_review { background: #6d28d9; }
+  .badge.violation { background: #b91c1c; }
+
+  .finding { border: 1px solid #e5e7eb; border-left-width: 4px; border-radius: 1.5mm; padding: 4mm 5mm; margin: 0 0 5mm; page-break-inside: avoid; }
+  .finding.critical { border-left-color: #b91c1c; }
+  .finding.high { border-left-color: #c2410c; }
+  .finding.medium { border-left-color: #a16207; }
+  .finding.low { border-left-color: #4b5563; }
+  .finding.compliant { border-left-color: #15803d; }
+  .finding.needs_review { border-left-color: #6d28d9; }
+  .finding .id { float: right; }
+  .label { font-size: 8pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; color: #6b7280; margin: 3mm 0 1mm; }
+  blockquote { margin: 0 0 2mm; padding: 2mm 3mm; background: #f9fafb; border-left: 2px solid #9ca3af; font-size: 9pt; }
+  pre { margin: 0 0 2mm; padding: 2.5mm 3mm; background: #111827; color: #e5e7eb; font: 8pt/1.4 "DejaVu Sans Mono", Consolas, monospace; white-space: pre-wrap; word-break: break-all; border-radius: 1mm; }
+  code { font: 8.5pt "DejaVu Sans Mono", Consolas, monospace; }
+  .loc { font: bold 8.5pt "DejaVu Sans Mono", Consolas, monospace; margin: 0 0 1mm; }
+  ul { margin: 0 0 3mm; padding-left: 5mm; }
+  .note { font-size: 8.5pt; color: #92400e; }
+</style>
+</head>
+<body>
+
+<div class="cover">
+  <div class="kicker">Compliance Sentinel · Audit report</div>
+  <h1>Regulatory audit of juice-shop/juice-shop</h1>
+  <div>Run 1 · 2026-10-27 · triggered by manual</div>
+  <div class="verdict ">
+      2 critical violations found. Action is needed.
+  </div>
+  <table>
+    <tr><td>Target repository</td><td>juice-shop/juice-shop</td></tr>
+    <tr><td>Audited snapshot</td><td>717f5efa886b0417eeecb52378b03cf10567b7e2</td></tr>
+    <tr><td>Rules in scope</td><td>5</td></tr>
+    <tr><td>Obligations assessed</td><td>34</td></tr>
+    <tr><td>Findings</td><td>34</td></tr>
+    <tr><td>Analyst</td><td>claude</td></tr>
+    <tr><td>Model cost</td><td>$1.0979</td></tr>
+  </table>
+</div>
+
+<section>
+  <h2>Executive summary</h2>
+  <p>
+    This run audited <strong>juice-shop/juice-shop</strong> against 5 new or amended
+    rules. It assessed 34 obligations, which
+    consolidated into 34 findings:
+    10 violations,
+    24 needing human review and
+    0 compliant.
+  </p>
+
+  <table class="grid">
+    <tr><th>Violations by severity</th><th>Count</th></tr>
+    <tr><td><span class="badge critical">Critical</span></td><td class="num">2</td></tr>
+    <tr><td><span class="badge high">High</span></td><td class="num">7</td></tr>
+    <tr><td><span class="badge medium">Medium</span></td><td class="num">1</td></tr>
+    <tr><td><span class="badge low">Low</span></td><td class="num">0</td></tr>
+  </table>
+
+  <table class="grid">
+    <tr><th>#</th><th>Status</th><th>Obligation</th><th>Rule</th><th>Primary location</th></tr>
+    <tr>
+      <td>1</td>
+      <td><span class="badge critical">Critical</span></td>
+      <td>Detect notification events and notify the FTC as soon as possible, and no later than 30 days after discovery, when a event involves the information of at least 500 consumers.</td>
+      <td class="small">Standards for Safeguarding Customer Information (FTC Safeguards Rule,…</td>
+      <td class="small"><code>frontend/src/app/challenge-solved-notification/challenge-solved-notification.component.spec.ts:260</code></td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td><span class="badge critical">Critical</span></td>
+      <td>Notify each affected individual whose sensitive customer information was or is reasonably likely to have been compromised as soon as practicable and within 30 days of becoming aware, unless a reasonable investigation finds substantial harm is not reasonably likely. The notice must describe the incident, the data type, the incident date, contact information, and recommend reviewing account statements and considering a fraud alert or security freeze.</td>
+      <td class="small">Regulation S-P: Privacy of Consumer Financial Information and Safegua…</td>
+      <td class="small"><code>.github/workflows/ci.yml:391</code></td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td><span class="badge high">High</span></td>
+      <td>Authenticate users and permit access to customer information only to authorized users, limiting each user to the customer information needed for their duties, and periodically review these access controls.</td>
+      <td class="small">Standards for Safeguarding Customer Information (FTC Safeguards Rule,…</td>
+      <td class="small"><code>routes/authenticatedUsers.ts:10</code></td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td><span class="badge high">High</span></td>
+      <td>Monitor and log the activity of authorized users and detect unauthorized access to, use of, or tampering with customer information.</td>
+      <td class="small">Standards for Safeguarding Customer Information (FTC Safeguards Rule,…</td>
+      <td class="small"><code>server.ts:357</code></td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td><span class="badge high">High</span></td>
+      <td>Record consent so the controller can demonstrate that the data subject consented to processing, including what was consented to and when.</td>
+      <td class="small">Regulation (EU) 2016/679 (General Data Protection Regulation) - abrid…</td>
+      <td class="small"><code>frontend/src/app/Models/backup.model.ts:12</code></td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td><span class="badge high">High</span></td>
+      <td>Secure every administrative account on operating systems, databases, applications, security appliances and network devices against unauthorised access or use.</td>
+      <td class="small">MAS Notice 655: Notice on Cyber Hygiene - abridged demo excerpt</td>
+      <td class="small"><code>frontend/src/app/change-password/change-password.component.ts:86</code></td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td><span class="badge high">High</span></td>
+      <td>Implement one or more malware protection measures on every system where such measures are available and can be implemented.</td>
+      <td class="small">MAS Notice 655: Notice on Cyber Hygiene - abridged demo excerpt</td>
+      <td class="small"><code>routes/fileUpload.ts:136</code></td>
+    </tr>
+    <tr>
+      <td>8</td>
+      <td><span class="badge high">High</span></td>
+      <td>Implement multi-factor authentication for all administrative accounts on critical systems and for all accounts on any system used to access customer information through the internet.</td>
+      <td class="small">MAS Notice 655: Notice on Cyber Hygiene - abridged demo excerpt</td>
+      <td class="small"><code>data/static/codefixes/loginAdminChallenge_1.ts:19</code></td>
+    </tr>
+    <tr>
+      <td>9</td>
+      <td><span class="badge high">High</span></td>
+      <td>Implement incident detection, assessment and containment capabilities to identify which systems and types of customer information were accessed without authorization and to stop further access.</td>
+      <td class="small">Regulation S-P: Privacy of Consumer Financial Information and Safegua…</td>
+      <td class="small"><code>data/static/codefixes/accessLogDisclosureChallenge_1_correct.ts:1</code></td>
+    </tr>
+    <tr>
+      <td>10</td>
+      <td><span class="badge medium">Medium</span></td>
+      <td>Let data subjects withdraw consent at any time, as easily as it was given, and stop the related processing.</td>
+      <td class="small">Regulation (EU) 2016/679 (General Data Protection Regulation) - abrid…</td>
+      <td class="small"><code>config/default.yml:47</code></td>
+    </tr>
+    <tr>
+      <td>11</td>
+      <td><span class="badge needs_review">Needs review</span></td>
+      <td>Build and operate systems so each important business service can stay within its impact tolerance during a severe but plausible disruption, using resilience mechanisms such as failover, redundancy and recovery.</td>
+      <td class="small">PS21/3: Building operational resilience (SYSC 15A) - abridged demo ex…</td>
+      <td class="small"><code>frontend/src/main.ts:120</code></td>
+    </tr>
+    <tr>
+      <td>12</td>
+      <td><span class="badge needs_review">Needs review</span></td>
+      <td>Maintain internal and external communication capability to give timely information to clients, market participants and the FCA during operational disruptions.</td>
+      <td class="small">PS21/3: Building operational resilience (SYSC 15A) - abridged demo ex…</td>
+      <td class="small"><code>frontend/src/app/ctf-system-wide-notification/ctf-system-wide-notification.component.ts:30</code></td>
+    </tr>
+    <tr>
+      <td>13</td>
+      <td><span class="badge needs_review">Needs review</span></td>
+      <td>Encrypt all customer information at rest and in transit over external networks.</td>
+      <td class="small">Standards for Safeguarding Customer Information (FTC Safeguards Rule,…</td>
+      <td class="small"><code>data/static/codefixes/iacLeakedKeyChallenge_1.tf:184</code></td>
+    </tr>
+    <tr>
+      <td>14</td>
+      <td><span class="badge needs_review">Needs review</span></td>
+      <td>Keep personal data in identifiable form no longer than necessary, by enforcing retention periods and deleting or anonymising data afterwards.</td>
+      <td class="small">Regulation (EU) 2016/679 (General Data Protection Regulation) - abrid…</td>
+      <td class="small"><code>infrastructure/terraform/main.tf:126</code></td>
+    </tr>
+    <tr>
+      <td>15</td>
+      <td><span class="badge needs_review">Needs review</span></td>
+      <td>Protect personal data against unauthorised or unlawful processing and accidental loss, destruction or damage using appropriate technical measures such as access control, encryption, backup and logging hygiene.</td>
+      <td class="small">Regulation (EU) 2016/679 (General Data Protection Regulation) - abrid…</td>
+      <td class="small"><code>data/static/challenges.yml:3</code></td>
+    </tr>
+    <tr>
+      <td>16</td>
+      <td><span class="badge needs_review">Needs review</span></td>
+      <td>Implement security measures appropriate to the risk, including pseudonymisation and encryption of personal data, and ensure ongoing confidentiality, integrity, availability and resilience of processing systems.</td>
+      <td class="small">Regulation (EU) 2016/679 (General Data Protection Regulation) - abrid…</td>
+      <td class="small"><code>data/static/users.yml:140</code></td>
+    </tr>
+    <tr>
+      <td>17</td>
+      <td><span class="badge needs_review">Needs review</span></td>
+      <td>Detect personal data breaches and support notifying the supervisory authority without undue delay and within 72 hours of awareness, unless the breach is unlikely to cause risk.</td>
+      <td class="small">Regulation (EU) 2016/679 (General Data Protection Regulation) - abrid…</td>
+      <td class="small"><code>.github/workflows/ci.yml:391</code></td>
+    </tr>
+    <tr>
+      <td>18</td>
+      <td><span class="badge needs_review">Needs review</span></td>
+      <td>Be able to demonstrate compliance with the processing principles through evidence such as logs, records and configuration.</td>
+      <td class="small">Regulation (EU) 2016/679 (General Data Protection Regulation) - abrid…</td>
+      <td class="small"><code>data/static/challenges.yml:30</code></td>
+    </tr>
+    <tr>
+      <td>19</td>
+      <td><span class="badge needs_review">Needs review</span></td>
+      <td>Maintain a written set of security standards for every system, ensure systems conform to them, and where a system cannot conform, assess the deviation, mitigate the risk and obtain approval from the relevant authority.</td>
+      <td class="small">MAS Notice 655: Notice on Cyber Hygiene - abridged demo excerpt</td>
+      <td class="small"><code>test/server/configValidation.unit.test.ts:278</code></td>
+    </tr>
+    <tr>
+      <td>20</td>
+      <td><span class="badge needs_review">Needs review</span></td>
+      <td>Implement network perimeter controls that restrict all unauthorised network traffic.</td>
+      <td class="small">MAS Notice 655: Notice on Cyber Hygiene - abridged demo excerpt</td>
+      <td class="small"><code>data/static/codefixes/iacLeakedKeyChallenge_1.tf:62</code></td>
+    </tr>
+    <tr>
+      <td>21</td>
+      <td><span class="badge needs_review">Needs review</span></td>
+      <td>Protect the security, confidentiality and integrity of customer information and guard against unauthorized access or use through administrative, technical and physical safeguards.</td>
+      <td class="small">Regulation S-P: Privacy of Consumer Financial Information and Safegua…</td>
+      <td class="small"><code>server.ts:383</code></td>
+    </tr>
+    <tr>
+      <td>22</td>
+      <td><span class="badge needs_review">Needs review</span></td>
+      <td>Oversee service providers through due diligence and monitoring, and require them to protect customer information and notify the institution within 72 hours of becoming aware of a breach affecting a customer information system they maintain.</td>
+      <td class="small">Regulation S-P: Privacy of Consumer Financial Information and Safegua…</td>
+      <td class="small"><code>lib/challengeUtils.ts:39</code></td>
+    </tr>
+    <tr>
+      <td>23</td>
+      <td><span class="badge needs_review">Needs review</span></td>
+      <td>Maintain a register of identified important business services whose disruption could cause intolerable harm to clients or market stability.</td>
+      <td class="small">PS21/3: Building operational resilience (SYSC 15A) - abridged demo ex…</td>
+      <td class="small"><code>none</code></td>
+    </tr>
+    <tr>
+      <td>24</td>
+      <td><span class="badge needs_review">Needs review</span></td>
+      <td>Define and record an impact tolerance (maximum tolerable disruption, including duration) for each important business service and make it available for monitoring and alerting.</td>
+      <td class="small">PS21/3: Building operational resilience (SYSC 15A) - abridged demo ex…</td>
+      <td class="small"><code>none</code></td>
+    </tr>
+    <tr>
+      <td>25</td>
+      <td><span class="badge needs_review">Needs review</span></td>
+      <td>Identify and document the people, processes, technology, facilities and information needed to deliver each important business service, in enough detail to identify vulnerabilities and support testing.</td>
+      <td class="small">PS21/3: Building operational resilience (SYSC 15A) - abridged demo ex…</td>
+      <td class="small"><code>frontend/src/main.ts:97</code></td>
+    </tr>
+    <tr>
+      <td>26</td>
+      <td><span class="badge needs_review">Needs review</span></td>
+      <td>Carry out scenario testing of the ability to remain within impact tolerance across a range of severe but plausible adverse circumstances of varying nature, severity and duration.</td>
+      <td class="small">PS21/3: Building operational resilience (SYSC 15A) - abridged demo ex…</td>
+      <td class="small"><code>package.json:65</code></td>
+    </tr>
+    <tr>
+      <td>27</td>
+      <td><span class="badge needs_review">Needs review</span></td>
+      <td>Where testing shows impact tolerance cannot be met, make the necessary changes and record lessons learned.</td>
+      <td class="small">PS21/3: Building operational resilience (SYSC 15A) - abridged demo ex…</td>
+      <td class="small"><code>none</code></td>
+    </tr>
+    <tr>
+      <td>28</td>
+      <td><span class="badge needs_review">Needs review</span></td>
+      <td>Keep an up-to-date written self-assessment covering important services, tolerances, mapping, testing, lessons learned and remediation, approved by the governing body and retained for at least six years.</td>
+      <td class="small">PS21/3: Building operational resilience (SYSC 15A) - abridged demo ex…</td>
+      <td class="small"><code>none</code></td>
+    </tr>
+    <tr>
+      <td>29</td>
+      <td><span class="badge needs_review">Needs review</span></td>
+      <td>Securely dispose of customer information no later than two years after it was last used to provide a product or service, unless a legitimate business need, legal retention requirement, or infeasibility of targeted disposal applies.</td>
+      <td class="small">Standards for Safeguarding Customer Information (FTC Safeguards Rule,…</td>
+      <td class="small"><code>none</code></td>
+    </tr>
+    <tr>
+      <td>30</td>
+      <td><span class="badge needs_review">Needs review</span></td>
+      <td>Collect and process only the personal data that is adequate, relevant and necessary for the stated purposes (data minimisation).</td>
+      <td class="small">Regulation (EU) 2016/679 (General Data Protection Regulation) - abrid…</td>
+      <td class="small"><code>frontend/src/app/data-export/data-export.component.ts:62</code></td>
+    </tr>
+    <tr>
+      <td>31</td>
+      <td><span class="badge needs_review">Needs review</span></td>
+      <td>Document every personal data breach, including the facts, its effects and the remedial action taken.</td>
+      <td class="small">Regulation (EU) 2016/679 (General Data Protection Regulation) - abrid…</td>
+      <td class="small"><code>none</code></td>
+    </tr>
+    <tr>
+      <td>32</td>
+      <td><span class="badge needs_review">Needs review</span></td>
+      <td>Apply security patches to address vulnerabilities in every system within a timeframe commensurate with the risk of each vulnerability.</td>
+      <td class="small">MAS Notice 655: Notice on Cyber Hygiene - abridged demo excerpt</td>
+      <td class="small"><code>.well-known/csaf/2017/juice-shop-sa-20200513-express-jwt.json:67</code></td>
+    </tr>
+    <tr>
+      <td>33</td>
+      <td><span class="badge needs_review">Needs review</span></td>
+      <td>Dispose of consumer and customer information using reasonable measures that protect against unauthorized access or use during disposal.</td>
+      <td class="small">Regulation S-P: Privacy of Consumer Financial Information and Safegua…</td>
+      <td class="small"><code>frontend/src/app/Services/local-backup.service.ts:101</code></td>
+    </tr>
+    <tr>
+      <td>34</td>
+      <td><span class="badge needs_review">Needs review</span></td>
+      <td>Make and maintain written records documenting compliance, including policies and procedures, detected unauthorized access and the response, and service provider oversight.</td>
+      <td class="small">Regulation S-P: Privacy of Consumer Financial Information and Safegua…</td>
+      <td class="small"><code>none</code></td>
+    </tr>
+  </table>
+</section>
+
+<section>
+  <h2>Critical violations (2)</h2>
+  
+  <div class="finding critical">
+    <div class="id muted small">Finding 1</div>
+    <span class="badge critical">Critical</span>
+    <h3 style="margin-top:2mm">Detect notification events and notify the FTC as soon as possible, and no later than 30 days after discovery, when a event involves the information of at least 500 consumers.</h3>
+    <p>Section 314.4(j) requires detecting notification events and notifying the FTC within 30 days of discovery when at least 500 consumers are affected. The repository-wide search finds no breach, incident_response, consumer_count, or discovery_date terms, and the one &quot;ftc&quot; match is not shown to be related. The &quot;notification&quot; matches are UI challenge-solved toasts and Slack CI status messages, not breach detection or regulator notification. No module exists that could hold this control, so it is treated as absent.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>Standards for Safeguarding Customer Information (FTC Safeguards Rule, 16 CFR Part 314) - abridged demo excerpt</strong><br>
+      Effective 2024-05-13 · <a href="https://www.ecfr.gov/current/title-16/chapter-I/subchapter-C/part-314">https://www.ecfr.gov/current/title-16/chapter-I/subchapter-C/part-314</a>
+    </p>
+    <blockquote><strong>§ 314.4(j)</strong> <span class="muted">(chunk 3)</span><br>§ 314.4(j) Notification events (j) Notify the Federal Trade Commission about notification events. Upon discovery of a notification event involving the information of at least 500 consumers, you must notify the Federal Trade Commission as soon as possible, and no later than 30 days after discovery of the event.</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">frontend/src/app/challenge-solved-notification/challenge-solved-notification.component.spec.ts:260-264</div>
+    <pre>    describe(&#x27;template rendering&#x27;, () &#x3D;&gt; {
+        it(&#x27;should not render the toast container when there are no notifications&#x27;, () &#x3D;&gt; {
+            component.notifications &#x3D; []
+            fixture.detectChanges()
+            expect(fixture.nativeElement.querySelector(&#x27;.challenge-solved-toast&#x27;)).toBeNull()</pre>
+    <div class="loc">.github/workflows/ci.yml:400-404</div>
+    <pre>    runs-on: ubuntu-latest
+    steps:
+      - name: &quot;Slack workflow notification&quot;
+        uses: Gamesight/slack-workflow-status@68bf00d0dbdbcb206c278399aa1ef6c14f74347a #v1.3.0
+        with:</pre>
+    
+
+  </div>
+  <div class="finding critical">
+    <div class="id muted small">Finding 2</div>
+    <span class="badge critical">Critical</span>
+    <h3 style="margin-top:2mm">Notify each affected individual whose sensitive customer information was or is reasonably likely to have been compromised as soon as practicable and within 30 days of becoming aware, unless a reasonable investigation finds substantial harm is not reasonably likely. The notice must describe the incident, the data type, the incident date, contact information, and recommend reviewing account statements and considering a fraud alert or security freeze.</h3>
+    <p>Regulation S-P (chunk 9, 248.30(a)(3)(iii) and (a)(4)) requires notifying affected individuals within 30 days with specified content (incident description, data type, date, contact info, and a recommendation to review statements and consider a fraud alert or security freeze). The repository search found no breach-notification workflow: 0 matches for breach_notification, affected_customers, incident_date, 30 days, fraud alert, or security freeze. The only &#x27;notify&#x27; hits are unrelated Slack CI jobs and UI/test code. The closest candidate, the CTF system-wide notification, is not a customer breach notice, so the mandated control is absent.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>Regulation S-P: Privacy of Consumer Financial Information and Safeguarding Customer Information (17 CFR 248.30) - abridged demo excerpt</strong><br>
+      Effective 2024-08-02 · <a href="https://www.federalregister.gov/documents/2024/06/03/2024-11116/regulation-s-p-privacy-of-consumer-financial-information-and-safeguarding-customer-information">https://www.federalregister.gov/documents/2024/06/03/2024-11116/regulation-s-p-privacy-of-consumer-financial-information-and-safeguarding-customer-information</a>
+    </p>
+    <blockquote><strong>Sec. 248.30</strong> <span class="muted">(chunk 9)</span><br>Abridged, paraphrased excerpt of the 2024 amendments to Regulation S-P (17 CFR 248.30) prepared for demonstration. Consult the official text in the Federal Register before relying on it. Sec. 248.30 Procedures to safeguard customer records and information; disposal of consumer report information. (a) Safeguards rule. (1) Policies and procedures. Every covered institution must develop, implement, and maintain written policies and procedures that address administrative, technical, and physical safeguards for the protection of customer information. (2) Objectives. The written policies and procedures must be reasonably designed to: (i) ensure the security and confidentiality of customer information; (ii) protect against any anticipated threats or hazards to the security or integrity of customer information; and (iii) protect against unauthorized access to or use of customer information that…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">.github/workflows/ci.yml:391-393</div>
+    <pre>  notify-slack:
+    if: github.repository &#x3D;&#x3D; &#x27;juice-shop/juice-shop&#x27; &amp;&amp; github.event_name &#x3D;&#x3D; &#x27;push&#x27; &amp;&amp; (success() || failure())
+    needs:</pre>
+    <div class="loc">frontend/src/app/ctf-system-wide-notification/ctf-system-wide-notification.component.spec.ts:22-26</div>
+    <pre>        countryMapping: [],
+        systemWideNotifications: {
+            url: &#x27;http://example.com/notify&#x27;,
+            pollFrequencySeconds: POLL_FREQUENCY
+        }</pre>
+    
+
+  </div>
+</section>
+<section>
+  <h2>High severity violations (7)</h2>
+  
+  <div class="finding high">
+    <div class="id muted small">Finding 3</div>
+    <span class="badge high">High</span>
+    <h3 style="margin-top:2mm">Authenticate users and permit access to customer information only to authorized users, limiting each user to the customer information needed for their duties, and periodically review these access controls.</h3>
+    <p>Section 314.4(c)(1) requires access controls that authenticate users, limit each user to the customer information needed for their duties, and are periodically reviewed. routes/authenticatedUsers.ts calls UserModel.findAll() and returns every user record with no admin or role check in the handler, so any caller who reaches it can list all customer records. The repository has no matches for &quot;rbac&quot;, &quot;least_privilege&quot; or &quot;access_review&quot;, which suggests no least-privilege model or periodic access review exists. The codefix file also shows only partial route-level authorization, so access limits are inconsistent. Some authentication does exist (token checks in updateUserProfile), but it does not satisfy the full obligation.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>Standards for Safeguarding Customer Information (FTC Safeguards Rule, 16 CFR Part 314) - abridged demo excerpt</strong><br>
+      Effective 2024-05-13 · <a href="https://www.ecfr.gov/current/title-16/chapter-I/subchapter-C/part-314">https://www.ecfr.gov/current/title-16/chapter-I/subchapter-C/part-314</a>
+    </p>
+    <blockquote><strong>§ 314.4</strong> <span class="muted">(chunk 2)</span><br>Abridged excerpt of 16 CFR Part 314 prepared for demonstration. Consult the official text in the Code of Federal Regulations before relying on it. § 314.4 Elements In order to develop, implement, and maintain your information security program, you shall: (c) Design and implement safeguards to control the risks you identify through risk assessment, including by: (1) Implementing and periodically reviewing access controls, including technical and, as appropriate, physical controls to authenticate and permit access only to authorized users to protect against the unauthorized acquisition of customer information, and to limit authorized users&#x27; access only to customer information that they need to perform their duties and functions; (3) Protect by encryption all customer information held or transmitted by you both in transit over external networks and at rest; (6)(i) Develop, implement, and m…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">routes/authenticatedUsers.ts:10-31</div>
+    <pre>async function retrieveUserList (req: Request, res: Response, next: NextFunction) {
+  try {
+    const users &#x3D; await UserModel.findAll()
+
+    res.json({
+      status: &#x27;success&#x27;,
+      data: users.map((user) &#x3D;&gt; {
+        const userToken &#x3D; security.authenticatedUsers.tokenOf(user)
+        let lastLoginTime: number | null &#x3D; null
+        if (userToken) {
+          const parsedToken &#x3D; decode(userToken, { json: true })
+          lastLoginTime &#x3D; parsedToken ? Math.floor(new Date(parsedToken?.iat ?? 0 * 1000).getTime()) : null</pre>
+    <div class="loc">routes/updateUserProfile.ts:17-22</div>
+    <pre>    const loggedInUser &#x3D; security.authenticatedUsers.get(req.cookies.token)
+
+    if (!loggedInUser) {
+      next(new Error(&#x27;Blocked illegal activity by &#x27; + req.socket.remoteAddress))
+      return
+    }</pre>
+    
+
+  </div>
+  <div class="finding high">
+    <div class="id muted small">Finding 4</div>
+    <span class="badge high">High</span>
+    <h3 style="margin-top:2mm">Monitor and log the activity of authorized users and detect unauthorized access to, use of, or tampering with customer information.</h3>
+    <p>§ 314.4(c)(8) requires controls that monitor and log authorized users&#x27; activity and detect unauthorized access, use, or tampering. The only logging in server.ts is morgan HTTP access logging, which records requests but not user-attributed activity. It has no detection or alerting, and rotation is capped at 2 days (max_logs &#x27;2d&#x27;). Repository searches found no audit_log, access_log, or anomaly matches, and no module that could hold user-activity auditing or tamper detection.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>Standards for Safeguarding Customer Information (FTC Safeguards Rule, 16 CFR Part 314) - abridged demo excerpt</strong><br>
+      Effective 2024-05-13 · <a href="https://www.ecfr.gov/current/title-16/chapter-I/subchapter-C/part-314">https://www.ecfr.gov/current/title-16/chapter-I/subchapter-C/part-314</a>
+    </p>
+    <blockquote><strong>§ 314.4</strong> <span class="muted">(chunk 2)</span><br>Abridged excerpt of 16 CFR Part 314 prepared for demonstration. Consult the official text in the Code of Federal Regulations before relying on it. § 314.4 Elements In order to develop, implement, and maintain your information security program, you shall: (c) Design and implement safeguards to control the risks you identify through risk assessment, including by: (1) Implementing and periodically reviewing access controls, including technical and, as appropriate, physical controls to authenticate and permit access only to authorized users to protect against the unauthorized acquisition of customer information, and to limit authorized users&#x27; access only to customer information that they need to perform their duties and functions; (3) Protect by encryption all customer information held or transmitted by you both in transit over external networks and at rest; (6)(i) Develop, implement, and m…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">server.ts:357-366</div>
+    <pre>  /* HTTP request logging */
+  const accessLogStream &#x3D; getStream({
+    filename: path.resolve(&#x27;logs/access.log.%DATE%&#x27;),
+    date_format: &#x27;YYYY-MM-DD&#x27;,
+    audit_file: &#x27;logs/audit.json&#x27;,
+    frequency: &#x27;daily&#x27;,
+    verbose: false,
+    max_logs: &#x27;2d&#x27;
+  })
+  app.use(morgan(&#x27;combined&#x27;, { stream: accessLogStream }))</pre>
+    
+
+  </div>
+  <div class="finding high">
+    <div class="id muted small">Finding 5</div>
+    <span class="badge high">High</span>
+    <h3 style="margin-top:2mm">Record consent so the controller can demonstrate that the data subject consented to processing, including what was consented to and when.</h3>
+    <p>Article 7(1) requires the controller to be able to demonstrate consent, including what was consented to and when. The cookie consent feature only stores a client-side banner status of &#x27;dismiss&#x27; in a local backup, with no record of purpose, version or timestamp. The repository search found no consent_log, consent_version or opt_in matches, and the files that mention consent only configure banner text and a dismiss button, so there is no server-side consent record.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>Regulation (EU) 2016/679 (General Data Protection Regulation) - abridged demo excerpt</strong><br>
+      Effective 2018-05-25 · <a href="https://eur-lex.europa.eu/eli/reg/2016/679/oj">https://eur-lex.europa.eu/eli/reg/2016/679/oj</a>
+    </p>
+    <blockquote><strong>Article 7</strong> <span class="muted">(chunk 5)</span><br>Article 7 Conditions for consent 1. Where processing is based on consent, the controller shall be able to demonstrate that the data subject has consented to processing of his or her personal data. 3. The data subject shall have the right to withdraw his or her consent at any time. It shall be as easy to withdraw as to give consent.</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">frontend/src/app/Models/backup.model.ts:12</div>
+    <pre>  banners?: { welcomeBannerStatus?: string, cookieConsentStatus?: string }</pre>
+    <div class="loc">config/default.yml:47-49</div>
+    <pre>  cookieConsent:
+    message: &#x27;This website uses fruit cookies to ensure you get the juiciest tracking experience.&#x27;
+    dismissText: &#x27;Me want it!&#x27;</pre>
+    
+
+  </div>
+  <div class="finding high">
+    <div class="id muted small">Finding 6</div>
+    <span class="badge high">High</span>
+    <h3 style="margin-top:2mm">Secure every administrative account on operating systems, databases, applications, security appliances and network devices against unauthorised access or use.</h3>
+    <p>Chunk 8 (clause 4.1) requires every administrative account to be secured against unauthorised access or use. In change-password.component.ts, a support@ account whose new password fails the 12-30 character complexity policy only triggers a console.error, and the change still goes ahead, so the privileged-account policy is not enforced. Elsewhere, the forgot-password tests accept passwords of five characters, with no stronger rule evident for admin accounts. The search found no default-password, privileged-access or least-privilege controls, so the evidence shows no enforced safeguard for admin accounts.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>MAS Notice 655: Notice on Cyber Hygiene - abridged demo excerpt</strong><br>
+      Effective 2020-08-06 · <a href="https://www.mas.gov.sg/regulation/notices/notice-655">https://www.mas.gov.sg/regulation/notices/notice-655</a>
+    </p>
+    <blockquote><strong>Rule text</strong> <span class="muted">(chunk 8)</span><br>Abridged, paraphrased excerpt of MAS Notice 655 (Notice on Cyber Hygiene) prepared for demonstration. Consult the official notice on the MAS website before relying on it. 4 Requirements 4.1 Administrative accounts. A relevant entity must ensure that every administrative account in respect of any operating system, database, application, security appliance or network device is secured to prevent any unauthorised access to or use of such account. 4.2 Security patches. A relevant entity must ensure that security patches are applied to address vulnerabilities to every system, and apply such security patches within a timeframe that is commensurate with the risks posed by each vulnerability. 4.3 Security standards. A relevant entity must ensure that there is a written set of security standards for every system; ensure that every system conforms to the set of security standards; and, where a sy…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">frontend/src/app/change-password/change-password.component.ts:86-104</div>
+    <pre>  private async changePassword (): Promise&lt;void&gt; {
+    const { currentPassword, newPassword, repeatNewPassword } &#x3D; this.changePasswordModel()
+    if (
+      localStorage.getItem(&#x27;email&#x27;)?.match(/support@.*/) &amp;&amp;
+      !newPassword.match(
+        /(?&#x3D;.*[a-z])(?&#x3D;.*[A-Z])(?&#x3D;.*\d)(?&#x3D;.*[@$!%*?&amp;])[A-Za-z\d@$!%*?&amp;]{12,30}/
+      )
+    ) {
+      console.error(
+        &#x27;Parola echipei de asistență nu respectă politica corporativă pentru conturile privilegiate! Vă rugăm să schimbați parola în consecință!&#x27;
+      )
+    }</pre>
+    <div class="loc">frontend/src/app/forgot-password/forgot-password.component.spec.ts:116-122</div>
+    <pre>    it(&#x27;should have a password length of at least five characters&#x27;, () &#x3D;&gt; {
+        component.securityQuestion.set(&#x27;What is your favorite test tool?&#x27;)
+        setModel({ password: &#x27;aaa&#x27; })
+        expect(component.forgotPasswordForm.password().valid()).toBeFalsy()
+        setModel({ password: &#x27;aaaaa&#x27; })
+        expect(component.forgotPasswordForm.password().valid()).toBe(true)
+    })</pre>
+    
+
+  </div>
+  <div class="finding high">
+    <div class="id muted small">Finding 7</div>
+    <span class="badge high">High</span>
+    <h3 style="margin-top:2mm">Implement one or more malware protection measures on every system where such measures are available and can be implemented.</h3>
+    <p>Chunk 8 (section 4.5) requires malware protection on every system where it is available and can be implemented, and file upload handling is in scope. The upload route only exports size, type, XML and YAML checks, and the tests show an .exe upload is accepted with a 204. Searches for antivirus, ClamAV, virus scan and file upload scan found no scanning control in the code; the few &#x27;malware&#x27; hits are about deliberate challenge content. Malware protection could be applied outside the code (for example at host or endpoint level), so the reviewer should confirm that, but no such measure is evidenced for the upload path.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>MAS Notice 655: Notice on Cyber Hygiene - abridged demo excerpt</strong><br>
+      Effective 2020-08-06 · <a href="https://www.mas.gov.sg/regulation/notices/notice-655">https://www.mas.gov.sg/regulation/notices/notice-655</a>
+    </p>
+    <blockquote><strong>Rule text</strong> <span class="muted">(chunk 8)</span><br>Abridged, paraphrased excerpt of MAS Notice 655 (Notice on Cyber Hygiene) prepared for demonstration. Consult the official notice on the MAS website before relying on it. 4 Requirements 4.1 Administrative accounts. A relevant entity must ensure that every administrative account in respect of any operating system, database, application, security appliance or network device is secured to prevent any unauthorised access to or use of such account. 4.2 Security patches. A relevant entity must ensure that security patches are applied to address vulnerabilities to every system, and apply such security patches within a timeframe that is commensurate with the risks posed by each vulnerability. 4.3 Security standards. A relevant entity must ensure that there is a written set of security standards for every system; ensure that every system conforms to the set of security standards; and, where a sy…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">routes/fileUpload.ts:136-143</div>
+    <pre>export {
+  ensureFileIsPassed,
+  handleZipFileUpload,
+  checkUploadSize,
+  checkFileType,
+  handleXmlUpload,
+  handleYamlUpload
+}</pre>
+    <div class="loc">test/api/file-upload.test.ts:39-45</div>
+    <pre>  void it(&#x27;POST file with illegal type for client validation but valid for API&#x27;, async () &#x3D;&gt; {
+    const file &#x3D; path.resolve(__dirname, &#x27;../files/invalidTypeForClient.exe&#x27;)
+    const res &#x3D; await request(app)
+      .post(&#x27;/file-upload&#x27;)
+      .attach(&#x27;file&#x27;, file)
+    assert.equal(res.status, 204)
+  })</pre>
+    
+
+  </div>
+  <div class="finding high">
+    <div class="id muted small">Finding 8</div>
+    <span class="badge high">High</span>
+    <h3 style="margin-top:2mm">Implement multi-factor authentication for all administrative accounts on critical systems and for all accounts on any system used to access customer information through the internet.</h3>
+    <p>MAS Notice 655 para 4.6 requires MFA for all administrative accounts on critical systems and all accounts on internet-facing systems accessing customer information. The app has only an optional TOTP flow: login challenges the user for a TOTP token only when the user&#x27;s totpSecret is non-empty (loginAdminChallenge_1.ts:21), so accounts without a secret, including admins, log in with a password alone. The seed code (datacreator.ts) sets totpSecret per user from data rather than mandating it, and no code excerpt enforces MFA for admin roles or for all accounts.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>MAS Notice 655: Notice on Cyber Hygiene - abridged demo excerpt</strong><br>
+      Effective 2020-08-06 · <a href="https://www.mas.gov.sg/regulation/notices/notice-655">https://www.mas.gov.sg/regulation/notices/notice-655</a>
+    </p>
+    <blockquote><strong>Rule text</strong> <span class="muted">(chunk 8)</span><br>Abridged, paraphrased excerpt of MAS Notice 655 (Notice on Cyber Hygiene) prepared for demonstration. Consult the official notice on the MAS website before relying on it. 4 Requirements 4.1 Administrative accounts. A relevant entity must ensure that every administrative account in respect of any operating system, database, application, security appliance or network device is secured to prevent any unauthorised access to or use of such account. 4.2 Security patches. A relevant entity must ensure that security patches are applied to address vulnerabilities to every system, and apply such security patches within a timeframe that is commensurate with the risks posed by each vulnerability. 4.3 Security standards. A relevant entity must ensure that there is a written set of security standards for every system; ensure that every system conforms to the set of security standards; and, where a sy…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">data/static/codefixes/loginAdminChallenge_1.ts:19-25</div>
+    <pre>      .then((authenticatedUser) &#x3D;&gt; {
+        const user &#x3D; utils.queryResultToJson(authenticatedUser)
+        if (user.data?.id &amp;&amp; user.data.totpSecret !&#x3D;&#x3D; &#x27;&#x27;) {
+          res.status(401).json({
+            status: &#x27;totp_token_required&#x27;,
+            data: {
+              tmpToken: security.authorize({</pre>
+    <div class="loc">data/datacreator.ts:198-202</div>
+    <pre>          deluxeToken: role &#x3D;&#x3D;&#x3D; security.roles.deluxe ? security.deluxeToken(completeEmail) : &#x27;&#x27;,
+          profileImage: &#x60;assets/public/images/uploads/${profileImage ?? (role &#x3D;&#x3D;&#x3D; security.roles.admin ? &#x27;defaultAdmin.png&#x27; : &#x27;default.svg&#x27;)}&#x60;,
+          totpSecret,
+          lastLoginIp
+        })</pre>
+    <div class="loc">frontend/src/app/two-factor-auth-enter/two-factor-auth-enter.component.ts:49-62</div>
+    <pre>  verify () {
+    const fields: TokenEnterFormFields &#x3D; this.twoFactorForm.value
+
+    this.twoFactorAuthService.verify(fields.token).subscribe({
+      next: (authentication) &#x3D;&gt; {
+        localStorage.setItem(&#x27;token&#x27;, authentication.token)
+        const expires &#x3D; new Date()
+        expires.setHours(expires.getHours() + 8)
+        this.cookieService.put(&#x27;token&#x27;, authentication.token, { expires })
+        sessionStorage.setItem(&#x27;bid&#x27;, authentication.bid?.toString())
+        /* Use userService to notifiy if user has logged in */
+        /* this.userService.isLoggedIn &#x3D; true; */</pre>
+    
+
+  </div>
+  <div class="finding high">
+    <div class="id muted small">Finding 9</div>
+    <span class="badge high">High</span>
+    <h3 style="margin-top:2mm">Implement incident detection, assessment and containment capabilities to identify which systems and types of customer information were accessed without authorization and to stop further access.</h3>
+    <p>Regulation S-P 248.30(a)(3)(i)-(ii) requires an incident response program that can assess which systems and customer information were accessed without authorization and contain the incident. The repository search finds no audit_log, intrusion or anomaly detection, and no module for incident assessment or containment. The only related hits are intentionally vulnerable challenge content and a public /ftp route serving an incident-support file. Detection and containment would normally live in the request-handling and routing layer in app.ts, where it is absent. The /ftp routes serve files without any access auditing or containment.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>Regulation S-P: Privacy of Consumer Financial Information and Safeguarding Customer Information (17 CFR 248.30) - abridged demo excerpt</strong><br>
+      Effective 2024-08-02 · <a href="https://www.federalregister.gov/documents/2024/06/03/2024-11116/regulation-s-p-privacy-of-consumer-financial-information-and-safeguarding-customer-information">https://www.federalregister.gov/documents/2024/06/03/2024-11116/regulation-s-p-privacy-of-consumer-financial-information-and-safeguarding-customer-information</a>
+    </p>
+    <blockquote><strong>Sec. 248.30</strong> <span class="muted">(chunk 9)</span><br>Abridged, paraphrased excerpt of the 2024 amendments to Regulation S-P (17 CFR 248.30) prepared for demonstration. Consult the official text in the Federal Register before relying on it. Sec. 248.30 Procedures to safeguard customer records and information; disposal of consumer report information. (a) Safeguards rule. (1) Policies and procedures. Every covered institution must develop, implement, and maintain written policies and procedures that address administrative, technical, and physical safeguards for the protection of customer information. (2) Objectives. The written policies and procedures must be reasonably designed to: (i) ensure the security and confidentiality of customer information; (ii) protect against any anticipated threats or hazards to the security or integrity of customer information; and (iii) protect against unauthorized access to or use of customer information that…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">data/static/codefixes/accessLogDisclosureChallenge_1_correct.ts:1-4</div>
+    <pre>/* /ftp directory browsing and file download */
+  app.use(&#x27;/ftp&#x27;, serveIndexMiddleware, serveIndex(&#x27;ftp&#x27;, { icons: true }))
+  app.use(&#x27;/ftp(?!/quarantine)/:file&#x27;, servePublicFiles())
+  app.use(&#x27;/ftp/quarantine/:file&#x27;, serveQuarantineFiles())</pre>
+    <div class="loc">test/server/fileServer.unit.test.ts:45-52</div>
+    <pre>  void it(&#x27;should serve incident-support.kdbx files from folder /ftp&#x27;, () &#x3D;&gt; {
+    req.params.file &#x3D; &#x27;incident-support.kdbx&#x27;
+
+    servePublicFiles()(req, res, next)
+
+    assert.equal(res.sendFile.mock.calls.length, 1)
+    assert.match(res.sendFile.mock.calls[0].arguments[0], /ftp[/\\]incident-support\.kdbx/)
+  })</pre>
+    
+
+  </div>
+</section>
+<section>
+  <h2>Medium severity violations (1)</h2>
+  
+  <div class="finding medium">
+    <div class="id muted small">Finding 10</div>
+    <span class="badge medium">Medium</span>
+    <h3 style="margin-top:2mm">Let data subjects withdraw consent at any time, as easily as it was given, and stop the related processing.</h3>
+    <p>Article 7(3) requires that consent can be withdrawn at any time as easily as it was given. The cookie consent configs only define a message and a dismiss button text, which is a one-way acceptance. The repository search found no &quot;withdraw consent&quot;, &quot;opt_out&quot;, or &quot;preferences&quot; matches, and the one &quot;revoke&quot; match and the &quot;unsubscribe&quot; matches do not concern consent. No file in the list could hold a withdrawal control, so it appears absent. The project is a deliberately vulnerable training app, but the excerpts show no withdrawal mechanism.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>Regulation (EU) 2016/679 (General Data Protection Regulation) - abridged demo excerpt</strong><br>
+      Effective 2018-05-25 · <a href="https://eur-lex.europa.eu/eli/reg/2016/679/oj">https://eur-lex.europa.eu/eli/reg/2016/679/oj</a>
+    </p>
+    <blockquote><strong>Article 7</strong> <span class="muted">(chunk 5)</span><br>Article 7 Conditions for consent 1. Where processing is based on consent, the controller shall be able to demonstrate that the data subject has consented to processing of his or her personal data. 3. The data subject shall have the right to withdraw his or her consent at any time. It shall be as easy to withdraw as to give consent.</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">config/default.yml:47-49</div>
+    <pre>  cookieConsent:
+    message: &#x27;This website uses fruit cookies to ensure you get the juiciest tracking experience.&#x27;
+    dismissText: &#x27;Me want it!&#x27;</pre>
+    <div class="loc">config/mozilla.yml:30-32</div>
+    <pre>  cookieConsent:
+    message: &#x27;This website uses a myriad of 3rd-party cookies for your convenience and tracking pleasure.&#x27;
+    dismissText: &#x27;Never mind!&#x27;</pre>
+    
+
+  </div>
+</section>
+<section>
+  <h2>Needs human review (24)</h2>
+  <p class="muted">The evidence was missing, ambiguous or failed citation checks. A person should assess these.</p>
+  <div class="finding needs_review">
+    <div class="id muted small">Finding 11</div>
+    <span class="badge needs_review">Needs review</span>
+    <h3 style="margin-top:2mm">Build and operate systems so each important business service can stay within its impact tolerance during a severe but plausible disruption, using resilience mechanisms such as failover, redundancy and recovery.</h3>
+    <p>The search found no failover, redundancy, disaster_recovery, circuit_breaker or multi_region terms in 787 files, so no resilience mechanism is visible in the code. However, this is OWASP Juice Shop, a deliberately vulnerable training app, and resilience for important business services (SYSC 15A.2.7) depends on infrastructure, hosting and organisational arrangements that code cannot show. The only related items are a client-side local backup feature and an infrastructure health check in a deliberately flawed code-fix example, which do not demonstrate resilience. A reviewer should confirm whether any important business service exists and how it is deployed.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>PS21/3: Building operational resilience (SYSC 15A) - abridged demo excerpt</strong><br>
+      Effective 2022-03-31 · <a href="https://www.fca.org.uk/publications/policy-statements/ps21-3-building-operational-resilience">https://www.fca.org.uk/publications/policy-statements/ps21-3-building-operational-resilience</a>
+    </p>
+    <blockquote><strong>Rule text</strong> <span class="muted">(chunk 1)</span><br>Abridged, paraphrased excerpt of the FCA&#x27;s operational resilience rules (Handbook chapter SYSC 15A, made by PS21/3) prepared for demonstration. Consult the FCA Handbook before relying on it. SYSC 15A.2 Operational resilience requirements 15A.2.1 R A firm must identify its important business services. An important business service is a service provided by the firm to one or more clients which, if disrupted, could cause intolerable levels of harm to clients or pose a risk to the soundness, stability or resilience of the UK financial system or the orderly operation of financial markets. 15A.2.5 R A firm must, for each of its important business services, set an impact tolerance: the maximum tolerable level of disruption to the service, including the maximum tolerable duration of a disruption. 15A.2.7 R A firm must ensure it is able to remain within its impact tolerance for each important bu…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">frontend/src/main.ts:120-130</div>
+    <pre>        provideHttpClient(withInterceptorsFromDi()),
+        provideTranslateService({
+          loader: provideTranslateHttpLoader({
+            prefix: &#x27;/assets/i18n/&#x27;,
+            suffix: &#x27;.json&#x27;
+          }),
+          fallbackLang: &#x27;en&#x27;
+        })
+    ]
+})
+    .catch((err: Error) &#x3D;&gt; console.log(err))</pre>
+    <div class="loc">frontend/src/app/Services/local-backup.service.ts:37-51</div>
+    <pre>    try {
+      const [continueCode, continueCodeFindIt, continueCodeFixIt] &#x3D; await firstValueFrom(forkJoin([
+        this.challengeService.continueCode(),
+        this.challengeService.continueCodeFindIt(),
+        this.challengeService.continueCodeFixIt()
+      ]))
+      backup.continueCode &#x3D; continueCode
+      backup.continueCodeFindIt &#x3D; continueCodeFindIt
+      backup.continueCodeFixIt &#x3D; continueCodeFixIt
+    } catch {
+      console.log(&#x27;Failed to retrieve continue code(s) for backup from server. Using cookie values as fallback.&#x27;)
+      backup.continueCode &#x3D; this.cookieService.get(&#x27;continueCode&#x27;) ? this.cookieService.get(&#x27;continueCode&#x27;) : undefined</pre>
+    
+
+  </div>
+  <div class="finding needs_review">
+    <div class="id muted small">Finding 12</div>
+    <span class="badge needs_review">Needs review</span>
+    <h3 style="margin-top:2mm">Maintain internal and external communication capability to give timely information to clients, market participants and the FCA during operational disruptions.</h3>
+    <p>The repository is OWASP Juice Shop, a deliberately vulnerable training app, and it contains no incident communication, status page, alerting or regulator notification module (0 matches for those terms). The only related code is a CTF system-wide notification poller, which is a game feature rather than a disruption communication capability. SYSC 15A.8.1 requires a communication strategy, which is largely organisational and may sit in processes or tooling outside the code, such as the Slack workflow notifications in CI. A human reviewer should confirm whether the firm provides this capability elsewhere.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>PS21/3: Building operational resilience (SYSC 15A) - abridged demo excerpt</strong><br>
+      Effective 2022-03-31 · <a href="https://www.fca.org.uk/publications/policy-statements/ps21-3-building-operational-resilience">https://www.fca.org.uk/publications/policy-statements/ps21-3-building-operational-resilience</a>
+    </p>
+    <blockquote><strong>Rule text</strong> <span class="muted">(chunk 1)</span><br>Abridged, paraphrased excerpt of the FCA&#x27;s operational resilience rules (Handbook chapter SYSC 15A, made by PS21/3) prepared for demonstration. Consult the FCA Handbook before relying on it. SYSC 15A.2 Operational resilience requirements 15A.2.1 R A firm must identify its important business services. An important business service is a service provided by the firm to one or more clients which, if disrupted, could cause intolerable levels of harm to clients or pose a risk to the soundness, stability or resilience of the UK financial system or the orderly operation of financial markets. 15A.2.5 R A firm must, for each of its important business services, set an impact tolerance: the maximum tolerable level of disruption to the service, including the maximum tolerable duration of a disruption. 15A.2.7 R A firm must ensure it is able to remain within its impact tolerance for each important bu…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">frontend/src/app/ctf-system-wide-notification/ctf-system-wide-notification.component.ts:30-40</div>
+    <pre>  ngOnInit (): void {
+    this.configurationService.getApplicationConfiguration().subscribe((config) &#x3D;&gt; {
+      const url &#x3D; config?.ctf?.systemWideNotifications?.url
+      const pollFrequencySeconds &#x3D; config?.ctf?.systemWideNotifications?.pollFrequencySeconds
+      if (!url || !pollFrequencySeconds) {
+        return
+      }
+
+      this.subscription &#x3D; interval(pollFrequencySeconds * 1000).pipe(
+        startWith(0),
+        switchMap(() &#x3D;&gt; this.notificationService.fetchNotification(url).pipe(</pre>
+    <div class="loc">.github/workflows/release.yml:113-117</div>
+    <pre>    runs-on: ubuntu-latest
+    steps:
+      - name: &quot;Slack workflow notification&quot;
+        uses: Gamesight/slack-workflow-status@68bf00d0dbdbcb206c278399aa1ef6c14f74347a #v1.3.0
+        with:</pre>
+    
+
+  </div>
+  <div class="finding needs_review">
+    <div class="id muted small">Finding 13</div>
+    <span class="badge needs_review">Needs review</span>
+    <h3 style="margin-top:2mm">Encrypt all customer information at rest and in transit over external networks.</h3>
+    <p>The evidence does not show whether customer information is encrypted at rest or in transit, so the obligation in § 314.4(c)(3) cannot be judged. The only TLS-related code is Terraform that sets an HTTPS listener with a TLS 1.3 policy, which suggests encryption in transit may be handled by infrastructure. Other excerpts are test files, config text and an unrelated demo script. No excerpt covers customer data storage, and the keyword search found no at-rest encryption terms such as KMS or AES in the excerpts. A human reviewer should confirm how the deployed database, backups and external endpoints are protected.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>Standards for Safeguarding Customer Information (FTC Safeguards Rule, 16 CFR Part 314) - abridged demo excerpt</strong><br>
+      Effective 2024-05-13 · <a href="https://www.ecfr.gov/current/title-16/chapter-I/subchapter-C/part-314">https://www.ecfr.gov/current/title-16/chapter-I/subchapter-C/part-314</a>
+    </p>
+    <blockquote><strong>§ 314.4</strong> <span class="muted">(chunk 2)</span><br>Abridged excerpt of 16 CFR Part 314 prepared for demonstration. Consult the official text in the Code of Federal Regulations before relying on it. § 314.4 Elements In order to develop, implement, and maintain your information security program, you shall: (c) Design and implement safeguards to control the risks you identify through risk assessment, including by: (1) Implementing and periodically reviewing access controls, including technical and, as appropriate, physical controls to authenticate and permit access only to authorized users to protect against the unauthorized acquisition of customer information, and to limit authorized users&#x27; access only to customer information that they need to perform their duties and functions; (3) Protect by encryption all customer information held or transmitted by you both in transit over external networks and at rest; (6)(i) Develop, implement, and m…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">data/static/codefixes/iacLeakedKeyChallenge_1.tf:184-187</div>
+    <pre>  port              &#x3D; 443
+  protocol          &#x3D; &quot;HTTPS&quot;
+  ssl_policy        &#x3D; &quot;ELBSecurityPolicy-TLS13-1-2-2021-06&quot;
+  certificate_arn   &#x3D; aws_iam_server_certificate.juice_shop_tls.arn</pre>
+    
+
+  </div>
+  <div class="finding needs_review">
+    <div class="id muted small">Finding 14</div>
+    <span class="badge needs_review">Needs review</span>
+    <h3 style="margin-top:2mm">Keep personal data in identifiable form no longer than necessary, by enforcing retention periods and deleting or anonymising data afterwards.</h3>
+    <p>Article 5(1)(e) requires identifiable personal data to be kept no longer than necessary. The only retention control found is a 30-day CloudWatch log group retention in Terraform, which covers logs only. The repository search shows no purge, expiry or cleanup jobs for the application database, and the other matches (deletedDate on products, a spec test for an anonymised email) are not personal-data retention. Because retention could be handled outside the code, for example in managed infrastructure or by the operator, and this is a demo application, a human reviewer should decide.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>Regulation (EU) 2016/679 (General Data Protection Regulation) - abridged demo excerpt</strong><br>
+      Effective 2018-05-25 · <a href="https://eur-lex.europa.eu/eli/reg/2016/679/oj">https://eur-lex.europa.eu/eli/reg/2016/679/oj</a>
+    </p>
+    <blockquote><strong>Article 5</strong> <span class="muted">(chunk 4)</span><br>Abridged excerpt of Regulation (EU) 2016/679 prepared for demonstration. Consult the official text on EUR-Lex before relying on it. Article 5 Principles relating to processing of personal data 1. Personal data shall be: (c) adequate, relevant and limited to what is necessary in relation to the purposes for which they are processed (&#x27;data minimisation&#x27;); (e) kept in a form which permits identification of data subjects for no longer than is necessary for the purposes for which the personal data are processed (&#x27;storage limitation&#x27;); (f) processed in a manner that ensures appropriate security of the personal data, including protection against unauthorised or unlawful processing and against accidental loss, destruction or damage, using appropriate technical or organisational measures (&#x27;integrity and confidentiality&#x27;). 2. The controller shall be responsible for, and be able to demonstrate com…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">infrastructure/terraform/main.tf:126-128</div>
+    <pre>resource &quot;aws_cloudwatch_log_group&quot; &quot;juice_shop&quot; {
+  name              &#x3D; &quot;/ecs/${var.project_name}&quot;
+  retention_in_days &#x3D; 30</pre>
+    
+
+  </div>
+  <div class="finding needs_review">
+    <div class="id muted small">Finding 15</div>
+    <span class="badge needs_review">Needs review</span>
+    <h3 style="margin-top:2mm">Protect personal data against unauthorised or unlawful processing and accidental loss, destruction or damage using appropriate technical measures such as access control, encryption, backup and logging hygiene.</h3>
+    <p>This repository is OWASP Juice Shop, a deliberately vulnerable training app, and the evidence mostly consists of challenge descriptions and CI config rather than production security controls. The excerpts show no clear implemented or clearly absent safeguard for Articles 5(1)(f) and 32. The data-export component writes exported user data into a new window, and the IaC fix variant embeds a private key inline, but these sit in training or example material. The keyword counts for encryption, TLS and backup are non-zero, but the matching files are not shown, so a reviewer must inspect the real server code and decide whether the intentional vulnerabilities are in scope.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>Regulation (EU) 2016/679 (General Data Protection Regulation) - abridged demo excerpt</strong><br>
+      Effective 2018-05-25 · <a href="https://eur-lex.europa.eu/eli/reg/2016/679/oj">https://eur-lex.europa.eu/eli/reg/2016/679/oj</a>
+    </p>
+    <blockquote><strong>Article 5</strong> <span class="muted">(chunk 4)</span><br>Abridged excerpt of Regulation (EU) 2016/679 prepared for demonstration. Consult the official text on EUR-Lex before relying on it. Article 5 Principles relating to processing of personal data 1. Personal data shall be: (c) adequate, relevant and limited to what is necessary in relation to the purposes for which they are processed (&#x27;data minimisation&#x27;); (e) kept in a form which permits identification of data subjects for no longer than is necessary for the purposes for which the personal data are processed (&#x27;storage limitation&#x27;); (f) processed in a manner that ensures appropriate security of the personal data, including protection against unauthorised or unlawful processing and against accidental loss, destruction or damage, using appropriate technical or organisational measures (&#x27;integrity and confidentiality&#x27;). 2. The controller shall be responsible for, and be able to demonstrate com…</blockquote>
+    <blockquote><strong>Article 32</strong> <span class="muted">(chunk 6)</span><br>Article 32 Security of processing 1. Taking into account the state of the art, the costs of implementation and the nature, scope, context and purposes of processing as well as the risk for the rights and freedoms of natural persons, the controller and the processor shall implement appropriate technical and organisational measures to ensure a level of security appropriate to the risk, including inter alia as appropriate: (a) the pseudonymisation and encryption of personal data; (b) the ability to ensure the ongoing confidentiality, integrity, availability and resilience of processing systems and services.</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">data/static/challenges.yml:3-12</div>
+    <pre>  name: &#x27;Password Hash Leak&#x27;
+  category: &#x27;Sensitive Data Exposure&#x27;
+  description: &#x27;Obtain the password (hash) of the currently logged-in user directly from a REST API endpoint.&#x27;
+  difficulty: 2
+  hints:
+    - &#x27;You need to understand what happens &quot;behind the scenes&quot;, so make sure to use your DevTools or a proxy to inspect network traffic.&#x27;
+    - &#x27;Look for an API endpoint that already returns some user information.&#x27;
+    - &#x27;An overly generic solution for data retrieval can backfire if not properly safeguarded.&#x27;
+  mitigationUrl: &#x27;https://owasp.org/API-Security/editions/2019/en/0xa3-excessive-data-exposure&#x27;
+  key: passwordHashLeakChallenge</pre>
+    <div class="loc">frontend/src/app/data-export/data-export.component.ts:68-72</div>
+    <pre>      next: (data: any) &#x3D;&gt; {
+        this.error &#x3D; null
+        this.confirmation &#x3D; data.confirmation
+        this.userData &#x3D; data.userData
+        window.open(&#x27;&#x27;, &#x27;_blank&#x27;, &#x27;width&#x3D;500&#x27;)?.document.write(this.userData)</pre>
+    
+
+  </div>
+  <div class="finding needs_review">
+    <div class="id muted small">Finding 16</div>
+    <span class="badge needs_review">Needs review</span>
+    <h3 style="margin-top:2mm">Implement security measures appropriate to the risk, including pseudonymisation and encryption of personal data, and ensure ongoing confidentiality, integrity, availability and resilience of processing systems.</h3>
+    <p>The evidence is mixed. Passwords are hashed in the codefix examples (security.hash) and the data export pseudonymises emails by masking vowels. However, data/static/users.yml holds plaintext seed passwords, and the repo search finds no pseudonymisation, tokenisation, failover or redundancy controls. The code appears to be a deliberately vulnerable training app, and the excerpts do not show the actual production user model, TLS or storage encryption, or availability measures, so a reviewer must confirm whether these are in scope.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>Regulation (EU) 2016/679 (General Data Protection Regulation) - abridged demo excerpt</strong><br>
+      Effective 2018-05-25 · <a href="https://eur-lex.europa.eu/eli/reg/2016/679/oj">https://eur-lex.europa.eu/eli/reg/2016/679/oj</a>
+    </p>
+    <blockquote><strong>Article 32</strong> <span class="muted">(chunk 6)</span><br>Article 32 Security of processing 1. Taking into account the state of the art, the costs of implementation and the nature, scope, context and purposes of processing as well as the risk for the rights and freedoms of natural persons, the controller and the processor shall implement appropriate technical and organisational measures to ensure a level of security appropriate to the risk, including inter alia as appropriate: (a) the pseudonymisation and encryption of personal data; (b) the ability to ensure the ongoing confidentiality, integrity, availability and resilience of processing systems and services.</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">data/static/users.yml:140-146</div>
+    <pre>  email: J12934
+  password: &#x27;0Y8rMnww$*9VFYE§59-!Fg1L6t&amp;6lB&#x27;
+  key: jannik
+  role: &#x27;admin&#x27;
+  securityQuestion:
+    id: 1
+    answer: &#x27;azjTLprq2im6p86RbFrA41L&#x27;</pre>
+    <div class="loc">data/static/codefixes/weakPasswordChallenge_4.ts:4-7</div>
+    <pre>        set (clearTextPassword: string) {
+          validatePasswordIsNotInTopOneMillionCommonPasswordsList(clearTextPassword)
+          this.setDataValue(&#x27;password&#x27;, security.hash(clearTextPassword))
+        }</pre>
+    <div class="loc">data/datacreator.ts:749-752</div>
+    <pre>  const orders &#x3D; [
+    {
+      orderId: security.hash(adminEmail).slice(0, 4) + &#x27;-&#x27; + utils.randomHexString(16),
+      email: (adminEmail.replace(/[aeiou]/gi, &#x27;*&#x27;)),</pre>
+    
+
+  </div>
+  <div class="finding needs_review">
+    <div class="id muted small">Finding 17</div>
+    <span class="badge needs_review">Needs review</span>
+    <h3 style="margin-top:2mm">Detect personal data breaches and support notifying the supervisory authority without undue delay and within 72 hours of awareness, unless the breach is unlikely to cause risk.</h3>
+    <p>Article 33 requires breach detection, documentation and notification to the supervisory authority within 72 hours. The search found no matches for &quot;breach&quot;, &quot;supervisory authority&quot;, &quot;72 hours&quot; or &quot;audit log&quot; in 787 files, and no evidence shows a breach-notification module. This repository is OWASP Juice Shop, a deliberately vulnerable training app, so breach response may sit in organisational procedures outside the code, and the excerpts show only unrelated CI Slack notifications and challenge content. A human reviewer should confirm whether the deployment is in scope before treating the gap as a violation.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>Regulation (EU) 2016/679 (General Data Protection Regulation) - abridged demo excerpt</strong><br>
+      Effective 2018-05-25 · <a href="https://eur-lex.europa.eu/eli/reg/2016/679/oj">https://eur-lex.europa.eu/eli/reg/2016/679/oj</a>
+    </p>
+    <blockquote><strong>Article 33</strong> <span class="muted">(chunk 7)</span><br>Article 33 Notification of a personal data breach to the supervisory authority 1. In the case of a personal data breach, the controller shall without undue delay and, where feasible, not later than 72 hours after having become aware of it, notify the personal data breach to the supervisory authority competent in accordance with Article 55, unless the personal data breach is unlikely to result in a risk to the rights and freedoms of natural persons. 5. The controller shall document any personal data breaches, comprising the facts relating to the personal data breach, its effects and the remedial action taken.</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">.github/workflows/ci.yml:391-393</div>
+    <pre>  notify-slack:
+    if: github.repository &#x3D;&#x3D; &#x27;juice-shop/juice-shop&#x27; &amp;&amp; github.event_name &#x3D;&#x3D; &#x27;push&#x27; &amp;&amp; (success() || failure())
+    needs:</pre>
+    
+
+  </div>
+  <div class="finding needs_review">
+    <div class="id muted small">Finding 18</div>
+    <span class="badge needs_review">Needs review</span>
+    <h3 style="margin-top:2mm">Be able to demonstrate compliance with the processing principles through evidence such as logs, records and configuration.</h3>
+    <p>Article 5(2) requires the controller to be able to demonstrate compliance with Article 5(1), for example through logs, records and configuration. The repository search found no audit logs, records of processing, compliance evidence or retention policy. However, this codebase is a deliberately vulnerable training application, and the &#x27;access log&#x27; hits are challenge descriptions and tests rather than real processing. Accountability evidence is largely organisational and could sit outside the code, so a violation cannot be asserted from these excerpts. The cited material only shows that log exposure is an intentional challenge and that no accountability records are present in the code.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>Regulation (EU) 2016/679 (General Data Protection Regulation) - abridged demo excerpt</strong><br>
+      Effective 2018-05-25 · <a href="https://eur-lex.europa.eu/eli/reg/2016/679/oj">https://eur-lex.europa.eu/eli/reg/2016/679/oj</a>
+    </p>
+    <blockquote><strong>Article 5</strong> <span class="muted">(chunk 4)</span><br>Abridged excerpt of Regulation (EU) 2016/679 prepared for demonstration. Consult the official text on EUR-Lex before relying on it. Article 5 Principles relating to processing of personal data 1. Personal data shall be: (c) adequate, relevant and limited to what is necessary in relation to the purposes for which they are processed (&#x27;data minimisation&#x27;); (e) kept in a form which permits identification of data subjects for no longer than is necessary for the purposes for which the personal data are processed (&#x27;storage limitation&#x27;); (f) processed in a manner that ensures appropriate security of the personal data, including protection against unauthorised or unlawful processing and against accidental loss, destruction or damage, using appropriate technical or organisational measures (&#x27;integrity and confidentiality&#x27;). 2. The controller shall be responsible for, and be able to demonstrate com…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">data/static/challenges.yml:30-32</div>
+    <pre>  name: &#x27;Access Log&#x27;
+  category: &#x27;Observability Failures&#x27;
+  description: &#x27;Gain access to any access log file of the server.&#x27;</pre>
+    <div class="loc">data/static/codefixes/accessLogDisclosureChallenge.info.yml:2-3</div>
+    <pre>  - id: 1
+    explanation: &#x27;There should generally be no good reason to expose server logs through a web URL of the server itself, epecially not when that server is Internet-facing.&#x27;</pre>
+    
+
+  </div>
+  <div class="finding needs_review">
+    <div class="id muted small">Finding 19</div>
+    <span class="badge needs_review">Needs review</span>
+    <h3 style="margin-top:2mm">Maintain a written set of security standards for every system, ensure systems conform to them, and where a system cannot conform, assess the deviation, mitigate the risk and obtain approval from the relevant authority.</h3>
+    <p>Chunk 8 (section 4.3) requires a written set of security standards for every system, conformance to them, and an assessed, mitigated and approved exception process. The searches for security baseline, CIS benchmark, policy exception, waiver and risk acceptance found no matches, but a written standard and an approval process are organisational artefacts that may sit outside the repository. The cited excerpts are only config validation tests, a notification component and a code-fix explanation, which do not address the obligation either way. This is also a deliberately vulnerable training application, so the absence of a standards or exception process may be intentional and cannot be treated as a code violation without human review.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>MAS Notice 655: Notice on Cyber Hygiene - abridged demo excerpt</strong><br>
+      Effective 2020-08-06 · <a href="https://www.mas.gov.sg/regulation/notices/notice-655">https://www.mas.gov.sg/regulation/notices/notice-655</a>
+    </p>
+    <blockquote><strong>Rule text</strong> <span class="muted">(chunk 8)</span><br>Abridged, paraphrased excerpt of MAS Notice 655 (Notice on Cyber Hygiene) prepared for demonstration. Consult the official notice on the MAS website before relying on it. 4 Requirements 4.1 Administrative accounts. A relevant entity must ensure that every administrative account in respect of any operating system, database, application, security appliance or network device is secured to prevent any unauthorised access to or use of such account. 4.2 Security patches. A relevant entity must ensure that security patches are applied to address vulnerabilities to every system, and apply such security patches within a timeframe that is commensurate with the risks posed by each vulnerability. 4.3 Security standards. A relevant entity must ensure that there is a written set of security standards for every system; ensure that every system conforms to the set of security standards; and, where a sy…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">test/server/configValidation.unit.test.ts:278-287</div>
+    <pre>  void describe(&#x27;checkForIllogicalCombos&#x27;, () &#x3D;&gt; {
+    const BASE_CONFIG &#x3D; {
+      challenges: { restrictToTutorialsFirst: false, showSolvedNotifications: true },
+      hackingInstructor: { isEnabled: true },
+      ctf: { showFlagsInNotifications: false, showCountryDetailsInNotifications: &#x27;none&#x27; }
+    }
+
+    void it(&#x27;should accept a config without systemWideNotifications set&#x27;, () &#x3D;&gt; {
+      assert.equal(checkForIllogicalCombos(BASE_CONFIG), true)
+    })</pre>
+    
+
+  </div>
+  <div class="finding needs_review">
+    <div class="id muted small">Finding 20</div>
+    <span class="badge needs_review">Needs review</span>
+    <h3 style="margin-top:2mm">Implement network perimeter controls that restrict all unauthorised network traffic.</h3>
+    <p>Chunk 8 (s.4.4) requires perimeter controls restricting unauthorised traffic. The only network configuration is Terraform in data/static/codefixes, which are intentionally vulnerable challenge snippets rather than deployed infrastructure. The ALB security group opens ports 80 and 443 to 0.0.0.0/0, which is normal for a public web front end, and the ECS and EFS groups are only partly shown. Whether the real perimeter is restricted cannot be determined from this evidence, and perimeter controls may sit in infrastructure outside the repository.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>MAS Notice 655: Notice on Cyber Hygiene - abridged demo excerpt</strong><br>
+      Effective 2020-08-06 · <a href="https://www.mas.gov.sg/regulation/notices/notice-655">https://www.mas.gov.sg/regulation/notices/notice-655</a>
+    </p>
+    <blockquote><strong>Rule text</strong> <span class="muted">(chunk 8)</span><br>Abridged, paraphrased excerpt of MAS Notice 655 (Notice on Cyber Hygiene) prepared for demonstration. Consult the official notice on the MAS website before relying on it. 4 Requirements 4.1 Administrative accounts. A relevant entity must ensure that every administrative account in respect of any operating system, database, application, security appliance or network device is secured to prevent any unauthorised access to or use of such account. 4.2 Security patches. A relevant entity must ensure that security patches are applied to address vulnerabilities to every system, and apply such security patches within a timeframe that is commensurate with the risks posed by each vulnerability. 4.3 Security standards. A relevant entity must ensure that there is a written set of security standards for every system; ensure that every system conforms to the set of security standards; and, where a sy…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">data/static/codefixes/iacLeakedKeyChallenge_1.tf:62-79</div>
+    <pre>resource &quot;aws_security_group&quot; &quot;alb&quot; {
+  name        &#x3D; &quot;${var.project_name}-alb-sg&quot;
+  description &#x3D; &quot;Security group for ALB&quot;
+  vpc_id      &#x3D; aws_vpc.main.id
+
+  ingress {
+    from_port   &#x3D; 80
+    to_port     &#x3D; 80
+    protocol    &#x3D; &quot;tcp&quot;
+    cidr_blocks &#x3D; [&quot;0.0.0.0/0&quot;]
+  }
+</pre>
+    <div class="loc">data/static/codefixes/iacLeakedKeyChallenge_1.tf:95-102</div>
+    <pre>resource &quot;aws_security_group&quot; &quot;ecs&quot; {
+  name        &#x3D; &quot;${var.project_name}-ecs-sg&quot;
+  description &#x3D; &quot;Security group for ECS tasks&quot;
+  vpc_id      &#x3D; aws_vpc.main.id
+
+  ingress {
+    from_port       &#x3D; 3000
+    to_port         &#x3D; 3000</pre>
+    
+
+  </div>
+  <div class="finding needs_review">
+    <div class="id muted small">Finding 21</div>
+    <span class="badge needs_review">Needs review</span>
+    <h3 style="margin-top:2mm">Protect the security, confidentiality and integrity of customer information and guard against unauthorized access or use through administrative, technical and physical safeguards.</h3>
+    <p>The excerpts show mixed signals: authorization middleware (isAuthorized, denyAll) and rate limiting guard some customer-data routes in server.ts, but the rate limiter keys on a spoofable X-Forwarded-For header. data/static/users.yml holds plaintext passwords and card numbers, though this looks like seed data for a deliberately vulnerable training app (Juice Shop), and the codefix files are teaching material. Whether this is real customer information in a covered institution, and whether written policies, incident response and service-provider oversight exist outside the code, cannot be judged from the evidence, so a human reviewer should decide.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>Regulation S-P: Privacy of Consumer Financial Information and Safeguarding Customer Information (17 CFR 248.30) - abridged demo excerpt</strong><br>
+      Effective 2024-08-02 · <a href="https://www.federalregister.gov/documents/2024/06/03/2024-11116/regulation-s-p-privacy-of-consumer-financial-information-and-safeguarding-customer-information">https://www.federalregister.gov/documents/2024/06/03/2024-11116/regulation-s-p-privacy-of-consumer-financial-information-and-safeguarding-customer-information</a>
+    </p>
+    <blockquote><strong>Sec. 248.30</strong> <span class="muted">(chunk 9)</span><br>Abridged, paraphrased excerpt of the 2024 amendments to Regulation S-P (17 CFR 248.30) prepared for demonstration. Consult the official text in the Federal Register before relying on it. Sec. 248.30 Procedures to safeguard customer records and information; disposal of consumer report information. (a) Safeguards rule. (1) Policies and procedures. Every covered institution must develop, implement, and maintain written policies and procedures that address administrative, technical, and physical safeguards for the protection of customer information. (2) Objectives. The written policies and procedures must be reasonably designed to: (i) ensure the security and confidentiality of customer information; (ii) protect against any anticipated threats or hazards to the security or integrity of customer information; and (iii) protect against unauthorized access to or use of customer information that…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">server.ts:383-391</div>
+    <pre>  /* Baskets: Unauthorized users are not allowed to access baskets */
+  app.use(&#x27;/rest/basket&#x27;, security.isAuthorized(), security.appendUserId())
+  /* BasketItems: API only accessible for authenticated users */
+  app.use(&#x27;/api/BasketItems&#x27;, security.isAuthorized())
+  app.use(&#x27;/api/BasketItems/:id&#x27;, security.isAuthorized())
+  /* Feedbacks: GET allowed for feedback carousel, POST allowed in order to provide feedback without being logged in */
+  app.use(&#x27;/api/Feedbacks/:id&#x27;, security.isAuthorized())
+  /* Users: Only POST is allowed in order to register a new user */
+  app.get(&#x27;/api/Users&#x27;, security.isAuthorized())</pre>
+    <div class="loc">server.ts:369-375</div>
+    <pre>  /* Rate limiting */
+  app.enable(&#x27;trust proxy&#x27;)
+  app.use(&#x27;/rest/user/reset-password&#x27;, rateLimit({
+    windowMs: 5 * 60 * 1000,
+    max: 100,
+    keyGenerator ({ headers, ip }: { headers: any, ip: any }) { return headers[&#x27;X-Forwarded-For&#x27;] ?? ip } // vuln-code-snippet vuln-line resetPasswordMortyChallenge
+  }))</pre>
+    <div class="loc">data/static/users.yml:100-108</div>
+    <pre>  card:
+    - fullName: &#x27;Bjoern Kimminich&#x27;
+      cardNum: 4815205605542754
+      expMonth: 12
+      expYear: 2092
+-
+  email: ciso
+  password: &#x27;mDLx?94T~1CfVfZMzw@sJ9f?s3L6lbMqE70FfI8^54jbNikY5fymx7c!YbJb&#x27;
+  key: ciso</pre>
+    
+
+  </div>
+  <div class="finding needs_review">
+    <div class="id muted small">Finding 22</div>
+    <span class="badge needs_review">Needs review</span>
+    <h3 style="margin-top:2mm">Oversee service providers through due diligence and monitoring, and require them to protect customer information and notify the institution within 72 hours of becoming aware of a breach affecting a customer information system they maintain.</h3>
+    <p>Chunk 9 (248.30(a)(5)) requires service provider oversight through due diligence and monitoring, plus a contractual or procedural 72-hour breach notification duty. The repository search finds no matches for third_party, service_provider, due_diligence, 72 hours or breach_notice, and the code shows only webhook and API-key integrations (Slack, Heroku, Cypress, Alchemy) with no vendor oversight logic. Oversight and notification terms are mainly organisational (contracts, vendor management programmes) and could live outside the repository, and this demo application does not clearly handle regulated customer information, so a human reviewer should decide rather than treating the absence as a definite violation.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>Regulation S-P: Privacy of Consumer Financial Information and Safeguarding Customer Information (17 CFR 248.30) - abridged demo excerpt</strong><br>
+      Effective 2024-08-02 · <a href="https://www.federalregister.gov/documents/2024/06/03/2024-11116/regulation-s-p-privacy-of-consumer-financial-information-and-safeguarding-customer-information">https://www.federalregister.gov/documents/2024/06/03/2024-11116/regulation-s-p-privacy-of-consumer-financial-information-and-safeguarding-customer-information</a>
+    </p>
+    <blockquote><strong>Sec. 248.30</strong> <span class="muted">(chunk 9)</span><br>Abridged, paraphrased excerpt of the 2024 amendments to Regulation S-P (17 CFR 248.30) prepared for demonstration. Consult the official text in the Federal Register before relying on it. Sec. 248.30 Procedures to safeguard customer records and information; disposal of consumer report information. (a) Safeguards rule. (1) Policies and procedures. Every covered institution must develop, implement, and maintain written policies and procedures that address administrative, technical, and physical safeguards for the protection of customer information. (2) Objectives. The written policies and procedures must be reasonably designed to: (i) ensure the security and confidentiality of customer information; (ii) protect against any anticipated threats or hazards to the security or integrity of customer information; and (iii) protect against unauthorized access to or use of customer information that…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">lib/challengeUtils.ts:39-42</div>
+    <pre>    if (process.env.SOLUTIONS_WEBHOOK) {
+      webhook.notify(solvedChallenge, cheatScore, hintsAvailable, hintsUnlocked).catch((error: unknown) &#x3D;&gt; {
+        logger.error(&#x27;Webhook notification failed: &#x27; + colors.red(utils.getErrorMessage(error)))
+      })</pre>
+    <div class="loc">.github/workflows/ci.yml:385-389</div>
+    <pre>        uses: akhileshns/heroku-deploy@581dd286c962b6972d427fcf8980f60755c15520 #v3.13.15
+        with:
+          heroku_api_key: ${{ secrets.HEROKU_API_KEY }}
+          heroku_app_name: ${{ env.HEROKU_APP }}
+          heroku_email: bjoern.kimminich@owasp.org</pre>
+    
+
+  </div>
+  <div class="finding needs_review">
+    <div class="id muted small">Finding 23</div>
+    <span class="badge needs_review">Needs review</span>
+    <h3 style="margin-top:2mm">Maintain a register of identified important business services whose disruption could cause intolerable harm to clients or market stability.</h3>
+    <p>SYSC 15A.2.1 requires a firm to identify its important business services, and the keyword searches (important_business_service, service_catalog, critical_service, business_service_id, service_registry) match no file. The repository is OWASP Juice Shop, a deliberately vulnerable demo shop, and the excerpts show only Angular service wiring and a local backup service, none of which is a register of business services. A register of important business services is an organisational, governance-level record that would normally live in firm documentation outside the code, so its absence from the repository does not show a breach. A human reviewer should confirm whether the firm is in scope and where its register is kept.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>PS21/3: Building operational resilience (SYSC 15A) - abridged demo excerpt</strong><br>
+      Effective 2022-03-31 · <a href="https://www.fca.org.uk/publications/policy-statements/ps21-3-building-operational-resilience">https://www.fca.org.uk/publications/policy-statements/ps21-3-building-operational-resilience</a>
+    </p>
+    <blockquote><strong>Rule text</strong> <span class="muted">(chunk 1)</span><br>Abridged, paraphrased excerpt of the FCA&#x27;s operational resilience rules (Handbook chapter SYSC 15A, made by PS21/3) prepared for demonstration. Consult the FCA Handbook before relying on it. SYSC 15A.2 Operational resilience requirements 15A.2.1 R A firm must identify its important business services. An important business service is a service provided by the firm to one or more clients which, if disrupted, could cause intolerable levels of harm to clients or pose a risk to the soundness, stability or resilience of the UK financial system or the orderly operation of financial markets. 15A.2.5 R A firm must, for each of its important business services, set an impact tolerance: the maximum tolerable level of disruption to the service, including the maximum tolerable duration of a disruption. 15A.2.7 R A firm must ensure it is able to remain within its impact tolerance for each important bu…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <p class="muted small">No code location could be verified for this item.</p>
+
+  </div>
+  <div class="finding needs_review">
+    <div class="id muted small">Finding 24</div>
+    <span class="badge needs_review">Needs review</span>
+    <h3 style="margin-top:2mm">Define and record an impact tolerance (maximum tolerable disruption, including duration) for each important business service and make it available for monitoring and alerting.</h3>
+    <p>SYSC 15A.2.5 requires an impact tolerance, including maximum tolerable duration, for each important business service. The repository search finds no impact_tolerance, max_outage_duration, downtime_threshold or alert_threshold terms, and the excerpts are unrelated (Angular wiring, test specs, challenge data). This is OWASP Juice Shop, a deliberately vulnerable training app, and no important business services are identified in it. Impact tolerances are an organisational and governance artefact that would normally live in firm documentation or monitoring infrastructure outside this repository, so a code-based violation cannot be concluded and no cited code location can honestly show the control&#x27;s absence.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>PS21/3: Building operational resilience (SYSC 15A) - abridged demo excerpt</strong><br>
+      Effective 2022-03-31 · <a href="https://www.fca.org.uk/publications/policy-statements/ps21-3-building-operational-resilience">https://www.fca.org.uk/publications/policy-statements/ps21-3-building-operational-resilience</a>
+    </p>
+    <blockquote><strong>Rule text</strong> <span class="muted">(chunk 1)</span><br>Abridged, paraphrased excerpt of the FCA&#x27;s operational resilience rules (Handbook chapter SYSC 15A, made by PS21/3) prepared for demonstration. Consult the FCA Handbook before relying on it. SYSC 15A.2 Operational resilience requirements 15A.2.1 R A firm must identify its important business services. An important business service is a service provided by the firm to one or more clients which, if disrupted, could cause intolerable levels of harm to clients or pose a risk to the soundness, stability or resilience of the UK financial system or the orderly operation of financial markets. 15A.2.5 R A firm must, for each of its important business services, set an impact tolerance: the maximum tolerable level of disruption to the service, including the maximum tolerable duration of a disruption. 15A.2.7 R A firm must ensure it is able to remain within its impact tolerance for each important bu…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <p class="muted small">No code location could be verified for this item.</p>
+
+  </div>
+  <div class="finding needs_review">
+    <div class="id muted small">Finding 25</div>
+    <span class="badge needs_review">Needs review</span>
+    <h3 style="margin-top:2mm">Identify and document the people, processes, technology, facilities and information needed to deliver each important business service, in enough detail to identify vulnerabilities and support testing.</h3>
+    <p>SYSC 15A.3.1 (chunk 1) requires documented mapping of people, processes, technology, facilities and information for each important business service. The repository search found no mapping, asset inventory, CMDB or dependency-map artefacts, and the cited excerpts are only Angular service registrations and unit tests, which are not mapping documentation. This obligation is organisational and the mapping may well be held outside the code repository (e.g. in GRC tooling or documents), and this repo is an application (OWASP Juice Shop training app) with no defined important business services, so absence in code cannot be treated as a definitive violation.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>PS21/3: Building operational resilience (SYSC 15A) - abridged demo excerpt</strong><br>
+      Effective 2022-03-31 · <a href="https://www.fca.org.uk/publications/policy-statements/ps21-3-building-operational-resilience">https://www.fca.org.uk/publications/policy-statements/ps21-3-building-operational-resilience</a>
+    </p>
+    <blockquote><strong>Rule text</strong> <span class="muted">(chunk 1)</span><br>Abridged, paraphrased excerpt of the FCA&#x27;s operational resilience rules (Handbook chapter SYSC 15A, made by PS21/3) prepared for demonstration. Consult the FCA Handbook before relying on it. SYSC 15A.2 Operational resilience requirements 15A.2.1 R A firm must identify its important business services. An important business service is a service provided by the firm to one or more clients which, if disrupted, could cause intolerable levels of harm to clients or pose a risk to the soundness, stability or resilience of the UK financial system or the orderly operation of financial markets. 15A.2.5 R A firm must, for each of its important business services, set an impact tolerance: the maximum tolerable level of disruption to the service, including the maximum tolerable duration of a disruption. 15A.2.7 R A firm must ensure it is able to remain within its impact tolerance for each important bu…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">frontend/src/main.ts:97-119</div>
+    <pre>        CaptchaService,
+        FeedbackService,
+        WindowRefService,
+        ProductReviewService,
+        ComplaintService,
+        TrackOrderService,
+        RecycleService,
+        BasketService,
+        ChallengeService,
+        CookieService,
+        AdminGuard,
+        LoginGuard,</pre>
+    
+
+  </div>
+  <div class="finding needs_review">
+    <div class="id muted small">Finding 26</div>
+    <span class="badge needs_review">Needs review</span>
+    <h3 style="margin-top:2mm">Carry out scenario testing of the ability to remain within impact tolerance across a range of severe but plausible adverse circumstances of varying nature, severity and duration.</h3>
+    <p>SYSC 15A.5.1 requires scenario testing of the ability to stay within impact tolerance for each important business service, across adverse circumstances of varying nature, severity and duration. The repository has only unit, API and frontend tests (package.json test scripts), and keyword searches for scenario, chaos, failover, disaster recovery, fault injection and load testing match nothing. However, this codebase appears to be OWASP Juice Shop, a deliberately vulnerable training application, and no important business service is identified in the evidence. Resilience scenario testing is an organisational activity that could be carried out outside the code, so a violation cannot be concluded and a human reviewer should decide.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>PS21/3: Building operational resilience (SYSC 15A) - abridged demo excerpt</strong><br>
+      Effective 2022-03-31 · <a href="https://www.fca.org.uk/publications/policy-statements/ps21-3-building-operational-resilience">https://www.fca.org.uk/publications/policy-statements/ps21-3-building-operational-resilience</a>
+    </p>
+    <blockquote><strong>Rule text</strong> <span class="muted">(chunk 1)</span><br>Abridged, paraphrased excerpt of the FCA&#x27;s operational resilience rules (Handbook chapter SYSC 15A, made by PS21/3) prepared for demonstration. Consult the FCA Handbook before relying on it. SYSC 15A.2 Operational resilience requirements 15A.2.1 R A firm must identify its important business services. An important business service is a service provided by the firm to one or more clients which, if disrupted, could cause intolerable levels of harm to clients or pose a risk to the soundness, stability or resilience of the UK financial system or the orderly operation of financial markets. 15A.2.5 R A firm must, for each of its important business services, set an impact tolerance: the maximum tolerable level of disruption to the service, including the maximum tolerable duration of a disruption. 15A.2.7 R A firm must ensure it is able to remain within its impact tolerance for each important bu…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">package.json:65-73</div>
+    <pre>    &quot;test&quot;: &quot;npm run test:frontend &amp;&amp; npm run test:server &amp;&amp; npm run test:api&quot;,
+    &quot;test:coverage&quot;: &quot;npm run test:frontend:coverage &amp;&amp; npm run test:server:coverage &amp;&amp; npm run test:api:coverage&quot;,
+    &quot;test:frontend&quot;: &quot;cd frontend &amp;&amp; npm run test&quot;,
+    &quot;test:frontend:coverage&quot;: &quot;cd frontend &amp;&amp; npm run test:coverage&quot;,
+    &quot;test:server&quot;: &quot;node --import ./test/server/helpers/test-env.mjs --import tsx --test --test-force-exit \&quot;test/server/**/*.unit.test.ts\&quot;&quot;,
+    &quot;test:server:coverage&quot;: &quot;nyc --report-dir&#x3D;./coverage/server-tests npm run test:server&quot;,
+    &quot;test:api&quot;: &quot;node --import ./test/api/helpers/test-env.mjs --import tsx --test --test-force-exit \&quot;test/api/**/*.test.ts\&quot;&quot;,
+    &quot;test:api:coverage&quot;: &quot;nyc --report-dir&#x3D;./coverage/api-tests npm run test:api&quot;,
+    &quot;test:e2e&quot;: &quot;npm run cypress:run&quot;,</pre>
+    
+
+  </div>
+  <div class="finding needs_review">
+    <div class="id muted small">Finding 27</div>
+    <span class="badge needs_review">Needs review</span>
+    <h3 style="margin-top:2mm">Where testing shows impact tolerance cannot be met, make the necessary changes and record lessons learned.</h3>
+    <p>SYSC 15A.5.3 requires firms to make changes and record lessons learned when scenario testing shows an impact tolerance cannot be met. The repository is OWASP Juice Shop, a training application, and nothing in the evidence shows important business services, impact tolerances or resilience scenario testing. The searches for lessons_learned, post_mortem, retrospective and action_tracker found nothing, and the &#x27;remediation&#x27; hits are only CSAF security advisories and a product description. Remediation and lessons-learned records are organisational and may be held outside the code, so a code-based violation cannot be asserted. The cited excerpts are unit and API tests, not impact-tolerance tests.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>PS21/3: Building operational resilience (SYSC 15A) - abridged demo excerpt</strong><br>
+      Effective 2022-03-31 · <a href="https://www.fca.org.uk/publications/policy-statements/ps21-3-building-operational-resilience">https://www.fca.org.uk/publications/policy-statements/ps21-3-building-operational-resilience</a>
+    </p>
+    <blockquote><strong>Rule text</strong> <span class="muted">(chunk 1)</span><br>Abridged, paraphrased excerpt of the FCA&#x27;s operational resilience rules (Handbook chapter SYSC 15A, made by PS21/3) prepared for demonstration. Consult the FCA Handbook before relying on it. SYSC 15A.2 Operational resilience requirements 15A.2.1 R A firm must identify its important business services. An important business service is a service provided by the firm to one or more clients which, if disrupted, could cause intolerable levels of harm to clients or pose a risk to the soundness, stability or resilience of the UK financial system or the orderly operation of financial markets. 15A.2.5 R A firm must, for each of its important business services, set an impact tolerance: the maximum tolerable level of disruption to the service, including the maximum tolerable duration of a disruption. 15A.2.7 R A firm must ensure it is able to remain within its impact tolerance for each important bu…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <p class="muted small">No code location could be verified for this item.</p>
+
+  </div>
+  <div class="finding needs_review">
+    <div class="id muted small">Finding 28</div>
+    <span class="badge needs_review">Needs review</span>
+    <h3 style="margin-top:2mm">Keep an up-to-date written self-assessment covering important services, tolerances, mapping, testing, lessons learned and remediation, approved by the governing body and retained for at least six years.</h3>
+    <p>SYSC 15A.6.1 requires a written self-assessment approved by the governing body and retained for six years. That is an organisational governance record that would normally sit in firm documents, not in application code. The repository search found no self-assessment, board approval or document-version terms, but the excerpts show nothing that could settle the point, since the 30-day log retention and CI archive steps concern unrelated matters. A reviewer should check the firm&#x27;s governance records outside the repository.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>PS21/3: Building operational resilience (SYSC 15A) - abridged demo excerpt</strong><br>
+      Effective 2022-03-31 · <a href="https://www.fca.org.uk/publications/policy-statements/ps21-3-building-operational-resilience">https://www.fca.org.uk/publications/policy-statements/ps21-3-building-operational-resilience</a>
+    </p>
+    <blockquote><strong>Rule text</strong> <span class="muted">(chunk 1)</span><br>Abridged, paraphrased excerpt of the FCA&#x27;s operational resilience rules (Handbook chapter SYSC 15A, made by PS21/3) prepared for demonstration. Consult the FCA Handbook before relying on it. SYSC 15A.2 Operational resilience requirements 15A.2.1 R A firm must identify its important business services. An important business service is a service provided by the firm to one or more clients which, if disrupted, could cause intolerable levels of harm to clients or pose a risk to the soundness, stability or resilience of the UK financial system or the orderly operation of financial markets. 15A.2.5 R A firm must, for each of its important business services, set an impact tolerance: the maximum tolerable level of disruption to the service, including the maximum tolerable duration of a disruption. 15A.2.7 R A firm must ensure it is able to remain within its impact tolerance for each important bu…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <p class="muted small">No code location could be verified for this item.</p>
+
+  </div>
+  <div class="finding needs_review">
+    <div class="id muted small">Finding 29</div>
+    <span class="badge needs_review">Needs review</span>
+    <h3 style="margin-top:2mm">Securely dispose of customer information no later than two years after it was last used to provide a product or service, unless a legitimate business need, legal retention requirement, or infeasibility of targeted disposal applies.</h3>
+    <p>Section 314.4(c)(6)(i) requires procedures for secure disposal of customer information within two years of last use, subject to business, legal and feasibility exceptions. Searches for &#x27;purge&#x27;, &#x27;disposal&#x27; and &#x27;last_used&#x27; matched no files, and no scheduled retention job appears among the excerpts. However, this codebase is OWASP Juice Shop, a deliberately vulnerable training application, and disposal may be handled by operational procedures or infrastructure outside the code. None of the excerpts (cookie expiry, product &#x27;deletedDate&#x27; config, CI workflows) show customer-data disposal logic, so there is no code location that proves a gap. A human reviewer should confirm whether real customer data is held and what disposal procedure applies.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>Standards for Safeguarding Customer Information (FTC Safeguards Rule, 16 CFR Part 314) - abridged demo excerpt</strong><br>
+      Effective 2024-05-13 · <a href="https://www.ecfr.gov/current/title-16/chapter-I/subchapter-C/part-314">https://www.ecfr.gov/current/title-16/chapter-I/subchapter-C/part-314</a>
+    </p>
+    <blockquote><strong>§ 314.4</strong> <span class="muted">(chunk 2)</span><br>Abridged excerpt of 16 CFR Part 314 prepared for demonstration. Consult the official text in the Code of Federal Regulations before relying on it. § 314.4 Elements In order to develop, implement, and maintain your information security program, you shall: (c) Design and implement safeguards to control the risks you identify through risk assessment, including by: (1) Implementing and periodically reviewing access controls, including technical and, as appropriate, physical controls to authenticate and permit access only to authorized users to protect against the unauthorized acquisition of customer information, and to limit authorized users&#x27; access only to customer information that they need to perform their duties and functions; (3) Protect by encryption all customer information held or transmitted by you both in transit over external networks and at rest; (6)(i) Develop, implement, and m…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <p class="muted small">No code location could be verified for this item.</p>
+
+  </div>
+  <div class="finding needs_review">
+    <div class="id muted small">Finding 30</div>
+    <span class="badge needs_review">Needs review</span>
+    <h3 style="margin-top:2mm">Collect and process only the personal data that is adequate, relevant and necessary for the stated purposes (data minimisation).</h3>
+    <p>The excerpts do not show any form, API or analytics code that collects personal data beyond a stated purpose. The only related code is the data-export component, which sends just a format and an optional captcha answer, and that is minimal. The search found no data-minimisation, PII or schema-field terms, but the retrieved evidence does not include the registration, address, payment or feedback handlers where over-collection would occur, so a compliant or violation verdict is not supportable. A reviewer should inspect those handlers and the user models.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>Regulation (EU) 2016/679 (General Data Protection Regulation) - abridged demo excerpt</strong><br>
+      Effective 2018-05-25 · <a href="https://eur-lex.europa.eu/eli/reg/2016/679/oj">https://eur-lex.europa.eu/eli/reg/2016/679/oj</a>
+    </p>
+    <blockquote><strong>Article 5</strong> <span class="muted">(chunk 4)</span><br>Abridged excerpt of Regulation (EU) 2016/679 prepared for demonstration. Consult the official text on EUR-Lex before relying on it. Article 5 Principles relating to processing of personal data 1. Personal data shall be: (c) adequate, relevant and limited to what is necessary in relation to the purposes for which they are processed (&#x27;data minimisation&#x27;); (e) kept in a form which permits identification of data subjects for no longer than is necessary for the purposes for which the personal data are processed (&#x27;storage limitation&#x27;); (f) processed in a manner that ensures appropriate security of the personal data, including protection against unauthorised or unlawful processing and against accidental loss, destruction or damage, using appropriate technical or organisational measures (&#x27;integrity and confidentiality&#x27;). 2. The controller shall be responsible for, and be able to demonstrate com…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">frontend/src/app/data-export/data-export.component.ts:62-67</div>
+    <pre>  save () {
+    if (this.presenceOfCaptcha) {
+      this.dataRequest.answer &#x3D; this.captchaControl.value
+    }
+    this.dataRequest.format &#x3D; this.formatControl.value
+    this.dataSubjectService.dataExport(this.dataRequest).subscribe({</pre>
+    
+
+  </div>
+  <div class="finding needs_review">
+    <div class="id muted small">Finding 31</div>
+    <span class="badge needs_review">Needs review</span>
+    <h3 style="margin-top:2mm">Document every personal data breach, including the facts, its effects and the remedial action taken.</h3>
+    <p>Article 33(5) requires the controller to document every personal data breach, including the facts, effects and remedial action. The repository search finds no incident log, breach register, postmortem, audit trail or incident report. The only &#x27;remediation&#x27; hits are unrelated security advisories and a product description. Breach documentation is largely an organisational process that can live outside the code, for example in a ticketing system or a GRC tool. This is also an intentionally vulnerable training application, so the absence of a code-level register cannot be treated as a definite violation. The cited excerpts show nothing that implements or breaks the obligation, so a human reviewer should confirm where the controller keeps its breach documentation.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>Regulation (EU) 2016/679 (General Data Protection Regulation) - abridged demo excerpt</strong><br>
+      Effective 2018-05-25 · <a href="https://eur-lex.europa.eu/eli/reg/2016/679/oj">https://eur-lex.europa.eu/eli/reg/2016/679/oj</a>
+    </p>
+    <blockquote><strong>Article 33</strong> <span class="muted">(chunk 7)</span><br>Article 33 Notification of a personal data breach to the supervisory authority 1. In the case of a personal data breach, the controller shall without undue delay and, where feasible, not later than 72 hours after having become aware of it, notify the personal data breach to the supervisory authority competent in accordance with Article 55, unless the personal data breach is unlikely to result in a risk to the rights and freedoms of natural persons. 5. The controller shall document any personal data breaches, comprising the facts relating to the personal data breach, its effects and the remedial action taken.</blockquote>
+
+    <div class="label">Code evidence</div>
+    <p class="muted small">No code location could be verified for this item.</p>
+
+  </div>
+  <div class="finding needs_review">
+    <div class="id muted small">Finding 32</div>
+    <span class="badge needs_review">Needs review</span>
+    <h3 style="margin-top:2mm">Apply security patches to address vulnerabilities in every system within a timeframe commensurate with the risk of each vulnerability.</h3>
+    <p>Chunk 8 (clause 4.2) requires security patches to be applied within a timeframe commensurate with risk. The excerpts show no patching process either way: the matches are challenge content, spam-detection workflows and a CSAF advisory. The file list includes .dependabot/config.yml, which may drive automated dependency updates, but its contents were not provided. OS and base-image patching may also sit in infrastructure outside the code. This is a deliberately vulnerable training application, so a reviewer should inspect the Dependabot config, CI and deployment before concluding.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>MAS Notice 655: Notice on Cyber Hygiene - abridged demo excerpt</strong><br>
+      Effective 2020-08-06 · <a href="https://www.mas.gov.sg/regulation/notices/notice-655">https://www.mas.gov.sg/regulation/notices/notice-655</a>
+    </p>
+    <blockquote><strong>Rule text</strong> <span class="muted">(chunk 8)</span><br>Abridged, paraphrased excerpt of MAS Notice 655 (Notice on Cyber Hygiene) prepared for demonstration. Consult the official notice on the MAS website before relying on it. 4 Requirements 4.1 Administrative accounts. A relevant entity must ensure that every administrative account in respect of any operating system, database, application, security appliance or network device is secured to prevent any unauthorised access to or use of such account. 4.2 Security patches. A relevant entity must ensure that security patches are applied to address vulnerabilities to every system, and apply such security patches within a timeframe that is commensurate with the risks posed by each vulnerability. 4.3 Security standards. A relevant entity must ensure that there is a written set of security standards for every system; ensure that every system conforms to the set of security standards; and, where a sy…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">.well-known/csaf/2017/juice-shop-sa-20200513-express-jwt.json:67-71</div>
+    <pre>  &quot;vulnerabilities&quot;: [
+    {
+      &quot;cve&quot;: &quot;CVE-2020-15084&quot;,
+      &quot;notes&quot;: [
+        {</pre>
+    
+
+  </div>
+  <div class="finding needs_review">
+    <div class="id muted small">Finding 33</div>
+    <span class="badge needs_review">Needs review</span>
+    <h3 style="margin-top:2mm">Dispose of consumer and customer information using reasonable measures that protect against unauthorized access or use during disposal.</h3>
+    <p>Regulation S-P 248.30(b) requires reasonable measures to protect customer information during disposal. The excerpts show no secure-deletion, purge, shred or retention mechanism, but they also show no disposal workflow that clearly handles customer data (only cookie removal, soft-delete dates on products, and archive packaging). This is a demo application, and disposal of data stores, backups and media is largely an infrastructure and organisational matter that code alone cannot settle, so a human should confirm.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>Regulation S-P: Privacy of Consumer Financial Information and Safeguarding Customer Information (17 CFR 248.30) - abridged demo excerpt</strong><br>
+      Effective 2024-08-02 · <a href="https://www.federalregister.gov/documents/2024/06/03/2024-11116/regulation-s-p-privacy-of-consumer-financial-information-and-safeguarding-customer-information">https://www.federalregister.gov/documents/2024/06/03/2024-11116/regulation-s-p-privacy-of-consumer-financial-information-and-safeguarding-customer-information</a>
+    </p>
+    <blockquote><strong>Sec. 248.30</strong> <span class="muted">(chunk 9)</span><br>Abridged, paraphrased excerpt of the 2024 amendments to Regulation S-P (17 CFR 248.30) prepared for demonstration. Consult the official text in the Federal Register before relying on it. Sec. 248.30 Procedures to safeguard customer records and information; disposal of consumer report information. (a) Safeguards rule. (1) Policies and procedures. Every covered institution must develop, implement, and maintain written policies and procedures that address administrative, technical, and physical safeguards for the protection of customer information. (2) Objectives. The written policies and procedures must be reasonably designed to: (i) ensure the security and confidentiality of customer information; (ii) protect against any anticipated threats or hazards to the security or integrity of customer information; and (iii) protect against unauthorized access to or use of customer information that…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <div class="loc">frontend/src/app/Services/local-backup.service.ts:101-107</div>
+    <pre>  private restoreCookie (cookieName: string, cookieValue: string) {
+    if (cookieValue) {
+      const expires &#x3D; new Date()
+      expires.setFullYear(expires.getFullYear() + 1)
+      this.cookieService.put(cookieName, cookieValue, { expires })
+    } else {
+      this.cookieService.remove(cookieName)</pre>
+    
+
+  </div>
+  <div class="finding needs_review">
+    <div class="id muted small">Finding 34</div>
+    <span class="badge needs_review">Needs review</span>
+    <h3 style="margin-top:2mm">Make and maintain written records documenting compliance, including policies and procedures, detected unauthorized access and the response, and service provider oversight.</h3>
+    <p>Regulation S-P 248.30(c) requires written records of policies and procedures, detected unauthorized access and the response, and service provider oversight. The repository is OWASP Juice Shop, an intentionally vulnerable training app, and the search found no incident-record, audit-trail or vendor-review artifacts. Such records are organisational documents that would normally live outside the code, so their absence from the repository does not show they are missing. The excerpts (CodeMirror helpers, issue-triage workflow, challenge and privacy-policy config strings) have no bearing on compliance recordkeeping, and no code location is relevant enough to cite as evidence. A human reviewer should confirm whether the operating entity keeps these records elsewhere.</p>
+
+    <div class="label">Regulation</div>
+    <p class="small">
+      <strong>Regulation S-P: Privacy of Consumer Financial Information and Safeguarding Customer Information (17 CFR 248.30) - abridged demo excerpt</strong><br>
+      Effective 2024-08-02 · <a href="https://www.federalregister.gov/documents/2024/06/03/2024-11116/regulation-s-p-privacy-of-consumer-financial-information-and-safeguarding-customer-information">https://www.federalregister.gov/documents/2024/06/03/2024-11116/regulation-s-p-privacy-of-consumer-financial-information-and-safeguarding-customer-information</a>
+    </p>
+    <blockquote><strong>Sec. 248.30</strong> <span class="muted">(chunk 9)</span><br>Abridged, paraphrased excerpt of the 2024 amendments to Regulation S-P (17 CFR 248.30) prepared for demonstration. Consult the official text in the Federal Register before relying on it. Sec. 248.30 Procedures to safeguard customer records and information; disposal of consumer report information. (a) Safeguards rule. (1) Policies and procedures. Every covered institution must develop, implement, and maintain written policies and procedures that address administrative, technical, and physical safeguards for the protection of customer information. (2) Objectives. The written policies and procedures must be reasonably designed to: (i) ensure the security and confidentiality of customer information; (ii) protect against any anticipated threats or hazards to the security or integrity of customer information; and (iii) protect against unauthorized access to or use of customer information that…</blockquote>
+
+    <div class="label">Code evidence</div>
+    <p class="muted small">No code location could be verified for this item.</p>
+
+  </div>
+</section>
+
+<section>
+  <h2>Appendix A: Rules in scope</h2>
+  <table class="grid">
+    <tr><th>Rule</th><th>Source</th><th>Effective</th><th>Identifier</th></tr>
+    <tr>
+      <td>PS21/3: Building operational resilience (SYSC 15A) - abridged demo excerpt<br><a class="small" href="https://www.fca.org.uk/publications/policy-statements/ps21-3-building-operational-resilience">https://www.fca.org.uk/publications/policy-statements/ps21-3-building-operational-resilience</a></td>
+      <td class="small">fca-demo</td>
+      <td class="small">2022-03-31</td>
+      <td class="small"><code>DEMO-ps21-3-building-operational-resilience</code></td>
+    </tr>
+    <tr>
+      <td>Standards for Safeguarding Customer Information (FTC Safeguards Rule, 16 CFR Part 314) - abridged demo excerpt<br><a class="small" href="https://www.ecfr.gov/current/title-16/chapter-I/subchapter-C/part-314">https://www.ecfr.gov/current/title-16/chapter-I/subchapter-C/part-314</a></td>
+      <td class="small">federal-register-demo</td>
+      <td class="small">2024-05-13</td>
+      <td class="small"><code>DEMO-16CFR314</code></td>
+    </tr>
+    <tr>
+      <td>Regulation (EU) 2016/679 (General Data Protection Regulation) - abridged demo excerpt<br><a class="small" href="https://eur-lex.europa.eu/eli/reg/2016/679/oj">https://eur-lex.europa.eu/eli/reg/2016/679/oj</a></td>
+      <td class="small">eur-lex-demo</td>
+      <td class="small">2018-05-25</td>
+      <td class="small"><code>DEMO-CELEX:32016R0679</code></td>
+    </tr>
+    <tr>
+      <td>MAS Notice 655: Notice on Cyber Hygiene - abridged demo excerpt<br><a class="small" href="https://www.mas.gov.sg/regulation/notices/notice-655">https://www.mas.gov.sg/regulation/notices/notice-655</a></td>
+      <td class="small">mas-demo</td>
+      <td class="small">2020-08-06</td>
+      <td class="small"><code>DEMO-MAS-NOTICE-655</code></td>
+    </tr>
+    <tr>
+      <td>Regulation S-P: Privacy of Consumer Financial Information and Safeguarding Customer Information (17 CFR 248.30) - abridged demo excerpt<br><a class="small" href="https://www.federalregister.gov/documents/2024/06/03/2024-11116/regulation-s-p-privacy-of-consumer-financial-information-and-safeguarding-customer-information">https://www.federalregister.gov/documents/2024/06/03/2024-11116/regulation-s-p-privacy-of-consumer-financial-information-and-safeguarding-customer-information</a></td>
+      <td class="small">sec-demo</td>
+      <td class="small">2024-08-02</td>
+      <td class="small"><code>DEMO-2024-11116</code></td>
+    </tr>
+  </table>
+</section>
+
+<section>
+  <h2>Appendix B: Methodology and disclaimer</h2>
+  <h3>How this report was produced</h3>
+  <ul>
+    <li>Regulatory sources are checked daily. Only rules whose content hash changed since the last check enter an audit.</li>
+    <li>Rule text is split into section-aware chunks and embedded into a vector store. The target repository is indexed the same way at the snapshot shown on the cover.</li>
+    <li>For each rule, obligations that software must implement are extracted with the chunks that state them.</li>
+    <li>For each obligation, code evidence is gathered by keyword search and vector similarity, then assessed as compliant, a violation, or needing review.</li>
+    <li>Every citation is then checked without a model: each regulation chunk must exist and belong to the rule, and each <code>file:line</code> range must exist in the audited snapshot. Citations that fail are dropped, and a verdict left without both kinds of support is downgraded to "needs review".</li>
+  </ul>
+  <h3>Limits</h3>
+  <ul>
+    <li>The audit sees only the indexed repository. Controls implemented in infrastructure, vendor systems or policy documents are invisible to it.</li>
+    <li>A "compliant" result means supporting code was found, not that the obligation is fully met.</li>
+    <li>Coverage is limited to the rules listed in Appendix A.</li>
+  </ul>
+  <h3>Disclaimer</h3>
+  <p>
+    This report is automated decision support. It is not legal advice and it does not guarantee
+    compliance or complete coverage of any regulation. Findings should be reviewed by qualified
+    counsel and engineers before any action is taken on them.
+  </p>
+</section>
+
+</body>
+</html>

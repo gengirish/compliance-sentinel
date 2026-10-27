@@ -22,9 +22,9 @@ export function estimateTokens(text: string): number {
   return Math.ceil(text.length / 4);
 }
 
-// Headings that start a new citable unit in EU and US regulatory text.
+// Headings that start a new citable unit in EU and US regulatory text, and in standards such as PCI DSS.
 const HEADING =
-  /^(?:Article\s+\d+[a-z]?\b.*|(?:Section|Sec\.)\s+\d+[\w.-]*\b.*|§\s*\d+[\w.()-]*.*|(?:PART|Part|CHAPTER|Chapter|SUBPART|Subpart)\s+[\dIVXLC]+[A-Z]?\b.*|[IVXLC]+\.\s+[A-Z].*)$/;
+  /^(?:Requirement\s+\d+(?:\.\d+)*\b.*|Article\s+\d+[a-z]?\b.*|(?:Section|Sec\.)\s+\d+[\w.-]*\b.*|§\s*\d+[\w.()-]*.*|(?:PART|Part|CHAPTER|Chapter|SUBPART|Subpart)\s+[\dIVXLC]+[A-Z]?\b.*|[IVXLC]+\.\s+[A-Z].*)$/;
 
 type Section = { ref: string | null; text: string };
 

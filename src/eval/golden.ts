@@ -41,6 +41,37 @@ export const PLANTED_VIOLATIONS: PlantedViolation[] = [
     files: ["src/routes/incidents.js"],
     topic: /breach|notif/i,
   },
+  // PCI DSS v4.0.1, planted 2026-10-27 in src/routes/payments.js, schema.sql and src/config.js.
+  {
+    id: "pci-pan-in-logs",
+    description: "Full card number written to the application log (PCI DSS 3.4.1)",
+    files: ["src/routes/payments.js"],
+    topic: /\blog/i,
+  },
+  {
+    id: "pci-cvv-stored",
+    description: "Card verification code stored after authorisation (PCI DSS 3.3.1)",
+    files: ["src/routes/payments.js", "schema.sql"],
+    topic: /cvv|cvc|card verification|sensitive authentication/i,
+  },
+  {
+    id: "pci-pan-unreadable",
+    description: "Card numbers stored in plaintext (PCI DSS 3.5.1)",
+    files: ["schema.sql", "src/routes/payments.js"],
+    topic: /unreadable|tokeni[sz]|truncat|hash|(?:card number|PAN)[^.]*encrypt|encrypt[^.]*(?:card number|PAN)/i,
+  },
+  {
+    id: "pci-pan-plain-http",
+    description: "Card data sent to the processor over plain HTTP (PCI DSS 4.2.1)",
+    files: ["src/routes/payments.js"],
+    topic: /https|\btls\b|in transit|transmi|strong cryptography|plain http/i,
+  },
+  {
+    id: "pci-shared-account",
+    description: "One shared login for the on-call team's admin console (PCI DSS 8.2.2)",
+    files: ["src/config.js", "src/routes/admin.js"],
+    topic: /shared|generic|unique (?:user )?id/i,
+  },
 ];
 
 /**

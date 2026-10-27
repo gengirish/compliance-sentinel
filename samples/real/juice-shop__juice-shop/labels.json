@@ -1,0 +1,416 @@
+[
+  {
+    "key": "violation|Detect notification events and notify the FTC as soon as possible, and no later than 30 days after discovery, when a event involves the information of at least 500 consumers.|frontend/src/app/challenge-solved-notification/challenge-solved-notification.component.spec.ts:260-264,.github/workflows/ci.yml:400-404",
+    "status": "violation",
+    "severity": "critical",
+    "obligation": "Detect notification events and notify the FTC as soon as possible, and no later than 30 days after discovery, when a event involves the information of at least 500 consumers.",
+    "evidence": [
+      "frontend/src/app/challenge-solved-notification/challenge-solved-notification.component.spec.ts:260-264",
+      ".github/workflows/ci.yml:400-404"
+    ],
+    "rationale": "Section 314.4(j) requires detecting notification events and notifying the FTC within 30 days of discovery when at least 500 consumers are affected. The repository-wide search finds no breach, incident_response, consumer_count, or discovery_date terms, and the one \"ftc\" match is not shown to be related. The \"notification\" matches are UI challenge-solved toasts and Slack CI status messages, not breach detection or regulator notification. No module exists that could hold this control, so it is treated as absent.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "violation|Notify each affected individual whose sensitive customer information was or is reasonably likely to have been compromised as soon as practicable and within 30 days of becoming aware, unless a reasonable investigation finds substantial harm is not reasonably likely. The notice must describe the incident, the data type, the incident date, contact information, and recommend reviewing account statements and considering a fraud alert or security freeze.|.github/workflows/ci.yml:391-393,frontend/src/app/ctf-system-wide-notification/ctf-system-wide-notification.component.spec.ts:22-26",
+    "status": "violation",
+    "severity": "critical",
+    "obligation": "Notify each affected individual whose sensitive customer information was or is reasonably likely to have been compromised as soon as practicable and within 30 days of becoming aware, unless a reasonable investigation finds substantial harm is not reasonably likely. The notice must describe the incident, the data type, the incident date, contact information, and recommend reviewing account statements and considering a fraud alert or security freeze.",
+    "evidence": [
+      ".github/workflows/ci.yml:391-393",
+      "frontend/src/app/ctf-system-wide-notification/ctf-system-wide-notification.component.spec.ts:22-26"
+    ],
+    "rationale": "Regulation S-P (chunk 9, 248.30(a)(3)(iii) and (a)(4)) requires notifying affected individuals within 30 days with specified content (incident description, data type, date, contact info, and a recommendation to review statements and consider a fraud alert or security freeze). The repository search found no breach-notification workflow: 0 matches for breach_notification, affected_customers, incident_date, 30 days, fraud alert, or security freeze. The only 'notify' hits are unrelated Slack CI jobs and UI/test code. The closest candidate, the CTF system-wide notification, is not a customer breach notice, so the mandated control is absent.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "violation|Authenticate users and permit access to customer information only to authorized users, limiting each user to the customer information needed for their duties, and periodically review these access controls.|routes/authenticatedUsers.ts:10-31,routes/updateUserProfile.ts:17-22",
+    "status": "violation",
+    "severity": "high",
+    "obligation": "Authenticate users and permit access to customer information only to authorized users, limiting each user to the customer information needed for their duties, and periodically review these access controls.",
+    "evidence": [
+      "routes/authenticatedUsers.ts:10-31",
+      "routes/updateUserProfile.ts:17-22"
+    ],
+    "rationale": "Section 314.4(c)(1) requires access controls that authenticate users, limit each user to the customer information needed for their duties, and are periodically reviewed. routes/authenticatedUsers.ts calls UserModel.findAll() and returns every user record with no admin or role check in the handler, so any caller who reaches it can list all customer records. The repository has no matches for \"rbac\", \"least_privilege\" or \"access_review\", which suggests no least-privilege model or periodic access review exists. The codefix file also shows only partial route-level authorization, so access limits are inconsistent. Some authentication does exist (token checks in updateUserProfile), but it does not satisfy the full obligation.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "violation|Monitor and log the activity of authorized users and detect unauthorized access to, use of, or tampering with customer information.|server.ts:357-366",
+    "status": "violation",
+    "severity": "high",
+    "obligation": "Monitor and log the activity of authorized users and detect unauthorized access to, use of, or tampering with customer information.",
+    "evidence": [
+      "server.ts:357-366"
+    ],
+    "rationale": "§ 314.4(c)(8) requires controls that monitor and log authorized users' activity and detect unauthorized access, use, or tampering. The only logging in server.ts is morgan HTTP access logging, which records requests but not user-attributed activity. It has no detection or alerting, and rotation is capped at 2 days (max_logs '2d'). Repository searches found no audit_log, access_log, or anomaly matches, and no module that could hold user-activity auditing or tamper detection.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "violation|Record consent so the controller can demonstrate that the data subject consented to processing, including what was consented to and when.|frontend/src/app/Models/backup.model.ts:12-12,config/default.yml:47-49",
+    "status": "violation",
+    "severity": "high",
+    "obligation": "Record consent so the controller can demonstrate that the data subject consented to processing, including what was consented to and when.",
+    "evidence": [
+      "frontend/src/app/Models/backup.model.ts:12-12",
+      "config/default.yml:47-49"
+    ],
+    "rationale": "Article 7(1) requires the controller to be able to demonstrate consent, including what was consented to and when. The cookie consent feature only stores a client-side banner status of 'dismiss' in a local backup, with no record of purpose, version or timestamp. The repository search found no consent_log, consent_version or opt_in matches, and the files that mention consent only configure banner text and a dismiss button, so there is no server-side consent record.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "violation|Secure every administrative account on operating systems, databases, applications, security appliances and network devices against unauthorised access or use.|frontend/src/app/change-password/change-password.component.ts:86-104,frontend/src/app/forgot-password/forgot-password.component.spec.ts:116-122",
+    "status": "violation",
+    "severity": "high",
+    "obligation": "Secure every administrative account on operating systems, databases, applications, security appliances and network devices against unauthorised access or use.",
+    "evidence": [
+      "frontend/src/app/change-password/change-password.component.ts:86-104",
+      "frontend/src/app/forgot-password/forgot-password.component.spec.ts:116-122"
+    ],
+    "rationale": "Chunk 8 (clause 4.1) requires every administrative account to be secured against unauthorised access or use. In change-password.component.ts, a support@ account whose new password fails the 12-30 character complexity policy only triggers a console.error, and the change still goes ahead, so the privileged-account policy is not enforced. Elsewhere, the forgot-password tests accept passwords of five characters, with no stronger rule evident for admin accounts. The search found no default-password, privileged-access or least-privilege controls, so the evidence shows no enforced safeguard for admin accounts.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "violation|Implement one or more malware protection measures on every system where such measures are available and can be implemented.|routes/fileUpload.ts:136-143,test/api/file-upload.test.ts:39-45",
+    "status": "violation",
+    "severity": "high",
+    "obligation": "Implement one or more malware protection measures on every system where such measures are available and can be implemented.",
+    "evidence": [
+      "routes/fileUpload.ts:136-143",
+      "test/api/file-upload.test.ts:39-45"
+    ],
+    "rationale": "Chunk 8 (section 4.5) requires malware protection on every system where it is available and can be implemented, and file upload handling is in scope. The upload route only exports size, type, XML and YAML checks, and the tests show an .exe upload is accepted with a 204. Searches for antivirus, ClamAV, virus scan and file upload scan found no scanning control in the code; the few 'malware' hits are about deliberate challenge content. Malware protection could be applied outside the code (for example at host or endpoint level), so the reviewer should confirm that, but no such measure is evidenced for the upload path.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "violation|Implement multi-factor authentication for all administrative accounts on critical systems and for all accounts on any system used to access customer information through the internet.|data/static/codefixes/loginAdminChallenge_1.ts:19-25,data/datacreator.ts:198-202,frontend/src/app/two-factor-auth-enter/two-factor-auth-enter.component.ts:49-62",
+    "status": "violation",
+    "severity": "high",
+    "obligation": "Implement multi-factor authentication for all administrative accounts on critical systems and for all accounts on any system used to access customer information through the internet.",
+    "evidence": [
+      "data/static/codefixes/loginAdminChallenge_1.ts:19-25",
+      "data/datacreator.ts:198-202",
+      "frontend/src/app/two-factor-auth-enter/two-factor-auth-enter.component.ts:49-62"
+    ],
+    "rationale": "MAS Notice 655 para 4.6 requires MFA for all administrative accounts on critical systems and all accounts on internet-facing systems accessing customer information. The app has only an optional TOTP flow: login challenges the user for a TOTP token only when the user's totpSecret is non-empty (loginAdminChallenge_1.ts:21), so accounts without a secret, including admins, log in with a password alone. The seed code (datacreator.ts) sets totpSecret per user from data rather than mandating it, and no code excerpt enforces MFA for admin roles or for all accounts.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "violation|Implement incident detection, assessment and containment capabilities to identify which systems and types of customer information were accessed without authorization and to stop further access.|data/static/codefixes/accessLogDisclosureChallenge_1_correct.ts:1-4,test/server/fileServer.unit.test.ts:45-52",
+    "status": "violation",
+    "severity": "high",
+    "obligation": "Implement incident detection, assessment and containment capabilities to identify which systems and types of customer information were accessed without authorization and to stop further access.",
+    "evidence": [
+      "data/static/codefixes/accessLogDisclosureChallenge_1_correct.ts:1-4",
+      "test/server/fileServer.unit.test.ts:45-52"
+    ],
+    "rationale": "Regulation S-P 248.30(a)(3)(i)-(ii) requires an incident response program that can assess which systems and customer information were accessed without authorization and contain the incident. The repository search finds no audit_log, intrusion or anomaly detection, and no module for incident assessment or containment. The only related hits are intentionally vulnerable challenge content and a public /ftp route serving an incident-support file. Detection and containment would normally live in the request-handling and routing layer in app.ts, where it is absent. The /ftp routes serve files without any access auditing or containment.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "violation|Let data subjects withdraw consent at any time, as easily as it was given, and stop the related processing.|config/default.yml:47-49,config/mozilla.yml:30-32",
+    "status": "violation",
+    "severity": "medium",
+    "obligation": "Let data subjects withdraw consent at any time, as easily as it was given, and stop the related processing.",
+    "evidence": [
+      "config/default.yml:47-49",
+      "config/mozilla.yml:30-32"
+    ],
+    "rationale": "Article 7(3) requires that consent can be withdrawn at any time as easily as it was given. The cookie consent configs only define a message and a dismiss button text, which is a one-way acceptance. The repository search found no \"withdraw consent\", \"opt_out\", or \"preferences\" matches, and the one \"revoke\" match and the \"unsubscribe\" matches do not concern consent. No file in the list could hold a withdrawal control, so it appears absent. The project is a deliberately vulnerable training app, but the excerpts show no withdrawal mechanism.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Build and operate systems so each important business service can stay within its impact tolerance during a severe but plausible disruption, using resilience mechanisms such as failover, redundancy and recovery.|frontend/src/main.ts:120-130,frontend/src/app/Services/local-backup.service.ts:37-51",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Build and operate systems so each important business service can stay within its impact tolerance during a severe but plausible disruption, using resilience mechanisms such as failover, redundancy and recovery.",
+    "evidence": [
+      "frontend/src/main.ts:120-130",
+      "frontend/src/app/Services/local-backup.service.ts:37-51"
+    ],
+    "rationale": "The search found no failover, redundancy, disaster_recovery, circuit_breaker or multi_region terms in 787 files, so no resilience mechanism is visible in the code. However, this is OWASP Juice Shop, a deliberately vulnerable training app, and resilience for important business services (SYSC 15A.2.7) depends on infrastructure, hosting and organisational arrangements that code cannot show. The only related items are a client-side local backup feature and an infrastructure health check in a deliberately flawed code-fix example, which do not demonstrate resilience. A reviewer should confirm whether any important business service exists and how it is deployed.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Maintain internal and external communication capability to give timely information to clients, market participants and the FCA during operational disruptions.|frontend/src/app/ctf-system-wide-notification/ctf-system-wide-notification.component.ts:30-40,.github/workflows/release.yml:113-117",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Maintain internal and external communication capability to give timely information to clients, market participants and the FCA during operational disruptions.",
+    "evidence": [
+      "frontend/src/app/ctf-system-wide-notification/ctf-system-wide-notification.component.ts:30-40",
+      ".github/workflows/release.yml:113-117"
+    ],
+    "rationale": "The repository is OWASP Juice Shop, a deliberately vulnerable training app, and it contains no incident communication, status page, alerting or regulator notification module (0 matches for those terms). The only related code is a CTF system-wide notification poller, which is a game feature rather than a disruption communication capability. SYSC 15A.8.1 requires a communication strategy, which is largely organisational and may sit in processes or tooling outside the code, such as the Slack workflow notifications in CI. A human reviewer should confirm whether the firm provides this capability elsewhere.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Encrypt all customer information at rest and in transit over external networks.|data/static/codefixes/iacLeakedKeyChallenge_1.tf:184-187",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Encrypt all customer information at rest and in transit over external networks.",
+    "evidence": [
+      "data/static/codefixes/iacLeakedKeyChallenge_1.tf:184-187"
+    ],
+    "rationale": "The evidence does not show whether customer information is encrypted at rest or in transit, so the obligation in § 314.4(c)(3) cannot be judged. The only TLS-related code is Terraform that sets an HTTPS listener with a TLS 1.3 policy, which suggests encryption in transit may be handled by infrastructure. Other excerpts are test files, config text and an unrelated demo script. No excerpt covers customer data storage, and the keyword search found no at-rest encryption terms such as KMS or AES in the excerpts. A human reviewer should confirm how the deployed database, backups and external endpoints are protected.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Keep personal data in identifiable form no longer than necessary, by enforcing retention periods and deleting or anonymising data afterwards.|infrastructure/terraform/main.tf:126-128",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Keep personal data in identifiable form no longer than necessary, by enforcing retention periods and deleting or anonymising data afterwards.",
+    "evidence": [
+      "infrastructure/terraform/main.tf:126-128"
+    ],
+    "rationale": "Article 5(1)(e) requires identifiable personal data to be kept no longer than necessary. The only retention control found is a 30-day CloudWatch log group retention in Terraform, which covers logs only. The repository search shows no purge, expiry or cleanup jobs for the application database, and the other matches (deletedDate on products, a spec test for an anonymised email) are not personal-data retention. Because retention could be handled outside the code, for example in managed infrastructure or by the operator, and this is a demo application, a human reviewer should decide.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Protect personal data against unauthorised or unlawful processing and accidental loss, destruction or damage using appropriate technical measures such as access control, encryption, backup and logging hygiene.|data/static/challenges.yml:3-12,frontend/src/app/data-export/data-export.component.ts:68-72",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Protect personal data against unauthorised or unlawful processing and accidental loss, destruction or damage using appropriate technical measures such as access control, encryption, backup and logging hygiene.",
+    "evidence": [
+      "data/static/challenges.yml:3-12",
+      "frontend/src/app/data-export/data-export.component.ts:68-72"
+    ],
+    "rationale": "This repository is OWASP Juice Shop, a deliberately vulnerable training app, and the evidence mostly consists of challenge descriptions and CI config rather than production security controls. The excerpts show no clear implemented or clearly absent safeguard for Articles 5(1)(f) and 32. The data-export component writes exported user data into a new window, and the IaC fix variant embeds a private key inline, but these sit in training or example material. The keyword counts for encryption, TLS and backup are non-zero, but the matching files are not shown, so a reviewer must inspect the real server code and decide whether the intentional vulnerabilities are in scope.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Implement security measures appropriate to the risk, including pseudonymisation and encryption of personal data, and ensure ongoing confidentiality, integrity, availability and resilience of processing systems.|data/static/users.yml:140-146,data/static/codefixes/weakPasswordChallenge_4.ts:4-7,data/datacreator.ts:749-752",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Implement security measures appropriate to the risk, including pseudonymisation and encryption of personal data, and ensure ongoing confidentiality, integrity, availability and resilience of processing systems.",
+    "evidence": [
+      "data/static/users.yml:140-146",
+      "data/static/codefixes/weakPasswordChallenge_4.ts:4-7",
+      "data/datacreator.ts:749-752"
+    ],
+    "rationale": "The evidence is mixed. Passwords are hashed in the codefix examples (security.hash) and the data export pseudonymises emails by masking vowels. However, data/static/users.yml holds plaintext seed passwords, and the repo search finds no pseudonymisation, tokenisation, failover or redundancy controls. The code appears to be a deliberately vulnerable training app, and the excerpts do not show the actual production user model, TLS or storage encryption, or availability measures, so a reviewer must confirm whether these are in scope.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Detect personal data breaches and support notifying the supervisory authority without undue delay and within 72 hours of awareness, unless the breach is unlikely to cause risk.|.github/workflows/ci.yml:391-393",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Detect personal data breaches and support notifying the supervisory authority without undue delay and within 72 hours of awareness, unless the breach is unlikely to cause risk.",
+    "evidence": [
+      ".github/workflows/ci.yml:391-393"
+    ],
+    "rationale": "Article 33 requires breach detection, documentation and notification to the supervisory authority within 72 hours. The search found no matches for \"breach\", \"supervisory authority\", \"72 hours\" or \"audit log\" in 787 files, and no evidence shows a breach-notification module. This repository is OWASP Juice Shop, a deliberately vulnerable training app, so breach response may sit in organisational procedures outside the code, and the excerpts show only unrelated CI Slack notifications and challenge content. A human reviewer should confirm whether the deployment is in scope before treating the gap as a violation.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Be able to demonstrate compliance with the processing principles through evidence such as logs, records and configuration.|data/static/challenges.yml:30-32,data/static/codefixes/accessLogDisclosureChallenge.info.yml:2-3",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Be able to demonstrate compliance with the processing principles through evidence such as logs, records and configuration.",
+    "evidence": [
+      "data/static/challenges.yml:30-32",
+      "data/static/codefixes/accessLogDisclosureChallenge.info.yml:2-3"
+    ],
+    "rationale": "Article 5(2) requires the controller to be able to demonstrate compliance with Article 5(1), for example through logs, records and configuration. The repository search found no audit logs, records of processing, compliance evidence or retention policy. However, this codebase is a deliberately vulnerable training application, and the 'access log' hits are challenge descriptions and tests rather than real processing. Accountability evidence is largely organisational and could sit outside the code, so a violation cannot be asserted from these excerpts. The cited material only shows that log exposure is an intentional challenge and that no accountability records are present in the code.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Maintain a written set of security standards for every system, ensure systems conform to them, and where a system cannot conform, assess the deviation, mitigate the risk and obtain approval from the relevant authority.|test/server/configValidation.unit.test.ts:278-287",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Maintain a written set of security standards for every system, ensure systems conform to them, and where a system cannot conform, assess the deviation, mitigate the risk and obtain approval from the relevant authority.",
+    "evidence": [
+      "test/server/configValidation.unit.test.ts:278-287"
+    ],
+    "rationale": "Chunk 8 (section 4.3) requires a written set of security standards for every system, conformance to them, and an assessed, mitigated and approved exception process. The searches for security baseline, CIS benchmark, policy exception, waiver and risk acceptance found no matches, but a written standard and an approval process are organisational artefacts that may sit outside the repository. The cited excerpts are only config validation tests, a notification component and a code-fix explanation, which do not address the obligation either way. This is also a deliberately vulnerable training application, so the absence of a standards or exception process may be intentional and cannot be treated as a code violation without human review.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Implement network perimeter controls that restrict all unauthorised network traffic.|data/static/codefixes/iacLeakedKeyChallenge_1.tf:62-79,data/static/codefixes/iacLeakedKeyChallenge_1.tf:95-102",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Implement network perimeter controls that restrict all unauthorised network traffic.",
+    "evidence": [
+      "data/static/codefixes/iacLeakedKeyChallenge_1.tf:62-79",
+      "data/static/codefixes/iacLeakedKeyChallenge_1.tf:95-102"
+    ],
+    "rationale": "Chunk 8 (s.4.4) requires perimeter controls restricting unauthorised traffic. The only network configuration is Terraform in data/static/codefixes, which are intentionally vulnerable challenge snippets rather than deployed infrastructure. The ALB security group opens ports 80 and 443 to 0.0.0.0/0, which is normal for a public web front end, and the ECS and EFS groups are only partly shown. Whether the real perimeter is restricted cannot be determined from this evidence, and perimeter controls may sit in infrastructure outside the repository.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Protect the security, confidentiality and integrity of customer information and guard against unauthorized access or use through administrative, technical and physical safeguards.|server.ts:383-391,server.ts:369-375,data/static/users.yml:100-108",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Protect the security, confidentiality and integrity of customer information and guard against unauthorized access or use through administrative, technical and physical safeguards.",
+    "evidence": [
+      "server.ts:383-391",
+      "server.ts:369-375",
+      "data/static/users.yml:100-108"
+    ],
+    "rationale": "The excerpts show mixed signals: authorization middleware (isAuthorized, denyAll) and rate limiting guard some customer-data routes in server.ts, but the rate limiter keys on a spoofable X-Forwarded-For header. data/static/users.yml holds plaintext passwords and card numbers, though this looks like seed data for a deliberately vulnerable training app (Juice Shop), and the codefix files are teaching material. Whether this is real customer information in a covered institution, and whether written policies, incident response and service-provider oversight exist outside the code, cannot be judged from the evidence, so a human reviewer should decide.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Oversee service providers through due diligence and monitoring, and require them to protect customer information and notify the institution within 72 hours of becoming aware of a breach affecting a customer information system they maintain.|lib/challengeUtils.ts:39-42,.github/workflows/ci.yml:385-389",
+    "status": "needs_review",
+    "severity": "medium",
+    "obligation": "Oversee service providers through due diligence and monitoring, and require them to protect customer information and notify the institution within 72 hours of becoming aware of a breach affecting a customer information system they maintain.",
+    "evidence": [
+      "lib/challengeUtils.ts:39-42",
+      ".github/workflows/ci.yml:385-389"
+    ],
+    "rationale": "Chunk 9 (248.30(a)(5)) requires service provider oversight through due diligence and monitoring, plus a contractual or procedural 72-hour breach notification duty. The repository search finds no matches for third_party, service_provider, due_diligence, 72 hours or breach_notice, and the code shows only webhook and API-key integrations (Slack, Heroku, Cypress, Alchemy) with no vendor oversight logic. Oversight and notification terms are mainly organisational (contracts, vendor management programmes) and could live outside the repository, and this demo application does not clearly handle regulated customer information, so a human reviewer should decide rather than treating the absence as a definite violation.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Maintain a register of identified important business services whose disruption could cause intolerable harm to clients or market stability.|",
+    "status": "needs_review",
+    "severity": "low",
+    "obligation": "Maintain a register of identified important business services whose disruption could cause intolerable harm to clients or market stability.",
+    "evidence": [],
+    "rationale": "SYSC 15A.2.1 requires a firm to identify its important business services, and the keyword searches (important_business_service, service_catalog, critical_service, business_service_id, service_registry) match no file. The repository is OWASP Juice Shop, a deliberately vulnerable demo shop, and the excerpts show only Angular service wiring and a local backup service, none of which is a register of business services. A register of important business services is an organisational, governance-level record that would normally live in firm documentation outside the code, so its absence from the repository does not show a breach. A human reviewer should confirm whether the firm is in scope and where its register is kept.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Define and record an impact tolerance (maximum tolerable disruption, including duration) for each important business service and make it available for monitoring and alerting.|",
+    "status": "needs_review",
+    "severity": "low",
+    "obligation": "Define and record an impact tolerance (maximum tolerable disruption, including duration) for each important business service and make it available for monitoring and alerting.",
+    "evidence": [],
+    "rationale": "SYSC 15A.2.5 requires an impact tolerance, including maximum tolerable duration, for each important business service. The repository search finds no impact_tolerance, max_outage_duration, downtime_threshold or alert_threshold terms, and the excerpts are unrelated (Angular wiring, test specs, challenge data). This is OWASP Juice Shop, a deliberately vulnerable training app, and no important business services are identified in it. Impact tolerances are an organisational and governance artefact that would normally live in firm documentation or monitoring infrastructure outside this repository, so a code-based violation cannot be concluded and no cited code location can honestly show the control's absence.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Identify and document the people, processes, technology, facilities and information needed to deliver each important business service, in enough detail to identify vulnerabilities and support testing.|frontend/src/main.ts:97-119",
+    "status": "needs_review",
+    "severity": "low",
+    "obligation": "Identify and document the people, processes, technology, facilities and information needed to deliver each important business service, in enough detail to identify vulnerabilities and support testing.",
+    "evidence": [
+      "frontend/src/main.ts:97-119"
+    ],
+    "rationale": "SYSC 15A.3.1 (chunk 1) requires documented mapping of people, processes, technology, facilities and information for each important business service. The repository search found no mapping, asset inventory, CMDB or dependency-map artefacts, and the cited excerpts are only Angular service registrations and unit tests, which are not mapping documentation. This obligation is organisational and the mapping may well be held outside the code repository (e.g. in GRC tooling or documents), and this repo is an application (OWASP Juice Shop training app) with no defined important business services, so absence in code cannot be treated as a definitive violation.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Carry out scenario testing of the ability to remain within impact tolerance across a range of severe but plausible adverse circumstances of varying nature, severity and duration.|package.json:65-73",
+    "status": "needs_review",
+    "severity": "low",
+    "obligation": "Carry out scenario testing of the ability to remain within impact tolerance across a range of severe but plausible adverse circumstances of varying nature, severity and duration.",
+    "evidence": [
+      "package.json:65-73"
+    ],
+    "rationale": "SYSC 15A.5.1 requires scenario testing of the ability to stay within impact tolerance for each important business service, across adverse circumstances of varying nature, severity and duration. The repository has only unit, API and frontend tests (package.json test scripts), and keyword searches for scenario, chaos, failover, disaster recovery, fault injection and load testing match nothing. However, this codebase appears to be OWASP Juice Shop, a deliberately vulnerable training application, and no important business service is identified in the evidence. Resilience scenario testing is an organisational activity that could be carried out outside the code, so a violation cannot be concluded and a human reviewer should decide.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Where testing shows impact tolerance cannot be met, make the necessary changes and record lessons learned.|",
+    "status": "needs_review",
+    "severity": "low",
+    "obligation": "Where testing shows impact tolerance cannot be met, make the necessary changes and record lessons learned.",
+    "evidence": [],
+    "rationale": "SYSC 15A.5.3 requires firms to make changes and record lessons learned when scenario testing shows an impact tolerance cannot be met. The repository is OWASP Juice Shop, a training application, and nothing in the evidence shows important business services, impact tolerances or resilience scenario testing. The searches for lessons_learned, post_mortem, retrospective and action_tracker found nothing, and the 'remediation' hits are only CSAF security advisories and a product description. Remediation and lessons-learned records are organisational and may be held outside the code, so a code-based violation cannot be asserted. The cited excerpts are unit and API tests, not impact-tolerance tests.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Keep an up-to-date written self-assessment covering important services, tolerances, mapping, testing, lessons learned and remediation, approved by the governing body and retained for at least six years.|",
+    "status": "needs_review",
+    "severity": "low",
+    "obligation": "Keep an up-to-date written self-assessment covering important services, tolerances, mapping, testing, lessons learned and remediation, approved by the governing body and retained for at least six years.",
+    "evidence": [],
+    "rationale": "SYSC 15A.6.1 requires a written self-assessment approved by the governing body and retained for six years. That is an organisational governance record that would normally sit in firm documents, not in application code. The repository search found no self-assessment, board approval or document-version terms, but the excerpts show nothing that could settle the point, since the 30-day log retention and CI archive steps concern unrelated matters. A reviewer should check the firm's governance records outside the repository.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Securely dispose of customer information no later than two years after it was last used to provide a product or service, unless a legitimate business need, legal retention requirement, or infeasibility of targeted disposal applies.|",
+    "status": "needs_review",
+    "severity": "low",
+    "obligation": "Securely dispose of customer information no later than two years after it was last used to provide a product or service, unless a legitimate business need, legal retention requirement, or infeasibility of targeted disposal applies.",
+    "evidence": [],
+    "rationale": "Section 314.4(c)(6)(i) requires procedures for secure disposal of customer information within two years of last use, subject to business, legal and feasibility exceptions. Searches for 'purge', 'disposal' and 'last_used' matched no files, and no scheduled retention job appears among the excerpts. However, this codebase is OWASP Juice Shop, a deliberately vulnerable training application, and disposal may be handled by operational procedures or infrastructure outside the code. None of the excerpts (cookie expiry, product 'deletedDate' config, CI workflows) show customer-data disposal logic, so there is no code location that proves a gap. A human reviewer should confirm whether real customer data is held and what disposal procedure applies.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Collect and process only the personal data that is adequate, relevant and necessary for the stated purposes (data minimisation).|frontend/src/app/data-export/data-export.component.ts:62-67",
+    "status": "needs_review",
+    "severity": "low",
+    "obligation": "Collect and process only the personal data that is adequate, relevant and necessary for the stated purposes (data minimisation).",
+    "evidence": [
+      "frontend/src/app/data-export/data-export.component.ts:62-67"
+    ],
+    "rationale": "The excerpts do not show any form, API or analytics code that collects personal data beyond a stated purpose. The only related code is the data-export component, which sends just a format and an optional captcha answer, and that is minimal. The search found no data-minimisation, PII or schema-field terms, but the retrieved evidence does not include the registration, address, payment or feedback handlers where over-collection would occur, so a compliant or violation verdict is not supportable. A reviewer should inspect those handlers and the user models.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Document every personal data breach, including the facts, its effects and the remedial action taken.|",
+    "status": "needs_review",
+    "severity": "low",
+    "obligation": "Document every personal data breach, including the facts, its effects and the remedial action taken.",
+    "evidence": [],
+    "rationale": "Article 33(5) requires the controller to document every personal data breach, including the facts, effects and remedial action. The repository search finds no incident log, breach register, postmortem, audit trail or incident report. The only 'remediation' hits are unrelated security advisories and a product description. Breach documentation is largely an organisational process that can live outside the code, for example in a ticketing system or a GRC tool. This is also an intentionally vulnerable training application, so the absence of a code-level register cannot be treated as a definite violation. The cited excerpts show nothing that implements or breaks the obligation, so a human reviewer should confirm where the controller keeps its breach documentation.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Apply security patches to address vulnerabilities in every system within a timeframe commensurate with the risk of each vulnerability.|.well-known/csaf/2017/juice-shop-sa-20200513-express-jwt.json:67-71",
+    "status": "needs_review",
+    "severity": "low",
+    "obligation": "Apply security patches to address vulnerabilities in every system within a timeframe commensurate with the risk of each vulnerability.",
+    "evidence": [
+      ".well-known/csaf/2017/juice-shop-sa-20200513-express-jwt.json:67-71"
+    ],
+    "rationale": "Chunk 8 (clause 4.2) requires security patches to be applied within a timeframe commensurate with risk. The excerpts show no patching process either way: the matches are challenge content, spam-detection workflows and a CSAF advisory. The file list includes .dependabot/config.yml, which may drive automated dependency updates, but its contents were not provided. OS and base-image patching may also sit in infrastructure outside the code. This is a deliberately vulnerable training application, so a reviewer should inspect the Dependabot config, CI and deployment before concluding.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Dispose of consumer and customer information using reasonable measures that protect against unauthorized access or use during disposal.|frontend/src/app/Services/local-backup.service.ts:101-107",
+    "status": "needs_review",
+    "severity": "low",
+    "obligation": "Dispose of consumer and customer information using reasonable measures that protect against unauthorized access or use during disposal.",
+    "evidence": [
+      "frontend/src/app/Services/local-backup.service.ts:101-107"
+    ],
+    "rationale": "Regulation S-P 248.30(b) requires reasonable measures to protect customer information during disposal. The excerpts show no secure-deletion, purge, shred or retention mechanism, but they also show no disposal workflow that clearly handles customer data (only cookie removal, soft-delete dates on products, and archive packaging). This is a demo application, and disposal of data stores, backups and media is largely an infrastructure and organisational matter that code alone cannot settle, so a human should confirm.",
+    "label": null,
+    "note": ""
+  },
+  {
+    "key": "needs_review|Make and maintain written records documenting compliance, including policies and procedures, detected unauthorized access and the response, and service provider oversight.|",
+    "status": "needs_review",
+    "severity": "low",
+    "obligation": "Make and maintain written records documenting compliance, including policies and procedures, detected unauthorized access and the response, and service provider oversight.",
+    "evidence": [],
+    "rationale": "Regulation S-P 248.30(c) requires written records of policies and procedures, detected unauthorized access and the response, and service provider oversight. The repository is OWASP Juice Shop, an intentionally vulnerable training app, and the search found no incident-record, audit-trail or vendor-review artifacts. Such records are organisational documents that would normally live outside the code, so their absence from the repository does not show they are missing. The excerpts (CodeMirror helpers, issue-triage workflow, challenge and privacy-policy config strings) have no bearing on compliance recordkeeping, and no code location is relevant enough to cite as evidence. A human reviewer should confirm whether the operating entity keeps these records elsewhere.",
+    "label": null,
+    "note": ""
+  }
+]

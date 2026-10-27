@@ -1,0 +1,27 @@
+{
+  "repo": "maybe-finance/maybe",
+  "ref": "77b5469832758d1cbee1a940f3012a1ae1c74cd3",
+  "license": "AGPL-3.0",
+  "analyst": "claude",
+  "embedder": "local-hash-1024",
+  "auditedAt": "2026-10-27T04:01:50.238Z",
+  "wallSeconds": 240,
+  "costUsd": 1.4907142999999998,
+  "obligations": 36,
+  "findings": {
+    "total": 35,
+    "byStatus": {
+      "compliant": 2,
+      "violation": 8,
+      "needs_review": 25
+    },
+    "violationsBySeverity": {
+      "critical": 2,
+      "high": 6,
+      "medium": 0,
+      "low": 0
+    },
+    "hasCritical": true
+  },
+  "errors": []
+}

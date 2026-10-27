@@ -23,6 +23,8 @@ export type Control = {
    * finding points at the place it would normally live.
    */
   anchorPatterns?: RegExp[];
+  /** Requirement ids this control maps to in common frameworks; used for evidence exports. */
+  frameworkRefs?: string[];
 };
 
 const PII = String.raw`(?:ssn|social.?security|date.?of.?birth|dob|diagnosis|passport|full.?name|email|phone|password)`;
@@ -114,6 +116,54 @@ export const CONTROLS: Control[] = [
     searchTerms: ["requireAuth", "requireRole", "authorize", "jwt.verify", "role", "forbidden"],
     violationPatterns: [/app\.use\(\s*["'`]\/admin["'`]\s*,\s*require\(/],
     compliantPatterns: [/requireRole\(|jwt\.verify\(|status\(403\)/],
+  },
+  {
+    id: "pci-pan-in-logs",
+    ruleKeywords: /primary account number \(PAN\) is displayed|PAN is displayed or written out|masked so that at most/i,
+    obligation:
+      "Full card numbers (PAN) must never be written to logs; wherever a PAN is displayed or written out it must be masked to at most the first six and last four digits.",
+    appliesTo: "Payment handling code and logging",
+    severity: "critical",
+    searchTerms: ["cardNumber", "card_number", "pan", "console.log", "logger"],
+    violationPatterns: [/(?:console\.(?:log|info|debug|warn)|logger\.\w+)\s*\(.*\b(?:cardNumber|card_number|pan)\b/i],
+    compliantPatterns: [/maskPan|last4|\.slice\(-4\)/i],
+    frameworkRefs: ["PCI DSS 3.4.1", "PCI DSS 3.5.1"],
+  },
+  {
+    id: "pci-sad-storage",
+    ruleKeywords: /sensitive authentication data|card verification code/i,
+    obligation:
+      "Sensitive authentication data, including the card verification code (CVV), must not be stored after authorisation, even if it is encrypted.",
+    appliesTo: "Payment handling code and the database schema",
+    severity: "critical",
+    searchTerms: ["cvv", "cvc", "card_verification", "INSERT INTO payments"],
+    violationPatterns: [/^\s*cvv\s+(?:text|varchar|char)/i, /INSERT INTO payments[^"'`]*\bcvv\b/i],
+    compliantPatterns: [/delete\s+\w+\.cvv|cvv\s*=\s*undefined/i],
+    frameworkRefs: ["PCI DSS 3.3.1"],
+  },
+  {
+    id: "pci-pan-protection",
+    ruleKeywords: /rendered unreadable anywhere it is stored|index tokens|keyed cryptographic hash/i,
+    obligation:
+      "Stored card numbers (PAN) must be rendered unreadable by tokenisation, truncation, keyed one-way hashing or strong encryption.",
+    appliesTo: "The database schema and code that stores card data",
+    severity: "critical",
+    searchTerms: ["card_number", "cardNumber", "token", "encrypt", "INSERT INTO payments"],
+    violationPatterns: [/^\s*card_number\s+(?:text|varchar|char)/i],
+    compliantPatterns: [/tokeni[sz]e\(|encryptPan|card_token/i],
+    frameworkRefs: ["PCI DSS 3.5.1"],
+  },
+  {
+    id: "pci-shared-accounts",
+    ruleKeywords: /shared or generic accounts|unique ID before/i,
+    obligation:
+      "Every user must have a unique ID; shared or generic accounts must not be used for administrative access.",
+    appliesTo: "Authentication configuration and administrative access",
+    severity: "high",
+    searchTerms: ["username", "shared", "on-call", "opsConsole", "admin"],
+    violationPatterns: [/one login for the whole|shared by the|username\s*:\s*["'`](?:ops|admin|root|shared|team)["'`]/i],
+    compliantPatterns: [/req\.user\.id|userId/],
+    frameworkRefs: ["PCI DSS 8.2.1", "PCI DSS 8.2.2"],
   },
 ];
 

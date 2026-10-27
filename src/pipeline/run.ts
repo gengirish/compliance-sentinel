@@ -60,6 +60,8 @@ export const DIGEST_NOTE = "Digest run: the rules in scope were summarised for p
 export type PipelineResult = {
   runId: number;
   status: "completed" | "skipped";
+  /** Name of the analyst that judged the findings; empty when the run was skipped. */
+  analyst: string;
   rulesInScope: number[];
   /** Filled in digest mode. */
   digests: RuleDigestRecord[];
@@ -82,9 +84,18 @@ const FixtureSchema = z.object({
 });
 
 /** Demo rules shipped with the repo, grouped by the source they stand in for. */
-export function loadDemoRules(dir = path.join(ROOT_DIR, "fixtures", "rules")) {
+export function loadDemoRules(dir = path.join(ROOT_DIR, "fixtures", "rules"), only = config.DEMO_RULES) {
+  const prefixes = only
+    ?.split(",")
+    .map((p) => p.trim().toLowerCase())
+    .filter(Boolean);
+  const files = readdirSync(dir)
+    .filter((f) => f.endsWith(".json"))
+    .filter((f) => !prefixes?.length || prefixes.some((p) => f.toLowerCase().startsWith(p)))
+    .sort();
+  if (prefixes?.length && files.length === 0) throw new Error(`DEMO_RULES="${only}" matches no file in ${dir}`);
   const bySource = new Map<string, { def: SourceDef; rules: ScrapedRule[] }>();
-  for (const file of readdirSync(dir).filter((f) => f.endsWith(".json")).sort()) {
+  for (const file of files) {
     const fixture = FixtureSchema.parse(JSON.parse(readFileSync(path.join(dir, file), "utf8")));
     const name = `${fixture.source.name}-demo`;
     const entry = bySource.get(name) ?? { def: { name, kind: "fixture" as const, url: fixture.source.url }, rules: [] };
@@ -226,6 +237,7 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
       return {
         runId: row!.id,
         status: "skipped",
+        analyst: "",
         rulesInScope: [],
         digests: [],
         summary: null,
@@ -292,6 +304,7 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
     return {
       runId,
       status: "completed",
+      analyst: analyst.name,
       rulesInScope,
       digests: state.digests,
       summary: state.summary,

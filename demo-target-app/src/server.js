@@ -18,6 +18,7 @@ app.use(express.json());
 
 app.use("/signup", require("./routes/signup"));
 app.use("/patients", requireAuth, require("./routes/patients"));
+app.use("/payments", requireAuth, require("./routes/payments"));
 app.use("/admin", requireAuth, requireRole("admin"), require("./routes/admin"));
 app.use("/incidents", requireAuth, requireRole("admin"), require("./routes/incidents"));
 

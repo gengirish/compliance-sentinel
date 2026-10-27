@@ -1,0 +1,27 @@
+{
+  "repo": "juice-shop/juice-shop",
+  "ref": "717f5efa886b0417eeecb52378b03cf10567b7e2",
+  "license": "MIT",
+  "analyst": "claude",
+  "embedder": "local-hash-1024",
+  "auditedAt": "2026-10-27T03:57:48.501Z",
+  "wallSeconds": 218,
+  "costUsd": 1.0978508,
+  "obligations": 34,
+  "findings": {
+    "total": 34,
+    "byStatus": {
+      "compliant": 0,
+      "violation": 10,
+      "needs_review": 24
+    },
+    "violationsBySeverity": {
+      "critical": 2,
+      "high": 7,
+      "medium": 1,
+      "low": 0
+    },
+    "hasCritical": true
+  },
+  "errors": []
+}

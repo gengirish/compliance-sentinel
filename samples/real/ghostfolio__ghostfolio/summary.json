@@ -1,0 +1,27 @@
+{
+  "repo": "ghostfolio/ghostfolio",
+  "ref": "5ab32ffc1ef539e72ed88af19a20168223e8dcb8",
+  "license": "AGPL-3.0",
+  "analyst": "claude",
+  "embedder": "local-hash-1024",
+  "auditedAt": "2026-10-27T03:54:10.366Z",
+  "wallSeconds": 264,
+  "costUsd": 1.2338647999999999,
+  "obligations": 36,
+  "findings": {
+    "total": 35,
+    "byStatus": {
+      "compliant": 3,
+      "violation": 6,
+      "needs_review": 26
+    },
+    "violationsBySeverity": {
+      "critical": 2,
+      "high": 4,
+      "medium": 0,
+      "low": 0
+    },
+    "hasCritical": true
+  },
+  "errors": []
+}
