@@ -181,6 +181,12 @@ About 14 working days for one person, close to the roadmap's three weeks. B1 can
 
 **2026-10-27.** A1 and A2 done, except for two parts moved later. The `GITHUB_*` config moves to A3, which is the first PR that reads it. `POST /runs` taking a `repoId` moves to A5, because there is nothing to pick until repos come from installs. Tests: `tests/tenancy.test.ts` (seed, repo rows, baseline retention, migrating a pre-tenancy database) and a cross-tenant block in `tests/webApi.test.ts`. **Next: A3**, which needs the GitHub App registered.
 
+**2026-10-27.** App registered (`compliance-sentinel`, App ID 5492169, private to @gengirish, not installed anywhere yet). A3 done, with two changes from the plan:
+- No `@octokit/auth-app`. [src/github/app.ts](../src/github/app.ts) signs the App JWT with `node:crypto` and calls the REST API with `fetch`, like the AgentMail client.
+- The token reaches git through `GIT_CONFIG_COUNT`/`GIT_CONFIG_*` environment variables instead of `git -c`. A failed `execFile` puts its command line in the error message, and that message lands in `audit_runs.error`; the environment does not.
+
+The install job audits the bundled rules for the tenant's `rule_packs` (`demo` + `rulePacks`) until A4 brings real rule selection. Tests: `tests/github.test.ts` covers the JWT, signatures, token caching, webhook installs and redelivery, token-free clone errors, and an App-driven audit against a local bare repo that sets the baseline. **Next: A4.** Before installing the App, deploy A3 to Fly with the `GITHUB_*` secrets set, the key as `GITHUB_APP_PRIVATE_KEY`.
+
 ## 6. Risks
 
 | Risk | Mitigation |

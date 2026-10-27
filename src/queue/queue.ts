@@ -7,6 +7,7 @@ export const QUEUE_NAME = "compliance";
 export const DAILY_JOB = "daily-audit";
 export const MANUAL_JOB = "manual-audit";
 export const DIGEST_JOB = "weekly-digest";
+export const INSTALL_JOB = "install-baseline";
 
 export type AuditJobData = {
   trigger: Trigger;
@@ -14,7 +15,11 @@ export type AuditJobData = {
   tenantId?: number;
   /** "audit" (default) runs the pipeline; "digest" sends the weekly round-up of rule changes. */
   kind?: "audit" | "digest";
+  /** Audit this repository of the tenant, cloned with the GitHub App, instead of the configured target. */
+  repoId?: number;
   demo?: boolean;
+  /** With `demo`: only the bundled rules whose file names start with one of these. Empty: all of them. */
+  rulePacks?: string[];
   ruleIds?: number[];
 };
 

@@ -44,6 +44,18 @@ const EnvSchema = z.object({
   /** Indexing stops with an error past these caps, so a large repository fails fast instead of running up cost. */
   INDEX_MAX_FILES: z.coerce.number().int().positive().default(2_000),
   INDEX_MAX_BYTES: z.coerce.number().int().positive().default(8_000_000),
+  /** GitHub App (ROADMAP §2b). Without an id and a key, repositories can only be audited by path or public URL. */
+  GITHUB_APP_ID: optional,
+  GITHUB_APP_SLUG: optional,
+  GITHUB_CLIENT_ID: optional,
+  GITHUB_CLIENT_SECRET: optional,
+  GITHUB_WEBHOOK_SECRET: optional,
+  /** The App's PEM key inline (newlines may be written as \n, as Fly secrets need), or a path to the .pem file. */
+  GITHUB_APP_PRIVATE_KEY: optional,
+  GITHUB_APP_PRIVATE_KEY_PATH: optional,
+  GITHUB_API_URL: z.string().default("https://api.github.com"),
+  /** Repositories are cloned from `<GITHUB_URL>/<owner>/<name>.git`. */
+  GITHUB_URL: z.string().default("https://github.com"),
   RUN_TRIGGER_TOKEN: optional,
   PUBLIC_BASE_URL: optional,
   AUDIT_CRON: z.string().default("0 6 * * *"),

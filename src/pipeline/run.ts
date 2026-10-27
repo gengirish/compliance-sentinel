@@ -6,8 +6,10 @@ import { MemorySaver, type BaseCheckpointSaver } from "@langchain/langgraph";
 import { eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { config, resolveFromRoot, ROOT_DIR, targetRepoPath } from "../config.js";
-import { openMigratedDb, type DbHandle } from "../db/client.js";
-import { auditRuns, LOCAL_TENANT_ID, rules as rulesTable, type Rule, type Trigger } from "../db/schema.js";
+import { openMigratedDb, type Db, type DbHandle } from "../db/client.js";
+import { auditRuns, LOCAL_TENANT_ID, repos, rules as rulesTable, type Rule, type Trigger } from "../db/schema.js";
+import { getRepo, getTenant } from "../db/tenants.js";
+import { GitHubApp } from "../github/app.js";
 import type { RuleDigestRecord } from "../digest/digestRule.js";
 import { buildAuditGraph, runAuditGraph } from "../graph/graph.js";
 import type { AuditStateType, GraphDeps } from "../graph/state.js";
@@ -54,6 +56,12 @@ export type PipelineOptions = {
   repoUrl?: string;
   /** Commit sha (or branch/tag) to audit when cloning; defaults to the remote's default branch. */
   repoRef?: string;
+  /** A repository of the tenant, cloned through the GitHub App. Wins over the other repo options. */
+  repoId?: number;
+  /** With `demo`: only the bundled rules whose file names start with one of these. Empty: all of them. */
+  rulePacks?: string[];
+  /** Injected in tests; defaults to the App from config. */
+  github?: GitHubApp | null;
 };
 
 export const SKIP_NOTE = "No new or amended rules since the last check, so there was nothing to audit.";
@@ -153,12 +161,24 @@ export function repoNameFromUrl(url: string): string {
   return parts.slice(-2).join("/");
 }
 
-/** Shallow-clones `url` at `ref` (a sha, branch or tag) into its own folder under .data/repos. */
-export async function cloneRepo(url: string, ref?: string): Promise<string> {
-  const dir = path.join(resolveFromRoot(".data/repos"), repoNameFromUrl(url).replace(/[^\w.-]+/g, "__"));
+const safeDirName = (s: string) => s.replace(/[^\w.-]+/g, "__");
+
+/**
+ * Shallow-clones `url` at `ref` (a sha, branch or tag), by default into its own folder under
+ * .data/repos. A `token` (a GitHub installation token) goes to git as an extra header through
+ * the environment: it never appears in the URL, the clone's .git/config, or an error message,
+ * which echoes the command line but not the environment.
+ */
+export async function cloneRepo(url: string, ref?: string, opts: { token?: string; dir?: string } = {}): Promise<string> {
+  const dir = opts.dir ?? path.join(resolveFromRoot(".data/repos"), safeDirName(repoNameFromUrl(url)));
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(dir, { recursive: true });
-  const git = (...args: string[]) => run("git", ["-C", dir, ...args], { timeout: 300_000 });
+  const env: NodeJS.ProcessEnv = { ...process.env, GIT_TERMINAL_PROMPT: "0" };
+  if (opts.token) {
+    const basic = Buffer.from(`x-access-token:${opts.token}`).toString("base64");
+    Object.assign(env, { GIT_CONFIG_COUNT: "1", GIT_CONFIG_KEY_0: "http.extraheader", GIT_CONFIG_VALUE_0: `AUTHORIZATION: basic ${basic}` });
+  }
+  const git = (...args: string[]) => run("git", ["-C", dir, ...args], { timeout: 300_000, env });
   await git("init", "--quiet");
   await git("remote", "add", "origin", url);
   // Fetching a single ref at depth 1 works for branch names, tags and (on GitHub) full commit shas.
@@ -167,10 +187,47 @@ export async function cloneRepo(url: string, ref?: string): Promise<string> {
   return dir;
 }
 
-type TargetRepo = { path: string; name?: string };
+type TargetRepo = {
+  path: string;
+  name?: string;
+  /** Removes a clone made only for this run. */
+  cleanup?: () => void;
+  /** Set when the snapshot is the repository's default branch: the run becomes its baseline. */
+  baselineOf?: number;
+};
 
-/** An explicit path or URL wins; then TARGET_REPO_PATH, then TARGET_REPO_URL, then the demo app. */
-async function resolveTargetRepo(opts: Pick<PipelineOptions, "repoPath" | "repoUrl" | "repoRef">): Promise<TargetRepo> {
+/**
+ * A repository of the tenant, cloned through the GitHub App at `repoRef` or its default branch.
+ * The default branch is read from GitHub each time, so a renamed branch is picked up.
+ */
+async function cloneTenantRepo(db: Db, tenantId: number, repoId: number, opts: PipelineOptions): Promise<TargetRepo> {
+  const repo = await getRepo(db, tenantId, repoId);
+  if (!repo) throw new Error(`repository ${repoId} does not belong to tenant ${tenantId}`);
+  if (!repo.active) throw new Error(`${repo.fullName} is no longer installed`);
+  const installationId = (await getTenant(db, tenantId))?.githubInstallationId;
+  if (!installationId) throw new Error(`tenant ${tenantId} has no GitHub App installation`);
+  const app = opts.github !== undefined ? opts.github : GitHubApp.fromConfig();
+  if (!app) throw new Error("the GitHub App is not configured: set GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY (or _PATH)");
+
+  const info = await app.getRepo(installationId, repo.fullName);
+  if (info.default_branch !== repo.defaultBranch || info.full_name !== repo.fullName) {
+    await db.update(repos).set({ defaultBranch: info.default_branch, fullName: info.full_name }).where(eq(repos.id, repoId));
+  }
+  const ref = opts.repoRef ?? info.default_branch;
+  const dir = path.join(resolveFromRoot(".data/repos"), safeDirName(`${repoId}-${ref}`));
+  const cleanup = () => rmSync(dir, { recursive: true, force: true });
+  try {
+    await cloneRepo(app.cloneUrl(info.full_name), ref, { token: await app.installationToken(installationId), dir });
+  } catch (err) {
+    cleanup();
+    throw err;
+  }
+  return { path: dir, name: info.full_name, cleanup, baselineOf: ref === info.default_branch ? repoId : undefined };
+}
+
+/** A tenant repository wins; then an explicit path or URL; then TARGET_REPO_PATH, TARGET_REPO_URL, the demo app. */
+async function resolveTargetRepo(db: Db, tenantId: number, opts: PipelineOptions): Promise<TargetRepo> {
+  if (opts.repoId !== undefined) return cloneTenantRepo(db, tenantId, opts.repoId, opts);
   if (opts.repoPath) return { path: opts.repoPath };
   if (opts.repoUrl) return { path: await cloneRepo(opts.repoUrl, opts.repoRef), name: repoNameFromUrl(opts.repoUrl) };
   if (!config.TARGET_REPO_PATH && config.TARGET_REPO_URL) {
@@ -188,7 +245,8 @@ async function collectChangedRules(handle: DbHandle, opts: PipelineOptions): Pro
 
   const changed: Rule[] = [];
   if (opts.demo) {
-    for (const { def, rules } of loadDemoRules()) {
+    // "" (no packs) means every bundled rule; undefined falls back to DEMO_RULES.
+    for (const { def, rules } of loadDemoRules(undefined, opts.rulePacks ? opts.rulePacks.join(",") : config.DEMO_RULES)) {
       const sourceId = await upsertSource(db, def);
       changed.push(...(await persistChanges(db, sourceId, rules, { force: true })).changed);
     }
@@ -225,6 +283,7 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
   let runId: number | undefined;
   let scope: number[] = [];
   let checkpointer: Awaited<ReturnType<typeof createCheckpointer>> | undefined;
+  let target: TargetRepo | undefined;
 
   try {
     const changedRules = await collectChangedRules(handle, opts);
@@ -270,7 +329,7 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
         const chunks = await embedRule(db, embedder, rule);
         log.info("rule embedded", { ruleId: rule.id, chunks });
       }
-      const target = await resolveTargetRepo(opts);
+      target = await resolveTargetRepo(db, tenantId, opts);
       const index = await indexRepo(db, embedder, target.path, { repoName: target.name, tenantId });
       repo = index.repo;
       repoId = index.repoId;
@@ -305,6 +364,9 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
         ...(mode === "digest" ? { note: DIGEST_NOTE } : {}),
       })
       .where(eq(auditRuns.id, runId));
+    if (target?.baselineOf !== undefined) {
+      await db.update(repos).set({ baselineRunId: runId, baselineSha: commitSha }).where(eq(repos.id, target.baselineOf));
+    }
     log.info("audit run completed", { runId, mode, costUsd: state.costUsd, digests: state.digests.length, ...state.summary });
 
     return {
@@ -341,6 +403,7 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
     throw err;
   } finally {
     await checkpointer?.close().catch(() => undefined);
+    target?.cleanup?.();
     if (ownsHandle) await handle.close();
   }
 }

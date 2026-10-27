@@ -26,7 +26,14 @@ export async function processAuditJob(
     const digest = await digestRunner({ days: config.DIGEST_DAYS, send: true });
     return { runId: 0, status: "completed", summary: null, reportUrl: null, costUsd: digest.costUsd, notified: digest.notified, digested: digest.records.length };
   }
-  const result = await runner({ trigger: data.trigger, tenantId: data.tenantId, demo: data.demo, ruleIds: data.ruleIds });
+  const result = await runner({
+    trigger: data.trigger,
+    tenantId: data.tenantId,
+    repoId: data.repoId,
+    demo: data.demo,
+    rulePacks: data.rulePacks,
+    ruleIds: data.ruleIds,
+  });
   return {
     runId: result.runId,
     status: result.status,

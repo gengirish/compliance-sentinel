@@ -6,16 +6,18 @@ import { serve } from "@hono/node-server";
 import type { Queue } from "bullmq";
 import { and, count, desc, eq, inArray, max, type SQL } from "drizzle-orm";
 import { type Context, Hono } from "hono";
-import type { z } from "zod";
+import { ZodError, type z } from "zod";
 import { config } from "../config.js";
 import { openMigratedDb, type Db } from "../db/client.js";
 import { auditRuns, findings, LOCAL_TENANT_ID, ruleChunks, rules, sources } from "../db/schema.js";
 import { resolveTenantId, TENANT_HEADER } from "../db/tenants.js";
+import { verifyGitHubSignature } from "../github/app.js";
+import { handleGitHubEvent } from "../github/webhook.js";
 import type { Severity, Status } from "../graph/types.js";
 import { errorMessage, log } from "../log.js";
 import { AgentMailClient, parseInboundCommand, senderAddress, verifyWebhookSignature, WebhookEvent } from "../notify/agentmail.js";
 import { failStaleRuns } from "../pipeline/watchdog.js";
-import { createQueue, enqueueManualAudit, type AuditJobData } from "../queue/queue.js";
+import { createQueue, enqueueManualAudit, INSTALL_JOB, type AuditJobData } from "../queue/queue.js";
 import { signReportUrl } from "../report/upload.js";
 import { describeIssues, FindingsQuery, ListRunsQuery, RunIdParams, TriggerRunQuery } from "./schemas.js";
 
@@ -34,9 +36,12 @@ export type AppDeps = {
     allowedSenders: string[];
     reply: (messageId: string, text: string) => Promise<unknown>;
   };
+  /** Secret of the GitHub App's webhook. Unset: the webhook route answers 503. */
+  githubWebhookSecret?: string;
 };
 
 export const INBOUND_PATH = "/inbox/agentmail";
+export const GITHUB_WEBHOOK_PATH = "/github/webhook";
 
 /** Run reads sweep for orphaned runs at most this often, so the dashboard never shows one as live. */
 const SWEEP_EVERY_MS = 60_000;
@@ -139,9 +144,42 @@ export function createApp(deps: AppDeps): Hono<Env> {
     return c.body(null, 204);
   });
 
+  /**
+   * The GitHub App's webhook, authenticated by its HMAC signature. GitHub gives up after 10
+   * seconds, so this only updates tenants and repos and queues work. The delivery id names
+   * the queued jobs, which makes a redelivery a no-op.
+   */
+  app.post(GITHUB_WEBHOOK_PATH, async (c) => {
+    if (!deps.githubWebhookSecret) return c.json({ error: "GITHUB_WEBHOOK_SECRET is not configured" }, 503);
+    const raw = await c.req.text();
+    if (!verifyGitHubSignature(raw, c.req.header("x-hub-signature-256"), deps.githubWebhookSecret)) {
+      return c.json({ error: "invalid signature" }, 401);
+    }
+    const event = c.req.header("x-github-event") ?? "";
+    const deliveryId = c.req.header("x-github-delivery") ?? "";
+    if (!/^[\w-]+$/.test(deliveryId)) return c.json({ error: "missing x-github-delivery" }, 400);
+
+    let payload: unknown;
+    try {
+      payload = JSON.parse(raw);
+    } catch {
+      return c.json({ error: "invalid JSON" }, 400);
+    }
+    let outcome: Awaited<ReturnType<typeof handleGitHubEvent>>;
+    try {
+      outcome = await handleGitHubEvent(deps.db, event, deliveryId, payload);
+    } catch (err) {
+      if (err instanceof ZodError) return c.json({ error: "unexpected payload", issues: describeIssues(err) }, 400);
+      throw err;
+    }
+    for (const job of outcome.jobs) await deps.getQueue().add(INSTALL_JOB, job.data, { jobId: job.jobId });
+    log.info("GitHub webhook", { event, deliveryId, summary: outcome.summary, queued: outcome.jobs.length });
+    return c.json({ queued: outcome.jobs.length }, 202);
+  });
+
   // Everything below needs the trigger token. With no token configured, the routes stay closed.
   app.use("*", async (c, next) => {
-    if (c.req.path === "/health" || c.req.path === INBOUND_PATH) return next();
+    if (c.req.path === "/health" || c.req.path === INBOUND_PATH || c.req.path === GITHUB_WEBHOOK_PATH) return next();
     if (!deps.token) return c.json({ error: "RUN_TRIGGER_TOKEN is not configured" }, 503);
     if (!tokenMatches(deps.token, c.req.header("authorization"))) return c.json({ error: "unauthorized" }, 401);
     return next();
@@ -355,6 +393,7 @@ async function main() {
       reply: (messageId, text) =>
         mail ? mail.reply(messageId, { text }) : Promise.reject(new Error("AgentMail is not configured, reply skipped")),
     },
+    githubWebhookSecret: config.GITHUB_WEBHOOK_SECRET,
   });
   serve({ fetch: app.fetch, port: config.PORT, hostname: "0.0.0.0" }, (info) => {
     log.info("web listening", { port: info.port });
