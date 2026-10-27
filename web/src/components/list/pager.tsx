@@ -40,7 +40,8 @@ export function Pager({
 
   return (
     <nav aria-label="Pages" className="mt-4 flex items-center justify-between gap-4 text-sm text-muted">
-      <p role="status" aria-live="polite">
+      {/* aria-live without role="status": a page can have one status already, such as the run audit button's. */}
+      <p aria-live="polite">
         {total === 0 ? `No ${noun}` : `Showing ${from}–${to} of ${total} ${noun}`}
       </p>
       {pages > 1 && (

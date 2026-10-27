@@ -1,5 +1,6 @@
 // Stand-in for the Sentinel API during e2e runs: fixed fixtures, same routes and token check.
 import { createServer } from "node:http";
+import { listRuns, olderRuns } from "./mock-runs.mjs";
 
 const PORT = Number(process.env.MOCK_API_PORT ?? 8099);
 const TOKEN = "e2e-token";
@@ -46,7 +47,7 @@ const skipped = {
   note: "No new or amended rules since the last check, so there was nothing to audit.",
   counts: noCounts,
 };
-const runs = [skipped, timedOut, run];
+const runs = [skipped, timedOut, run, ...olderRuns(run)];
 
 // A triggered run shows as running, then completes a few seconds later, like the real worker.
 const RUN_SECONDS = 10;
@@ -98,7 +99,6 @@ const sources = [source("federal-register", "Federal Register", "US", true), sou
 const routes = {
   "GET /settings/sources": () => sources,
   "GET /stats": () => ({ latestRun: live(runs[0]), latestCompletedRun: run, totals: { rules: 1, runs: 1 } }),
-  "GET /runs": () => runs.map(live),
   "GET /rules": () => [
     {
       ...rule,
@@ -124,6 +124,11 @@ createServer((req, res) => {
   if (url.pathname === "/health") return send(200, { ok: true });
   if (req.headers.authorization !== `Bearer ${TOKEN}`) return send(401, { error: "unauthorized" });
 
+  if (req.method === "GET" && url.pathname === "/runs") {
+    const out = listRuns(runs.map(live), url.searchParams);
+    res.writeHead(out.status, { "content-type": "application/json", ...out.headers });
+    return res.end(JSON.stringify(out.body));
+  }
   const runMatch = url.pathname.match(/^\/runs\/(\d+)$/);
   if (req.method === "GET" && runMatch) {
     const found = runs.find((r) => r.id === Number(runMatch[1]));

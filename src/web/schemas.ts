@@ -1,5 +1,7 @@
 import { z } from "zod";
+import { RUN_STATUSES, TRIGGERS } from "../db/schema.js";
 import { SEVERITIES, STATUSES } from "../graph/types.js";
+import { dateQuery, pageQuery, sortQuery } from "./listQuery.js";
 
 /** Request inputs for the HTTP API. Every route parses its params and query through one of these. */
 
@@ -24,7 +26,24 @@ export function commaList<T extends readonly [string, ...string[]]>(allowed: T) 
 
 export const TriggerRunQuery = z.object({ demo: flag });
 
-export const ListRunsQuery = z.object({ counts: flag });
+export const RUN_SORTS = ["started", "duration", "cost", "violations", "critical"] as const;
+export type RunSort = (typeof RUN_SORTS)[number];
+
+/** `GET /runs`: with no parameters, the newest 25 runs. */
+export const ListRunsQuery = z
+  .object({
+    counts: flag,
+    status: commaList(RUN_STATUSES),
+    trigger: commaList(TRIGGERS),
+    from: dateQuery,
+    to: dateQuery,
+    /** Only runs with at least one critical violation. */
+    critical: flag,
+    repo: z.coerce.number().int().positive({ message: "repo must be a positive integer" }).optional(),
+    ...sortQuery(RUN_SORTS, { sort: "started", order: "desc" }),
+    ...pageQuery(25),
+  })
+  .refine((q) => !q.from || !q.to || q.from <= q.to, { path: ["to"], message: "to must not be before from" });
 
 export const FindingsQuery = z.object({
   status: commaList(STATUSES),
