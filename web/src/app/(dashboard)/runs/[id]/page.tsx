@@ -86,15 +86,11 @@ export default async function RunPage({
   const sort = pickSort(search, FINDING_SORTS, DEFAULT_SORT);
   const filtered = status.length > 0 || severity.length > 0 || rule !== undefined || path !== undefined || q !== undefined;
 
+  // Looked up before anything streams: with a loading.tsx or Suspense above this point the response
+  // would already be a 200 when notFound() runs. Only the findings below stream in.
   const run = await getRun(id);
   if (!run) notFound();
-  const [findings, all] = await Promise.all([
-    api.findings(id, { status, severity, rule, path, q, ...(sort.isDefault ? {} : { sort: sort.sort, order: sort.order }) }),
-    // The rule select lists every rule of the run, so it needs the unfiltered list; an unfiltered view already is one.
-    filtered ? api.findings(id) : null,
-  ]);
-  const rules = ruleOptions(all ?? findings);
-  const total = run.counts?.total ?? all?.length ?? findings.length;
+  const filter: FindingsFilter = { status, severity, rule, path, q, ...(sort.isDefault ? {} : { sort: sort.sort, order: sort.order }) };
   const base = `/runs/${id}`;
 
   /** Link that toggles one chip value and keeps every other parameter. */

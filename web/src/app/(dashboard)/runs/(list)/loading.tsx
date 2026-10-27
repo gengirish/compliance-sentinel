@@ -1,3 +1,5 @@
+// In the (list) group so it covers /runs only. Wrapping /runs/[id] as well would send a 200 before the
+// run page can call notFound().
 export default function RunsLoading() {
   return (
     <div className="space-y-4" role="status" aria-busy="true">

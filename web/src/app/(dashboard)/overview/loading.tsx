@@ -1,5 +1,6 @@
-// Fallback for routes without their own loading.tsx (Overview). role="status" plus the sr-only text is
-// what screen readers announce; an aria-label on a plain div is not.
+// Lives under overview/ rather than the dashboard group, where it would wrap every page: a loading.tsx
+// above /runs/[id] starts the response before the run lookup, so a missing run got a 200, not a 404.
+// role="status" plus the sr-only text is what screen readers announce; an aria-label on a plain div is not.
 export default function Loading() {
   return (
     <div className="space-y-4" role="status" aria-busy="true">
