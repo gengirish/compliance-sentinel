@@ -160,8 +160,10 @@ describe("digest delivery", () => {
     const email = buildDigestEmail(report);
     expect(email.subject).toBe("[Compliance Sentinel] Regulatory digest, 2026-10-19 to 2026-10-26: 2 rule changes (1 amended)");
     expect(email.html).toContain("&amp; set tolerances");
-    expect(email.html).toContain('<a href="https://sec.test/sp">Regulation S-P</a>');
-    expect(email.html).toContain("Amended · effective");
+    expect(email.html).toMatch(/<a href="https:\/\/sec\.test\/sp"[^>]*>Regulation S-P<\/a>/);
+    expect(email.html).toContain(">Amended</span>");
+    expect(email.html).toContain("19 – 26 October 2026");
+    expect(email.html).not.toContain("Unsubscribe");
     expect(email.text).toBe(md);
     const slack = buildDigestSlack(report);
     expect(JSON.stringify(slack.blocks)).toContain("<https://www.fca.org.uk/ps99-1|PS99/1: Operational resilience>");
