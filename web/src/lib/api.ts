@@ -102,6 +102,18 @@ const Source = z.object({
   rules: z.number(),
 });
 
+const DigestStatus = z.object({
+  subscribers: z.object({ active: z.number(), pending: z.number(), unsubscribed: z.number() }),
+  /** Cron expression in UTC, e.g. "0 7 * * 1". */
+  schedule: z.string(),
+  /** How many days back each digest looks. */
+  days: z.number(),
+  emailConfigured: z.boolean(),
+  teamRecipients: z.number(),
+  slackConfigured: z.boolean(),
+});
+
+export type DigestStatus = z.infer<typeof DigestStatus>;
 export type Run = z.infer<typeof Run>;
 export type Source = z.infer<typeof Source>;
 export type Stats = z.infer<typeof Stats>;

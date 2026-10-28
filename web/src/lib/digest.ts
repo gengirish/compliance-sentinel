@@ -9,13 +9,17 @@ import { ApiError, apiFetch } from "@/lib/api";
 
 export type SubscriptionResult = { ok: true; email: string } | { ok: false; error: string };
 
-/** POSTs a JSON body to the API and relays its answer as this app's response. */
-export async function forward(path: string, body: unknown): Promise<NextResponse> {
+/**
+ * POSTs a JSON body to the API and relays its answer as this app's response. `timeoutMs` is for
+ * the operator's preview and test sends, which can wait on Claude summarising new rules.
+ */
+export async function forward(path: string, body: unknown, { timeoutMs }: { timeoutMs?: number } = {}): Promise<NextResponse> {
   try {
     const res = await apiFetch(path, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
+      timeoutMs,
     });
     return NextResponse.json(await res.json().catch(() => ({})), { status: res.status });
   } catch (err) {
