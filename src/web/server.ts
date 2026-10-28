@@ -9,13 +9,16 @@ import { type Context, Hono } from "hono";
 import { ZodError, type z } from "zod";
 import { config } from "../config.js";
 import { openMigratedDb, type Db } from "../db/client.js";
-import { auditRuns, findings, LOCAL_TENANT_ID, repos, ruleChunks, rules, sources } from "../db/schema.js";
+import { auditRuns, digestSubscribers, findings, LOCAL_TENANT_ID, repos, ruleChunks, rules, sources } from "../db/schema.js";
 import { resolveTenantId, TENANT_HEADER } from "../db/tenants.js";
 import { verifyGitHubSignature } from "../github/app.js";
 import { handleGitHubEvent } from "../github/webhook.js";
 import type { Severity, Status } from "../graph/types.js";
 import { errorMessage, log } from "../log.js";
-import { buildConfirmationEmail, confirmSubscription, subscribe, unsubscribe } from "../digest/subscribers.js";
+import { buildDigestEmail } from "../digest/deliver.js";
+import { buildConfirmationEmail, confirmSubscription, subscribe, unsubscribe, unsubscribeUrl } from "../digest/subscribers.js";
+import { runWeeklyDigest } from "../digest/weekly.js";
+import type { Analyst } from "../llm/analyst.js";
 import {
   AgentMailClient,
   type OutgoingMessage,
@@ -24,14 +27,17 @@ import {
   verifyWebhookSignature,
   WebhookEvent,
 } from "../notify/agentmail.js";
+import { createAnalyst } from "../pipeline/run.js";
 import { failStaleRuns } from "../pipeline/watchdog.js";
-import { createQueue, enqueueManualAudit, INSTALL_JOB, type AuditJobData } from "../queue/queue.js";
+import { createQueue, enqueueManualAudit, enqueueManualDigest, INSTALL_JOB, type AuditJobData } from "../queue/queue.js";
 import { redactSecrets } from "../redact.js";
 import { signReportUrl } from "../report/upload.js";
 import { findSource, setSourceEnabled, sourceStates } from "../scrape/registry.js";
 import { dayAfter, dayStart, likeContains, likePrefix, orderBy, pageOffset, rank, setTotal, type SortOrder } from "./listQuery.js";
 import {
   describeIssues,
+  DigestPreviewBody,
+  DigestTestBody,
   FINDING_SORTS,
   FindingsQuery,
   ListRulesQuery,
@@ -63,6 +69,8 @@ export type AppDeps = {
   githubWebhookSecret?: string;
   /** Sends subscription confirmations. Unset: sign-ups answer 503, since no one could confirm. */
   sendMail?: (message: OutgoingMessage) => Promise<unknown>;
+  /** Summarises rules for the operator's digest preview and test; default createAnalyst(). Injected in tests. */
+  digestAnalyst?: Analyst;
 };
 
 export const INBOUND_PATH = "/inbox/agentmail";
@@ -566,8 +574,8 @@ export function createApp(deps: AppDeps): Hono<Env> {
    * The scraper switches. They apply to the whole application, so only the operator (the
    * local tenant: no tenant header) can see or change them.
    */
-  const operatorOnly = (c: Context<Env>) =>
-    c.get("tenantId") === LOCAL_TENANT_ID ? null : c.json({ error: "only the operator can configure sources" }, 403);
+  const operatorOnly = (c: Context<Env>, what = "configure sources") =>
+    c.get("tenantId") === LOCAL_TENANT_ID ? null : c.json({ error: `only the operator can ${what}` }, 403);
 
   const describeSources = async () => {
     const states = await sourceStates(deps.db);
@@ -659,6 +667,69 @@ export function createApp(deps: AppDeps): Hono<Env> {
     if (!email) return c.json({ error: "this link is invalid" }, 404);
     log.info("digest unsubscribed");
     return c.json({ email });
+  });
+
+  /**
+   * The operator's view of the weekly digest: who receives it and on what schedule. The digest
+   * goes to the whole application's audience, so only the operator can see or send it.
+   */
+  app.get("/digest", async (c) => {
+    const denied = operatorOnly(c, "manage the digest");
+    if (denied) return denied;
+    const rows = await deps.db
+      .select({ status: digestSubscribers.status, n: count() })
+      .from(digestSubscribers)
+      .groupBy(digestSubscribers.status);
+    const subscribers = { active: 0, pending: 0, unsubscribed: 0 };
+    for (const r of rows) subscribers[r.status] = r.n;
+    return c.json({
+      subscribers,
+      schedule: config.DIGEST_CRON,
+      days: config.DIGEST_DAYS,
+      emailConfigured: Boolean(deps.sendMail),
+      teamRecipients: (config.ALERT_EMAIL_TO ?? "").split(",").map((s) => s.trim()).filter(Boolean).length,
+      slackConfigured: Boolean(config.SLACK_WEBHOOK_URL),
+    });
+  });
+
+  /** Builds the digest for the window without sending it. Stored digests are reused; new ones may call the model. */
+  const buildDigest = (days: number | undefined) =>
+    runWeeklyDigest({ days, send: false, db: deps.db, analyst: deps.digestAnalyst ?? createAnalyst() });
+
+  /** The digest as a subscriber would get it, footer included, with an example unsubscribe link. */
+  app.post("/digest/preview", async (c) => {
+    const denied = operatorOnly(c, "manage the digest");
+    if (denied) return denied;
+    const body = parseInput(c, DigestPreviewBody, (await jsonBody(c)) ?? {});
+    if (!body.ok) return body.response;
+    const report = await buildDigest(body.data.days);
+    const email = buildDigestEmail(report, unsubscribeUrl("preview"));
+    log.info("digest previewed", { from: report.from, to: report.to, rules: report.records.length });
+    return c.json({ from: report.from, to: report.to, rules: report.records.length, costUsd: report.costUsd, errors: report.errors, ...email });
+  });
+
+  /** Sends one test copy of the digest to a single address; no one else receives it. */
+  app.post("/digest/test", async (c) => {
+    const denied = operatorOnly(c, "manage the digest");
+    if (denied) return denied;
+    const body = parseInput(c, DigestTestBody, await jsonBody(c));
+    if (!body.ok) return body.response;
+    if (!deps.sendMail) return c.json({ error: "email is not configured on this deployment" }, 503);
+    const report = await buildDigest(body.data.days);
+    const email = buildDigestEmail(report, unsubscribeUrl("preview"));
+    const subject = `[Test] ${email.subject}`;
+    await deps.sendMail({ to: [body.data.email], ...email, subject });
+    log.info("digest test sent", { rules: report.records.length });
+    return c.json({ sentTo: body.data.email, rules: report.records.length, subject });
+  });
+
+  /** Queues the digest for delivery now, to the team, subscribers and Slack, as the weekly run does. */
+  app.post("/digest/send", async (c) => {
+    const denied = operatorOnly(c, "manage the digest");
+    if (denied) return denied;
+    const jobId = await enqueueManualDigest(deps.getQueue());
+    log.info("manual digest enqueued", { jobId });
+    return c.json({ jobId }, 202);
   });
 
   /** Redirects to a freshly signed download link, or streams the local file in dev. */

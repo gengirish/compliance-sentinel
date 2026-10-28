@@ -96,6 +96,18 @@ export const SubscribeBody = z.strictObject({ email: z.email({ message: "expecte
 
 export const SubscriberTokenBody = z.strictObject({ token: z.string().min(16).max(128) });
 
+/** Look-back window of an operator-built digest; absent means DIGEST_DAYS. */
+const digestDays = z.number().int().min(1).max(90, { message: "days must be between 1 and 90" }).optional();
+
+/** `POST /digest/preview`: an empty body is fine. */
+export const DigestPreviewBody = z.strictObject({ days: digestDays });
+
+/** `POST /digest/test`: the one address the test copy goes to. */
+export const DigestTestBody = z.strictObject({
+  email: z.email({ message: "expected an email address" }).max(254),
+  days: digestDays,
+});
+
 export type RequestIssue ={ path: string; message: string };
 
 export function describeIssues(error: z.ZodError): RequestIssue[] {

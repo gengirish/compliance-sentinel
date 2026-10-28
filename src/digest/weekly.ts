@@ -1,5 +1,5 @@
 import { config } from "../config.js";
-import { openMigratedDb, type DbHandle } from "../db/client.js";
+import { openMigratedDb, type Db, type DbHandle } from "../db/client.js";
 import { Budget, type Analyst } from "../llm/analyst.js";
 import { errorMessage, log } from "../log.js";
 import { createAnalyst } from "../pipeline/run.js";
@@ -14,6 +14,8 @@ export type WeeklyDigestOptions = {
   send?: boolean;
   /** Injected in tests. */
   handle?: DbHandle;
+  /** An open database owned by the caller (the API's), used instead of `handle` and left open. */
+  db?: Db;
   analyst?: Analyst;
   now?: Date;
   deliver?: typeof deliverDigest;
@@ -28,8 +30,9 @@ export type WeeklyDigestResult = DigestReport & { notified: string[]; errors: st
  * the rules in the store, whether or not it found them worth auditing.
  */
 export async function runWeeklyDigest(opts: WeeklyDigestOptions = {}): Promise<WeeklyDigestResult> {
-  const handle = opts.handle ?? (await openMigratedDb());
-  const ownsHandle = !opts.handle;
+  const ownsHandle = !opts.handle && !opts.db;
+  const handle = ownsHandle ? await openMigratedDb() : opts.handle;
+  const db = opts.db ?? handle!.db;
   const analyst = opts.analyst ?? createAnalyst();
   const now = opts.now ?? new Date();
   const days = opts.days ?? config.DIGEST_DAYS;
@@ -37,7 +40,7 @@ export async function runWeeklyDigest(opts: WeeklyDigestOptions = {}): Promise<W
   const budget = new Budget(config.MAX_RUN_COST_USD);
 
   try {
-    const changed = await rulesChangedSince(handle.db, since);
+    const changed = await rulesChangedSince(db, since);
     const records: RuleDigestRecord[] = [];
     const errors: string[] = [];
     for (const rule of changed) {
@@ -46,7 +49,7 @@ export async function runWeeklyDigest(opts: WeeklyDigestOptions = {}): Promise<W
         continue;
       }
       try {
-        const record = await digestRule(handle.db, analyst, rule);
+        const record = await digestRule(db, analyst, rule);
         budget.add(record.costUsd);
         records.push(record);
       } catch (err) {
@@ -60,11 +63,11 @@ export async function runWeeklyDigest(opts: WeeklyDigestOptions = {}): Promise<W
       costUsd: budget.spent,
     };
     const notified = opts.send
-      ? await (opts.deliver ?? deliverDigest)(report, { subscribers: await activeSubscribers(handle.db) })
+      ? await (opts.deliver ?? deliverDigest)(report, { subscribers: await activeSubscribers(db) })
       : [];
     log.info("weekly digest built", { rules: changed.length, digested: records.length, costUsd: budget.spent, notified, errors: errors.length });
     return { ...report, notified, errors };
   } finally {
-    if (ownsHandle) await handle.close();
+    if (ownsHandle) await handle!.close();
   }
 }

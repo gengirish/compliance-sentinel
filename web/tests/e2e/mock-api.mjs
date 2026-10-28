@@ -90,8 +90,27 @@ const findings = [
   finding(3, "compliant", "medium", "Log access to customer records"),
 ];
 
+const digestPreview = {
+  from: "2026-10-19T07:00:00.000Z",
+  to: "2026-10-26T07:00:00.000Z",
+  rules: 2,
+  costUsd: 0.0123,
+  errors: [],
+  subject: "Regulatory digest: 2 rule changes",
+  html: "<h1>Digest preview</h1><p>Two rules changed this week.</p>",
+  text: "Digest preview\n\nTwo rules changed this week.",
+};
+
 const routes = {
   "GET /settings/sources": () => sources,
+  "GET /digest": () => ({
+    subscribers: { active: 3, pending: 1, unsubscribed: 2 },
+    schedule: "0 7 * * 1",
+    days: 7,
+    emailConfigured: true,
+    teamRecipients: 1,
+    slackConfigured: false,
+  }),
   "GET /stats": () => ({ latestRun: live(runs[0]), latestCompletedRun: withRepo(run), totals: { rules: 1, runs: 1 } }),
   "POST /runs": () => {
     queueRun();
@@ -148,6 +167,22 @@ createServer((req, res) => {
       if (url.pathname === "/subscribers") return send(202, { ok: true });
       if (!["/subscribers/confirm", "/subscribers/unsubscribe"].includes(url.pathname)) return send(404, { error: "not found" });
       return body.token === E2E_SUBSCRIBER_TOKEN ? send(200, { email: "reader@example.com" }) : send(404, { error: "invalid link" });
+    });
+    return;
+  }
+  // The operator's digest controls. Nothing is sent; the test route only checks the address.
+  if (req.method === "POST" && url.pathname.startsWith("/digest/")) {
+    let raw = "";
+    req.on("data", (d) => (raw += d));
+    req.on("end", () => {
+      const body = JSON.parse(raw || "{}");
+      if (url.pathname === "/digest/preview") return send(200, digestPreview);
+      if (url.pathname === "/digest/test") {
+        if (typeof body.email !== "string" || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(body.email)) return send(400, { error: "invalid email" });
+        return send(200, { sentTo: body.email, rules: digestPreview.rules, subject: digestPreview.subject });
+      }
+      if (url.pathname === "/digest/send") return send(202, { jobId: "e2e-digest-job" });
+      return send(404, { error: "not found" });
     });
     return;
   }

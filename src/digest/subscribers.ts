@@ -3,6 +3,9 @@ import { and, eq, sql } from "drizzle-orm";
 import { config } from "../config.js";
 import type { Db } from "../db/client.js";
 import { digestSubscribers } from "../db/schema.js";
+import { emailButton, emailColors, escapeHtml, renderEmail } from "./emailLayout.js";
+
+export { escapeHtml };
 
 /**
  * Weekly digest subscriptions from the website. Double opt-in: signing up stores a pending
@@ -101,22 +104,26 @@ export async function activeSubscribers(db: Db): Promise<Subscriber[]> {
     .orderBy(digestSubscribers.id);
 }
 
-export function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
-}
-
 export function buildConfirmationEmail(token: string, base = config.DASHBOARD_URL): { subject: string; html: string; text: string } {
   const link = confirmUrl(token, base);
   const subject = "[Compliance Sentinel] Confirm your weekly regulatory digest";
   const text = [
-    "Someone, hopefully you, asked to receive the Compliance Sentinel weekly digest of regulatory rule changes at this address.",
+    "We received a request to send the Compliance Sentinel weekly digest of regulatory rule changes to this address.",
     "",
-    `Confirm the subscription: ${link}`,
+    `Confirm your subscription: ${link}`,
     "",
-    "If it was not you, ignore this email and nothing more will be sent.",
+    "If you did not make this request, you can ignore this email and nothing further will be sent.",
   ].join("\n");
-  const html = `<p>Someone, hopefully you, asked to receive the Compliance Sentinel weekly digest of regulatory rule changes at this address.</p>
-<p><a href="${escapeHtml(link)}">Confirm the subscription</a></p>
-<p style="color:#6b7280;font-size:12px">If it was not you, ignore this email and nothing more will be sent.</p>`;
+  const c = emailColors;
+  const html = renderEmail({
+    preheader: "Confirm your subscription to the weekly regulatory digest.",
+    title: "Confirm your subscription",
+    subtitle: "Weekly regulatory digest",
+    body: `<p style="margin:0 0 16px">We received a request to send the Compliance Sentinel weekly digest to this address. Each week it summarises the regulatory rules that were added or amended, with what changed, who it applies to and the key obligations.</p>
+<p style="margin:0 0 24px">Please confirm that you would like to receive it.</p>
+${emailButton(link, "Confirm subscription")}
+<p style="margin:24px 0 0;font-size:13px;color:${c.muted}">Or paste this link into your browser:<br><a href="${escapeHtml(link)}" style="color:${c.accent};word-break:break-all">${escapeHtml(link)}</a></p>`,
+    footer: ["If you did not make this request, you can ignore this email and nothing further will be sent."],
+  });
   return { subject, html, text };
 }

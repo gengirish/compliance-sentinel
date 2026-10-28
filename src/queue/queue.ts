@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Queue, type ConnectionOptions } from "bullmq";
 import { Redis } from "ioredis";
 import { config } from "../config.js";
@@ -7,6 +8,7 @@ export const QUEUE_NAME = "compliance";
 export const DAILY_JOB = "daily-audit";
 export const MANUAL_JOB = "manual-audit";
 export const DIGEST_JOB = "weekly-digest";
+export const MANUAL_DIGEST_JOB = "manual-digest";
 export const INSTALL_JOB = "install-baseline";
 
 export type AuditJobData = {
@@ -50,5 +52,14 @@ export async function enqueueManualAudit(
   data: Omit<AuditJobData, "trigger"> = {},
 ): Promise<string> {
   const job = await queue.add(MANUAL_JOB, { ...data, trigger: "manual" });
+  return job.id!;
+}
+
+/**
+ * Queues a one-off digest delivery now, to the same channels as the weekly run. Its own
+ * unique id keeps it apart from the repeatable weekly job's.
+ */
+export async function enqueueManualDigest(queue: Queue<AuditJobData>): Promise<string> {
+  const job = await queue.add(MANUAL_DIGEST_JOB, { trigger: "manual", kind: "digest" }, { jobId: `${MANUAL_DIGEST_JOB}-${randomUUID()}` });
   return job.id!;
 }

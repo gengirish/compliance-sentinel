@@ -256,4 +256,6 @@ export const api = {
   ruleSources: () => getJson("/rules/sources", z.array(RuleSource)),
   /** The scraper switches. Only the operator may read them; the API answers 403 to anyone else. */
   sources: () => getJson("/settings/sources", z.array(Source)),
+  /** The weekly digest's subscribers, schedule and delivery channels. Operator only, like `sources`. */
+  digest: () => getJson("/digest", DigestStatus),
 };
