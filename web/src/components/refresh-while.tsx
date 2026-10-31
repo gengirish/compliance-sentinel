@@ -54,6 +54,10 @@ function restoreView() {
  * reload on change costs little, and polling a small JSON route is far cheaper than
  * re-rendering the page on every tick. The scroll position and open <details> are
  * kept across the reload and put back on the next mount.
+ *
+ * Polling pauses while the tab is hidden or the browser is offline, so an installed
+ * app does not poll in the background. It polls once as soon as the page becomes
+ * visible again or the connection comes back.
  */
 export function useReloadOnRunChange(active: boolean, changed: (runs: RunStatus[]) => boolean) {
   // Latest callback without restarting the poll each render.
@@ -82,10 +86,22 @@ export function useReloadOnRunChange(active: boolean, changed: (runs: RunStatus[
         // A missed tick is harmless; the next one retries.
       }
     };
-    const timer = setInterval(() => void poll(), POLL_INTERVAL_MS);
+    // Hidden or offline: skip the tick, so an installed app does not poll in the background.
+    const tick = () => {
+      if (document.hidden || navigator.onLine === false) return;
+      void poll();
+    };
+    const onVisibility = () => {
+      if (!document.hidden) tick();
+    };
+    const timer = setInterval(tick, POLL_INTERVAL_MS);
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("online", tick);
     return () => {
       stopped = true;
       clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("online", tick);
     };
   }, [active]);
 }

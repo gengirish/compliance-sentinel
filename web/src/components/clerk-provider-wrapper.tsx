@@ -1,4 +1,5 @@
 import { ClerkProvider } from "@clerk/nextjs";
+import { PurgeCachesOnSignOut } from "@/components/purge-caches-on-sign-out";
 import { isE2EBypass } from "@/lib/utils";
 
 export function ClerkProviderWrapper({ children }: { children: React.ReactNode }) {
@@ -21,6 +22,8 @@ export function ClerkProviderWrapper({ children }: { children: React.ReactNode }
         },
       }}
     >
+      {/* Only here: in E2E bypass mode there is no ClerkProvider, and useAuth would throw. */}
+      <PurgeCachesOnSignOut />
       {children}
     </ClerkProvider>
   );
