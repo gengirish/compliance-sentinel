@@ -34,7 +34,15 @@ export function ServiceWorkerRegister() {
 
     const onUpdateFound = () => trackInstalling(registration?.installing ?? null);
 
+    // clients.claim() on the first install also fires controllerchange; only an update
+    // (a worker already controlled the page) needs the reload.
+    let hadController = sw.controller !== null;
+
     const onControllerChange = () => {
+      if (!hadController) {
+        hadController = true;
+        return;
+      }
       if (reloading.current) return;
       reloading.current = true;
       window.location.reload();
