@@ -44,7 +44,7 @@ export type PraOptions = {
   types?: string[];
   maxItems?: number;
   maxChars?: number;
-  /** Fetch the PDF of documents published only as a PDF (needs pdftotext). Default true. */
+  /** Fetch the PDF of documents published only as a PDF (needs pdftotext). Default: PRA_INCLUDE_PDF. */
   includePdf?: boolean;
   feedUrl?: string;
   fetchImpl?: typeof fetch;
@@ -149,7 +149,7 @@ export async function fetchPraRules(opts: PraOptions = {}): Promise<ScrapedRule[
   const toText = opts.pdfToTextImpl ?? pdfToText;
   const maxItems = opts.maxItems ?? config.PRA_MAX_ITEMS;
   const maxChars = opts.maxChars ?? config.PRA_MAX_CHARS;
-  const includePdf = opts.includePdf ?? true;
+  const includePdf = opts.includePdf ?? config.PRA_INCLUDE_PDF;
   const wanted = new Set((opts.types ?? PRA_DEFAULT_TYPES).map((t) => t.trim().toLowerCase()).filter(Boolean));
 
   const xml = await (await fetchWithRetry(fetchImpl, opts.feedUrl ?? FEED)).text();

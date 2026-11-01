@@ -128,18 +128,26 @@ const EnvSchema = z.object({
   /** EDPB guidelines, recommendations and opinions on applying the GDPR. */
   EDPB_MAX_ITEMS: z.coerce.number().int().positive().default(10),
   EDPB_MAX_CHARS: z.coerce.number().int().positive().default(80_000),
+  /** Convert document PDFs with pdftotext; off keeps only the page text. */
+  EDPB_INCLUDE_PDF: flag("true"),
   SCRAPE_EDPB: flag("true"),
   /** EBA guidelines and publications (outsourcing, ICT and security risk, AML). */
   EBA_MAX_ITEMS: z.coerce.number().int().positive().default(10),
   EBA_MAX_CHARS: z.coerce.number().int().positive().default(80_000),
+  /** Convert document PDFs with pdftotext; off keeps only the page text. */
+  EBA_INCLUDE_PDF: flag("true"),
   SCRAPE_EBA: flag("true"),
   /** Bank of England Prudential Regulation Authority publications (operational resilience, outsourcing). */
   PRA_MAX_ITEMS: z.coerce.number().int().positive().default(10),
   PRA_MAX_CHARS: z.coerce.number().int().positive().default(80_000),
+  /** Convert document PDFs with pdftotext; off keeps only the page text. */
+  PRA_INCLUDE_PDF: flag("true"),
   SCRAPE_PRA: flag("true"),
   /** NIST cybersecurity and privacy publications (CSF, SP 800 series). */
   NIST_MAX_ITEMS: z.coerce.number().int().positive().default(10),
   NIST_MAX_CHARS: z.coerce.number().int().positive().default(80_000),
+  /** Convert document PDFs with pdftotext; off keeps only the page text. */
+  NIST_INCLUDE_PDF: flag("true"),
   SCRAPE_NIST: flag("true"),
   /** CISA directives and advisories. */
   CISA_MAX_ITEMS: z.coerce.number().int().positive().default(10),
@@ -148,6 +156,8 @@ const EnvSchema = z.object({
   /** APRA prudential standards and guidance (CPS 234, CPS 230). */
   APRA_MAX_ITEMS: z.coerce.number().int().positive().default(10),
   APRA_MAX_CHARS: z.coerce.number().int().positive().default(80_000),
+  /** Convert document PDFs with pdftotext; off keeps only the page text. */
+  APRA_INCLUDE_PDF: flag("true"),
   SCRAPE_APRA: flag("true"),
   /** OSFI guidelines (B-10 third-party risk, B-13 technology and cyber risk). */
   OSFI_MAX_ITEMS: z.coerce.number().int().positive().default(10),
@@ -156,6 +166,8 @@ const EnvSchema = z.object({
   /** HKMA circulars and guidelines. */
   HKMA_MAX_ITEMS: z.coerce.number().int().positive().default(10),
   HKMA_MAX_CHARS: z.coerce.number().int().positive().default(80_000),
+  /** Convert document PDFs with pdftotext; off keeps only the page text. */
+  HKMA_INCLUDE_PDF: flag("true"),
   SCRAPE_HKMA: flag("true"),
 });
 

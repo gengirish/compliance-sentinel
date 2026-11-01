@@ -193,7 +193,7 @@ export async function fetchApraRules(opts: ApraOptions = {}): Promise<ScrapedRul
   const toText = opts.pdfToTextImpl ?? pdfToText;
   const maxItems = opts.maxItems ?? config.APRA_MAX_ITEMS;
   const maxChars = opts.maxChars ?? config.APRA_MAX_CHARS;
-  const includePdf = opts.includePdf ?? true;
+  const includePdf = opts.includePdf ?? config.APRA_INCLUDE_PDF;
   const consultationsUrl = opts.consultationsUrl === undefined ? CONSULTATIONS : opts.consultationsUrl;
 
   const standardsHtml = await (await fetchWithRetry(fetchImpl, opts.standardsUrl ?? STANDARDS)).text();

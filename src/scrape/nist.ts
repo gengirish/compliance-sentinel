@@ -170,7 +170,7 @@ export async function fetchNistRules(opts: NistOptions = {}): Promise<ScrapedRul
   const toText = opts.pdfToTextImpl ?? pdfToText;
   const maxItems = opts.maxItems ?? config.NIST_MAX_ITEMS;
   const maxChars = opts.maxChars ?? config.NIST_MAX_CHARS;
-  const includePdf = opts.includePdf ?? true;
+  const includePdf = opts.includePdf ?? config.NIST_INCLUDE_PDF;
   const sp800Only = opts.sp800Only ?? true;
 
   // Ask for more rows than needed: the SP 800 filter drops some of them.

@@ -177,6 +177,45 @@ describe("report, web and worker against a real run", () => {
     expect(added).toEqual([["manual-audit", { demo: true, tenantId: LOCAL_TENANT_ID, trigger: "manual" }]]);
   });
 
+  it("enqueues an audit of a public repository URL at an optional ref", async () => {
+    const added: unknown[] = [];
+    const queue = { add: async (name: string, data: AuditJobData) => (added.push([name, data]), { id: "job-8" }) };
+    const repo = encodeURIComponent("https://github.com/juice-shop/juice-shop/");
+    const res = await app(queue as unknown as Partial<Queue<AuditJobData>>).request(`/runs?demo=1&repo=${repo}&ref=v17.1.1`, {
+      method: "POST",
+      headers: { authorization: "Bearer s3cret-token" },
+    });
+    expect(res.status).toBe(202);
+    expect(await res.json()).toEqual({ jobId: "job-8", demo: true, repo: "https://github.com/juice-shop/juice-shop" });
+    expect(added).toEqual([
+      [
+        "manual-audit",
+        { demo: true, tenantId: LOCAL_TENANT_ID, repoUrl: "https://github.com/juice-shop/juice-shop", repoRef: "v17.1.1", trigger: "manual" },
+      ],
+    ]);
+  });
+
+  it("rejects repository URLs git could be tricked with, and a ref without a repo", async () => {
+    const queue = { add: async () => ({ id: "never" }) };
+    const post = (qs: string) =>
+      app(queue as unknown as Partial<Queue<AuditJobData>>).request(`/runs?${qs}`, {
+        method: "POST",
+        headers: { authorization: "Bearer s3cret-token" },
+      });
+    for (const url of [
+      "file:///etc",
+      "http://github.com/a/b",
+      "https://internal.example.com/a/b",
+      "https://github.com.evil.io/a/b",
+      "ext::sh -c touch% /tmp/x",
+      "https://github.com/a",
+    ]) {
+      expect((await post(`repo=${encodeURIComponent(url)}`)).status, url).toBe(400);
+    }
+    expect((await post(`repo=${encodeURIComponent("https://github.com/a/b")}&ref=--upload-pack=x`)).status).toBe(400);
+    expect((await post("ref=main")).status).toBe(400);
+  });
+
   it("returns 404 for a run whose report file is gone and 400 for a bad id", async () => {
     const headers = { authorization: "Bearer s3cret-token" };
     expect((await app().request(`/reports/${runId}`, { headers })).status).toBe(404);

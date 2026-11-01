@@ -75,6 +75,15 @@ test("run audit button queues a job", async ({ page }) => {
   await expect(page.getByRole("status")).not.toContainText("e2e-job");
 });
 
+test("run audit sends the repository URL typed in", async ({ page }) => {
+  await page.goto("/overview");
+  await page.getByLabel("Repository").fill("https://github.com/juice-shop/juice-shop");
+  const request = page.waitForRequest((r) => r.url().endsWith("/api/runs") && r.method() === "POST");
+  await page.getByRole("button", { name: "Run audit" }).click();
+  expect((await request).postDataJSON()).toEqual({ demo: true, repoUrl: "https://github.com/juice-shop/juice-shop" });
+  await expect(page.getByRole("status")).toContainText("Audit queued.");
+});
+
 test("a triggered audit reaches Completed on the runs list without a reload", async ({ page }) => {
   await page.goto("/runs");
   const newest = page.getByRole("row").nth(1);

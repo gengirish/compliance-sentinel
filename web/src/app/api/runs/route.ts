@@ -4,9 +4,17 @@ import { ApiError, api, apiFetch } from "@/lib/api";
 import { unauthorized } from "@/lib/auth";
 
 /** The only input this route accepts. Unknown keys are rejected so a typo does not silently run a real audit. */
-const TriggerRunBody = z.strictObject({ demo: z.boolean().default(false) });
+const TriggerRunBody = z.strictObject({
+  demo: z.boolean().default(false),
+  // The API checks the host and shape; here it only has to be a sane string.
+  repoUrl: z.string().trim().max(300).optional(),
+  repoRef: z.string().trim().max(200).optional(),
+});
 
-/** Queues an audit on the Sentinel API. `{ demo: true }` runs the bundled demo rules. */
+/**
+ * Queues an audit on the Sentinel API. `{ demo: true }` runs the bundled demo rules;
+ * `repoUrl` (and optionally `repoRef`) audits that public repository instead of the configured target.
+ */
 export async function POST(req: Request) {
   const denied = await unauthorized();
   if (denied) return denied;
@@ -24,9 +32,14 @@ export async function POST(req: Request) {
     const issues = body.error.issues.map((i) => ({ path: i.path.join("."), message: i.message }));
     return NextResponse.json({ error: "invalid request", issues }, { status: 400 });
   }
-  const { demo } = body.data;
+  const { demo, repoUrl, repoRef } = body.data;
+  const params = new URLSearchParams();
+  if (demo) params.set("demo", "1");
+  if (repoUrl) params.set("repo", repoUrl);
+  if (repoUrl && repoRef) params.set("ref", repoRef);
+  const qs = params.size ? `?${params}` : "";
   try {
-    const res = await apiFetch(`/runs${demo ? "?demo=1" : ""}`, { method: "POST", timeoutMs: 8_000 });
+    const res = await apiFetch(`/runs${qs}`, { method: "POST", timeoutMs: 8_000 });
     const body = await res.json().catch(() => ({}));
     return NextResponse.json(body, { status: res.status });
   } catch (err) {

@@ -30,6 +30,8 @@ export async function processAuditJob(
     trigger: data.trigger,
     tenantId: data.tenantId,
     repoId: data.repoId,
+    repoUrl: data.repoUrl,
+    repoRef: data.repoRef,
     demo: data.demo,
     rulePacks: data.rulePacks,
     ruleIds: data.ruleIds,

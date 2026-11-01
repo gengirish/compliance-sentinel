@@ -18,7 +18,9 @@ const QUEUE_WAIT_MS = 2 * 60 * 1000;
  */
 export function RunAuditButton({ latestRun = null }: { latestRun?: LatestRun }) {
   const [demo, setDemo] = useState(true);
+  const [repoUrl, setRepoUrl] = useState("");
   const demoHelpId = useId();
+  const repoInputId = useId();
   const [pending, setPending] = useState(false);
   const [result, setResult] = useState<Result>(null);
   // Set by a trigger until the new run shows up (the page reloads then).
@@ -48,15 +50,16 @@ export function RunAuditButton({ latestRun = null }: { latestRun?: LatestRun }) 
       const res = await fetch("/api/runs", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ demo }),
+        body: JSON.stringify({ demo, ...(repoUrl.trim() && { repoUrl: repoUrl.trim() }) }),
       });
-      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      const body = (await res.json().catch(() => ({}))) as { error?: string; issues?: { message: string }[] };
       if (res.ok) {
         // No job id: it is a queue id, not the run number, and users went looking for a run by it.
         setResult({ tone: "ok", text: "Audit queued. It appears under Runs as soon as the worker starts it." });
         setWaiting(true);
       } else {
-        setResult({ tone: "error", text: body.error ?? `Request failed (${res.status})` });
+        // A rejected repository URL comes back as a validation issue; its message says what is accepted.
+        setResult({ tone: "error", text: body.issues?.[0]?.message ?? body.error ?? `Request failed (${res.status})` });
       }
     } catch (err) {
       setResult({ tone: "error", text: `Request failed (${(err as Error).message})` });
@@ -67,6 +70,27 @@ export function RunAuditButton({ latestRun = null }: { latestRun?: LatestRun }) 
 
   return (
     <div className="flex flex-col items-start gap-2 sm:items-end">
+      <div className="flex w-full flex-col gap-1 sm:w-96">
+        <label htmlFor={repoInputId} className="text-sm text-muted">
+          Repository <span className="text-xs">(optional)</span>
+        </label>
+        <input
+          id={repoInputId}
+          type="url"
+          inputMode="url"
+          value={repoUrl}
+          onChange={(e) => setRepoUrl(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !busy) void trigger();
+          }}
+          placeholder="https://github.com/owner/name"
+          autoComplete="off"
+          spellCheck={false}
+          disabled={busy}
+          className="min-h-11 w-full rounded-lg border border-border bg-surface px-3 py-1.5 text-sm text-foreground placeholder:text-muted focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-60"
+        />
+        <p className="text-xs text-muted">Any public GitHub, GitLab, Codeberg or Bitbucket repo. Blank audits the configured target.</p>
+      </div>
       <div className="flex items-center gap-3">
         <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-muted">
           <input

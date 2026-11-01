@@ -85,7 +85,7 @@ export async function fetchEdpbRules(opts: EdpbOptions = {}): Promise<ScrapedRul
   const toText = opts.pdfToTextImpl ?? pdfToText;
   const maxItems = opts.maxItems ?? config.EDPB_MAX_ITEMS;
   const maxChars = opts.maxChars ?? config.EDPB_MAX_CHARS;
-  const includePdf = opts.includePdf ?? true;
+  const includePdf = opts.includePdf ?? config.EDPB_INCLUDE_PDF;
 
   const xml = await (await fetchWithRetry(fetchImpl, opts.feedUrl ?? FEED)).text();
   const items = parseEdpbFeed(xml).slice(0, maxItems);

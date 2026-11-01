@@ -123,7 +123,7 @@ export async function fetchHkmaRules(opts: HkmaOptions = {}): Promise<ScrapedRul
   const toText = opts.pdfToTextImpl ?? pdfToText;
   const maxItems = opts.maxItems ?? config.HKMA_MAX_ITEMS;
   const maxChars = opts.maxChars ?? config.HKMA_MAX_CHARS;
-  const includePdf = opts.includePdf ?? true;
+  const includePdf = opts.includePdf ?? config.HKMA_INCLUDE_PDF;
   const feeds = opts.feedUrl ? [opts.feedUrl] : (opts.feedUrls ?? HKMA_FEEDS);
 
   // A document can sit in both feeds: keep it once. One feed failing does not lose the other.

@@ -115,7 +115,7 @@ export async function fetchEbaRules(opts: EbaOptions = {}): Promise<ScrapedRule[
   const toText = opts.pdfToTextImpl ?? pdfToText;
   const maxItems = opts.maxItems ?? config.EBA_MAX_ITEMS;
   const maxChars = opts.maxChars ?? config.EBA_MAX_CHARS;
-  const includePdf = opts.includePdf ?? true;
+  const includePdf = opts.includePdf ?? config.EBA_INCLUDE_PDF;
 
   // One listing per type; a document filed under two types (an RTS and ITS package) is kept once.
   const byId = new Map<string, EbaListingItem>();

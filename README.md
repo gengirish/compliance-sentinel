@@ -25,7 +25,7 @@ Give it a rule (or let it pick up new and amended rules from eight regulatory so
 | Full run on live sources, then a second run that correctly skips | Verified locally |
 | Neon Postgres with pgvector, including the Postgres checkpointer | Verified: migrations and a demo audit ran against Neon |
 | Audit with Claude (`claude-sonnet-5-5`, `claude-haiku-5-5`) | Verified: golden eval run three times on each planted set, 28 of 30 found on the ten-violation set, about $0.50 per run (see [Evaluation](#evaluation)) |
-| Voyage `voyage-law-2` embeddings | Implemented, **not yet run**: needs `VOYAGE_API_KEY`. The eval above used the local hash embedder |
+| Voyage `voyage-law-2` embeddings | Verified locally: `pnpm eval:retrieval` with `VOYAGE_API_KEY` set ranks the expected rule section or file first for nine of ten queries (for "logging social security numbers" it ranks `schema.sql` above `signup.js`, which does the logging, and misses `patients.js`). The golden eval above used the local hash embedder; **not yet set on Fly** |
 | Audits of real open-source repositories (`pnpm audit:real`) | Run with Claude on three pinned repos for $3.82. Precision is 42% (10 of 24 violations true) on a first-pass label by Claude Code, **not yet confirmed by a person** (see [samples/real](samples/real)) |
 | GitHub Action ([action.yml](action.yml), [docs/github-action.md](docs/github-action.md)) | Audit step, Markdown summary and `--fail-on` exit codes verified locally; **not yet run on GitHub** |
 | PCI DSS v4.0.1 rules (paraphrased) and five planted PCI violations in the demo app | Offline golden test passes on all ten planted violations |
@@ -146,7 +146,7 @@ pnpm audit:run --demo         # audit the demo app against the bundled demo rule
 pnpm test
 ```
 
-`pnpm audit:run` (no flag) scrapes the live sources instead; it needs `npx playwright install chromium` once, or `SCRAPE_EURLEX=false`. Every other source defaults to on and needs no browser (NIST, EDPB, EBA and HKMA use `pdftotext` for full text and fall back to page text without it); `SCRAPE_MAS` defaults to off and needs the browser plus `pdftotext`.
+`pnpm audit:run` (no flag) scrapes the live sources instead; it needs `npx playwright install chromium` once, or `SCRAPE_EURLEX=false`. Every other source defaults to on and needs no browser (NIST, EDPB, EBA and HKMA use `pdftotext` for full text and fall back to page text without it; set `<SOURCE>_INCLUDE_PDF=false`, e.g. `NIST_INCLUDE_PDF=false`, to skip the PDF for NIST, EDPB, EBA, HKMA, PRA, APRA or ASIC); `SCRAPE_MAS` defaults to off and needs the browser plus `pdftotext`.
 
 Those flags are only defaults. The dashboard's **Settings** page has a switch per source, saved in the `source_settings` table and read at the start of every run, so a change needs no restart; **Reset** hands a source back to its flag. A switched-off source is not fetched, so its rules stop changing and never enter an audit. Demo runs use the bundled rules and ignore the switches. Only the operator (requests without a tenant header) can see or change them: `GET /settings/sources`, `PUT /settings/sources/:name` with `{"enabled": true | false | null}`.
 
