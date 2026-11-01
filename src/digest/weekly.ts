@@ -1,6 +1,7 @@
 import { config } from "../config.js";
 import { openMigratedDb, type Db, type DbHandle } from "../db/client.js";
 import { Budget, type Analyst } from "../llm/analyst.js";
+import { AnalystUnavailable, CircuitBreakerAnalyst } from "../llm/circuitBreaker.js";
 import { errorMessage, log } from "../log.js";
 import { createAnalyst } from "../pipeline/run.js";
 import { deliverDigest, type DigestReport } from "./deliver.js";
@@ -33,7 +34,7 @@ export async function runWeeklyDigest(opts: WeeklyDigestOptions = {}): Promise<W
   const ownsHandle = !opts.handle && !opts.db;
   const handle = ownsHandle ? await openMigratedDb() : opts.handle;
   const db = opts.db ?? handle!.db;
-  const analyst = opts.analyst ?? createAnalyst();
+  const analyst = new CircuitBreakerAnalyst(opts.analyst ?? createAnalyst(), config.ANALYST_FAILURE_THRESHOLD);
   const now = opts.now ?? new Date();
   const days = opts.days ?? config.DIGEST_DAYS;
   const since = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
@@ -53,6 +54,8 @@ export async function runWeeklyDigest(opts: WeeklyDigestOptions = {}): Promise<W
         budget.add(record.costUsd);
         records.push(record);
       } catch (err) {
+        // Better no digest this week than one mailed out with most rules missing; the job is retried.
+        if (err instanceof AnalystUnavailable) throw err;
         errors.push(`rule ${rule.id}: digest failed: ${errorMessage(err)}`);
       }
     }

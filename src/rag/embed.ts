@@ -3,7 +3,7 @@ import { inArray } from "drizzle-orm";
 import { config } from "../config.js";
 import type { Db } from "../db/client.js";
 import { EMBEDDING_DIMENSIONS, embeddingCache } from "../db/schema.js";
-import { log } from "../log.js";
+import { errorMessage, log } from "../log.js";
 
 export type InputType = "document" | "query";
 
@@ -21,6 +21,9 @@ export class VoyageEmbedder implements Embedder {
     private readonly apiKey: string,
     model = "voyage-law-2",
     private readonly batchSize = 64,
+    private readonly fetchImpl: typeof fetch = fetch,
+    private readonly attempts = 4,
+    private readonly backoffMs = 1_000,
   ) {
     this.model = model;
   }
@@ -33,24 +36,37 @@ export class VoyageEmbedder implements Embedder {
     return out;
   }
 
+  /** Retries network errors, timeouts, 5xx and 429; any other 4xx fails at once. */
   private async embedBatch(input: string[], inputType: InputType): Promise<number[][]> {
     let lastError: unknown;
-    for (let attempt = 1; attempt <= 4; attempt++) {
-      const res = await fetch(VOYAGE_URL, {
-        method: "POST",
-        headers: { "content-type": "application/json", authorization: `Bearer ${this.apiKey}` },
-        body: JSON.stringify({ model: this.model, input, input_type: inputType }),
-        signal: AbortSignal.timeout(60_000),
-      });
+    for (let attempt = 1; attempt <= this.attempts; attempt++) {
+      let res: Response;
+      try {
+        res = await this.fetchImpl(VOYAGE_URL, {
+          method: "POST",
+          headers: { "content-type": "application/json", authorization: `Bearer ${this.apiKey}` },
+          body: JSON.stringify({ model: this.model, input, input_type: inputType }),
+          signal: AbortSignal.timeout(60_000),
+        });
+      } catch (err) {
+        // DNS failure, refused or reset connection, or the timeout above.
+        lastError = new Error(`Voyage embeddings unreachable: ${errorMessage(err)}`);
+        await this.backoff(attempt);
+        continue;
+      }
       if (res.ok) {
         const json = (await res.json()) as { data: { index: number; embedding: number[] }[] };
         return json.data.sort((a, b) => a.index - b.index).map((d) => d.embedding);
       }
       lastError = new Error(`Voyage embeddings HTTP ${res.status}: ${await res.text()}`);
       if (res.status !== 429 && res.status < 500) break;
-      await new Promise((r) => setTimeout(r, 1_000 * 2 ** (attempt - 1)));
+      await this.backoff(attempt);
     }
     throw lastError;
+  }
+
+  private async backoff(attempt: number): Promise<void> {
+    if (attempt < this.attempts) await new Promise((r) => setTimeout(r, this.backoffMs * 2 ** (attempt - 1)));
   }
 }
 

@@ -1,4 +1,5 @@
 import { errorMessage, log } from "../../log.js";
+import { AlertDeliveryError } from "../../notify/index.js";
 import type { AuditStateType, GraphDeps } from "../state.js";
 
 /** Conditional edge after `render_report`: alert only when a critical violation exists. */
@@ -21,6 +22,8 @@ export function notifyNode(deps: GraphDeps) {
       return { notified };
     } catch (err) {
       // A failed alert must not fail the run: the report and findings are already stored.
+      // The failure is recorded in the run's errors, with whichever channels did deliver.
+      if (err instanceof AlertDeliveryError) return { notified: err.delivered, errors: [err.message] };
       return { errors: [`notify failed: ${errorMessage(err)}`] };
     }
   };

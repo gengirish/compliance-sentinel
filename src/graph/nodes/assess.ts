@@ -1,5 +1,6 @@
 import { eq, inArray } from "drizzle-orm";
 import { ruleChunks, rules } from "../../db/schema.js";
+import { AnalystUnavailable } from "../../llm/circuitBreaker.js";
 import { errorMessage } from "../../log.js";
 import type { GraphDeps, ObligationStateType } from "../state.js";
 import type { Assessment } from "../types.js";
@@ -44,6 +45,8 @@ export function assessNode(deps: GraphDeps) {
     } catch (err) {
       const costUsd = err && typeof err === "object" && "costUsd" in err ? Number(err.costUsd) || 0 : 0;
       deps.budget.add(costUsd);
+      // An outage fails the run so it is retried, rather than reporting every obligation as needs_review.
+      if (err instanceof AnalystUnavailable) throw err;
       return {
         assessment: needsReview(`Not assessed automatically: ${errorMessage(err)}.`, obligation.sourceChunkIds),
         errors: [`obligation ${obligation.id}: assessment failed: ${errorMessage(err)}`],

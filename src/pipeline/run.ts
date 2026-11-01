@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import path from "node:path";
 import { promisify } from "node:util";
+import Anthropic from "@anthropic-ai/sdk";
 import { MemorySaver, type BaseCheckpointSaver } from "@langchain/langgraph";
 import { eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
@@ -15,6 +16,7 @@ import { buildAuditGraph, runAuditGraph } from "../graph/graph.js";
 import type { AuditStateType, GraphDeps } from "../graph/state.js";
 import type { FindingSummary } from "../graph/types.js";
 import { Budget, type Analyst } from "../llm/analyst.js";
+import { CircuitBreakerAnalyst } from "../llm/circuitBreaker.js";
 import { ClaudeAnalyst } from "../llm/claudeAnalyst.js";
 import { OfflineAnalyst } from "../llm/offlineAnalyst.js";
 import { errorMessage, log } from "../log.js";
@@ -115,7 +117,11 @@ export function loadDemoRules(dir = path.join(ROOT_DIR, "fixtures", "rules"), on
 }
 
 export function createAnalyst(): Analyst {
-  if (config.ANTHROPIC_API_KEY) return new ClaudeAnalyst();
+  if (config.ANTHROPIC_API_KEY) {
+    return new ClaudeAnalyst(
+      new Anthropic({ maxRetries: config.ANTHROPIC_MAX_RETRIES, timeout: config.ANTHROPIC_TIMEOUT_SECONDS * 1_000 }),
+    );
+  }
   log.warn("ANTHROPIC_API_KEY not set: using the offline keyword baseline instead of Claude");
   return new OfflineAnalyst();
 }
@@ -236,6 +242,7 @@ async function collectChangedRules(handle: DbHandle, opts: PipelineOptions): Pro
   const sources = opts.sources ?? (await enabledSources(db));
   if (sources.length === 0) log.warn("every source is disabled; nothing will be scraped");
   log.info("scraping sources", { sources: sources.map((s) => s.def.name) });
+  const failures: string[] = [];
   for (const source of sources) {
     try {
       const scraped = await source.fetch();
@@ -252,7 +259,13 @@ async function collectChangedRules(handle: DbHandle, opts: PipelineOptions): Pro
     } catch (err) {
       // One broken portal must not stop the other source from being audited.
       log.error("source failed", { source: source.def.name, error: errorMessage(err) });
+      failures.push(`${source.def.name}: ${errorMessage(err)}`);
     }
+  }
+  // Every source failing looks like a network outage. Reporting "no changes" would hide
+  // it, so fail the run and let the queue retry once the network is back.
+  if (sources.length > 0 && failures.length === sources.length) {
+    throw new Error(`every source failed to scrape (likely a network outage):\n${failures.join("\n")}`);
   }
   return changed;
 }
@@ -303,7 +316,7 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
 
     const mode = opts.mode ?? "audit";
     const embedder = opts.embedder ?? createEmbedder(db);
-    const analyst = opts.analyst ?? createAnalyst();
+    const analyst = new CircuitBreakerAnalyst(opts.analyst ?? createAnalyst(), config.ANALYST_FAILURE_THRESHOLD);
     let repo = "";
     let repoId = 0;
     let commitSha = "";
@@ -372,6 +385,12 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
         .update(auditRuns)
         .set({ status: "failed", finishedAt: sql`now()`, error: errorMessage(err).slice(0, 4_000) })
         .where(eq(auditRuns.id, runId))
+        .catch(() => undefined);
+    } else {
+      // Failed before a run row existed (e.g. every source unreachable): record it so the dashboard shows it.
+      await db
+        .insert(auditRuns)
+        .values({ tenantId, status: "failed", trigger: opts.trigger, finishedAt: sql`now()`, error: errorMessage(err).slice(0, 4_000) })
         .catch(() => undefined);
     }
     if (scope.length > 0 && !opts.ruleIds?.length) {

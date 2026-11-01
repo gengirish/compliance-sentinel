@@ -66,6 +66,13 @@ const EnvSchema = z.object({
   DASHBOARD_URL: z.string().default("https://compliance-sentinel-web.vercel.app"),
   MAX_RUN_COST_USD: z.coerce.number().positive().default(2),
   AUDIT_CONCURRENCY: z.coerce.number().int().positive().default(4),
+  /** Per-request timeout and SDK retries for the Claude API; well under RUN_TIMEOUT_MINUTES. */
+  ANTHROPIC_TIMEOUT_SECONDS: z.coerce.number().int().positive().default(300),
+  ANTHROPIC_MAX_RETRIES: z.coerce.number().int().nonnegative().default(3),
+  /** Consecutive network, 429 or 5xx failures after which a run stops calling Claude and fails, to be retried. */
+  ANALYST_FAILURE_THRESHOLD: z.coerce.number().int().positive().default(3),
+  /** Attempts per alert channel before the failure is recorded on the run. */
+  ALERT_ATTEMPTS: z.coerce.number().int().positive().default(3),
   /** A run still "running" after this long is presumed orphaned and marked failed. */
   RUN_TIMEOUT_MINUTES: z.coerce.number().int().positive().default(30),
   PORT: z.coerce.number().int().default(8080),

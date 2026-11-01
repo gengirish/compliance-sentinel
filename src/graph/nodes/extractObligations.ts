@@ -1,3 +1,4 @@
+import { AnalystUnavailable } from "../../llm/circuitBreaker.js";
 import { errorMessage, log } from "../../log.js";
 import { getRuleChunks, getRulesByIds } from "../../rag/retrieve.js";
 import type { AuditStateType, GraphDeps } from "../state.js";
@@ -67,6 +68,7 @@ export function extractObligationsNode(deps: GraphDeps) {
         }
       } catch (err) {
         if (err && typeof err === "object" && "costUsd" in err) spend(Number(err.costUsd) || 0);
+        if (err instanceof AnalystUnavailable) throw err;
         errors.push(`rule ${rule.id}: obligation extraction failed: ${errorMessage(err)}`);
       }
     }

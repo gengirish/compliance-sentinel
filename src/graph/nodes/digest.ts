@@ -1,4 +1,5 @@
 import { digestRule, type RuleDigestRecord } from "../../digest/digestRule.js";
+import { AnalystUnavailable } from "../../llm/circuitBreaker.js";
 import { errorMessage, log } from "../../log.js";
 import { getRulesByIds } from "../../rag/retrieve.js";
 import type { AuditStateType, GraphDeps } from "../state.js";
@@ -31,6 +32,7 @@ export function digestRulesNode(deps: GraphDeps) {
         digests.push(record);
       } catch (err) {
         if (err && typeof err === "object" && "costUsd" in err) deps.budget.add(Number(err.costUsd) || 0);
+        if (err instanceof AnalystUnavailable) throw err;
         errors.push(`rule ${rule.id}: digest failed: ${errorMessage(err)}`);
       }
     }
