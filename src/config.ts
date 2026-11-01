@@ -81,13 +81,22 @@ const EnvSchema = z.object({
   FEDREG_AGENCIES: z.string().default("federal-trade-commission"),
   FEDREG_PER_PAGE: z.coerce.number().int().positive().max(50).default(5),
   FEDREG_MAX_CHARS: z.coerce.number().int().positive().default(120_000),
-  EURLEX_CELEX: z.string().default("32016R0679"),
+  /** EU acts to collect, by CELEX number: GDPR, DORA, NIS2, the AI Act and MiCA. */
+  EURLEX_CELEX: z.string().default("32016R0679,32022R2554,32022L2555,32024R1689,32023R1114"),
   SCRAPE_EURLEX: flag("true"),
   /** SEC final rules, from the Federal Register API filtered to the SEC (EDGAR holds company filings, not rulemaking). */
   SEC_TERM: z.string().default("cybersecurity customer information safeguards"),
   SEC_PER_PAGE: z.coerce.number().int().positive().max(50).default(5),
   SEC_MAX_CHARS: z.coerce.number().int().positive().default(80_000),
   SCRAPE_SEC: flag("true"),
+  /** More Federal Register agencies; each uses FEDREG_PER_PAGE and FEDREG_MAX_CHARS. */
+  CFPB_TERM: z.string().default("privacy data security"),
+  SCRAPE_CFPB: flag("true"),
+  /** The OCC, FDIC and Federal Reserve, searched together; quotes make it an exact phrase. */
+  BANKING_TERM: z.string().default("\"information security\""),
+  SCRAPE_BANKING: flag("true"),
+  /** HIPAA rules: HHS final rules amending 45 CFR Part 164. */
+  SCRAPE_HIPAA: flag("true"),
   /** FCA publication types to keep from the publications RSS feed, comma-separated; plural and case do not matter. */
   FCA_TYPES: z.string().default("Policy statements,Consultation papers,Finalised guidance,Multi-firm reviews"),
   FCA_MAX_ITEMS: z.coerce.number().int().positive().default(10),

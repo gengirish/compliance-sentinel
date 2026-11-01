@@ -2,11 +2,12 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
-import { parseAmendmentCelexIds, parseEurLexDocument } from "../src/scrape/eurLex.playwright.js";
+import { celexIds, parseAmendmentCelexIds, parseEurLexDocument } from "../src/scrape/eurLex.playwright.js";
 import { fetchAsicRules, parseAsicDate, parseAsicDocumentPage, parseAsicTracker } from "../src/scrape/asicTracker.js";
 import { extractEsmaPageText, fetchEsmaRules, parseEsmaFeed } from "../src/scrape/esmaNews.js";
 import { extractFcaPageText, fcaExternalId, fetchFcaRules, normalizeFcaType, parseFcaFeed } from "../src/scrape/fcaPublications.js";
 import { fetchFinraRules, parseFinraFeed, parseFinraNoticePage } from "../src/scrape/finraNotices.js";
+import { BANKING_AGENCIES, fetchBankingRules, fetchCfpbRules, fetchHipaaRules } from "../src/scrape/federalAgencies.js";
 import { buildSearchUrl, extractRuleText, fetchFederalRegisterRules } from "../src/scrape/federalRegister.js";
 import { masExternalId, parseMasCircularPage, parseMasDate, parseMasListing } from "../src/scrape/masCirculars.playwright.js";
 import { buildSecSearchUrl, fetchSecRules, SEC_SOURCE } from "../src/scrape/secRules.js";
@@ -31,6 +32,43 @@ describe("EUR-Lex parsing", () => {
   it("lists acts that amend or correct the base act, once each", () => {
     const ids = parseAmendmentCelexIds(fixture("eurlex-all.html"), "32016R0679");
     expect(ids.sort()).toEqual(["32016R0679R(02)", "32099R0001"]);
+  });
+
+  it("reads a comma-separated list of CELEX numbers", () => {
+    expect(celexIds(" 32016R0679, 32022r2554 ,,32022L2555")).toEqual(["32016R0679", "32022R2554", "32022L2555"]);
+  });
+});
+
+describe("Federal Register agency sources", () => {
+  const searchedFor = async (run: (fetchImpl: typeof fetch) => Promise<unknown>) => {
+    const requested: string[] = [];
+    const fetchImpl = vi.fn(async (input: string | URL | Request) => {
+      requested.push(String(input));
+      return Response.json({ results: [] });
+    }) as unknown as typeof fetch;
+    await run(fetchImpl);
+    return new URL(requested[0]!).searchParams;
+  };
+
+  it("filters by CFR part and leaves out an empty term", () => {
+    const url = new URL(buildSearchUrl({ term: "", agencies: [], perPage: 3, cfr: { title: 45, part: 164 } }));
+    expect(url.searchParams.has("conditions[term]")).toBe(false);
+    expect(url.searchParams.get("conditions[cfr][title]")).toBe("45");
+    expect(url.searchParams.get("conditions[cfr][part]")).toBe("164");
+  });
+
+  it("pins each source to its agencies or regulation", async () => {
+    const cfpb = await searchedFor((fetchImpl) => fetchCfpbRules({ fetchImpl, term: "privacy" }));
+    expect(cfpb.getAll("conditions[agencies][]")).toEqual(["consumer-financial-protection-bureau"]);
+    expect(cfpb.get("conditions[term]")).toBe("privacy");
+
+    const banking = await searchedFor((fetchImpl) => fetchBankingRules({ fetchImpl }));
+    expect(banking.getAll("conditions[agencies][]")).toEqual(BANKING_AGENCIES);
+
+    const hipaa = await searchedFor((fetchImpl) => fetchHipaaRules({ fetchImpl }));
+    expect(hipaa.getAll("conditions[agencies][]")).toEqual([]);
+    expect(hipaa.get("conditions[cfr][part]")).toBe("164");
+    expect(hipaa.getAll("conditions[type][]")).toEqual(["RULE"]);
   });
 });
 

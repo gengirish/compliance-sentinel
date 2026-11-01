@@ -7,10 +7,15 @@ import type { ScrapedRule, SourceDef } from "./diff.js";
 
 const BASE = "https://eur-lex.europa.eu/legal-content/EN";
 
+/** The acts EURLEX_CELEX names, comma-separated, in order. */
+export function celexIds(raw: string = config.EURLEX_CELEX): string[] {
+  return raw.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean);
+}
+
 export const EUR_LEX_SOURCE: SourceDef = {
   name: "eur-lex",
   kind: "playwright",
-  url: `${BASE}/ALL/?uri=CELEX:${config.EURLEX_CELEX}`,
+  url: `${BASE}/ALL/?uri=CELEX:${celexIds()[0] ?? "32016R0679"}`,
 };
 
 export type EurLexDocument = { title: string; text: string; effectiveDate: string | null };
@@ -62,11 +67,12 @@ export function parseAmendmentCelexIds(html: string, baseCelex: string): string[
 export type EurLexOptions = { celex?: string; maxAmendments?: number; headless?: boolean };
 
 /**
- * Scrapes the base act plus the acts that amend it. EUR-Lex renders through
- * JavaScript and a WAF challenge, hence a real browser instead of fetch.
+ * Scrapes each base act plus the acts that amend it. EUR-Lex renders through
+ * JavaScript and a WAF challenge, hence a real browser instead of fetch. An act
+ * that fails is skipped, so one bad CELEX number does not lose the others.
  */
 export async function scrapeEurLex(opts: EurLexOptions = {}): Promise<ScrapedRule[]> {
-  const celex = opts.celex ?? config.EURLEX_CELEX;
+  const acts = celexIds(opts.celex ?? config.EURLEX_CELEX);
   const { chromium } = await import("playwright");
   const browser = await chromium.launch({ headless: opts.headless ?? true });
   const context = await browser.newContext({
@@ -127,16 +133,25 @@ export async function scrapeEurLex(opts: EurLexOptions = {}): Promise<ScrapedRul
       });
     };
 
-    await scrapeDoc(celex);
-    const allPage = await load(`${BASE}/ALL/?uri=CELEX:${celex}`, `all-${celex}`);
-    const amendments = parseAmendmentCelexIds(allPage, celex).slice(0, opts.maxAmendments ?? 5);
-    for (const id of amendments) {
+    let lastError: unknown;
+    for (const celex of acts) {
       try {
-        await scrapeDoc(id);
+        await scrapeDoc(celex);
+        const allPage = await load(`${BASE}/ALL/?uri=CELEX:${celex}`, `all-${celex}`);
+        const amendments = parseAmendmentCelexIds(allPage, celex).slice(0, opts.maxAmendments ?? 5);
+        for (const id of amendments) {
+          try {
+            await scrapeDoc(id);
+          } catch (err) {
+            log.warn("eur-lex amendment skipped", { celex: id, error: String(err) });
+          }
+        }
       } catch (err) {
-        log.warn("eur-lex amendment skipped", { celex: id, error: String(err) });
+        lastError = err;
+        log.warn("eur-lex act skipped", { celex, error: String(err) });
       }
     }
+    if (out.length === 0 && lastError) throw lastError;
     return out;
   } finally {
     await browser.close();

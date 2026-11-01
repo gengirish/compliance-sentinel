@@ -24,21 +24,31 @@ const DocumentSchema = z.object({
 });
 const SearchSchema = z.object({ results: z.array(DocumentSchema).default([]) });
 
+/** A CFR title and part, e.g. 45 CFR Part 164 (the HIPAA Privacy and Security Rules). */
+export type CfrPart = { title: number; part: number };
+
 export type FederalRegisterOptions = {
   term?: string;
   agencies?: string[];
+  /** Only rules that amend this CFR part; narrower than any search term for a single regulation. */
+  cfr?: CfrPart;
   perPage?: number;
   maxChars?: number;
   fetchImpl?: typeof fetch;
 };
 
-export function buildSearchUrl(opts: { term: string; agencies: string[]; perPage: number }): string {
+/** An empty term searches every final rule the other conditions allow. */
+export function buildSearchUrl(opts: { term: string; agencies: string[]; perPage: number; cfr?: CfrPart }): string {
   const params = new URLSearchParams();
   params.set("per_page", String(opts.perPage));
   params.set("order", "newest");
-  params.set("conditions[term]", opts.term);
+  if (opts.term) params.set("conditions[term]", opts.term);
   params.append("conditions[type][]", "RULE");
   for (const agency of opts.agencies) params.append("conditions[agencies][]", agency);
+  if (opts.cfr) {
+    params.set("conditions[cfr][title]", String(opts.cfr.title));
+    params.set("conditions[cfr][part]", String(opts.cfr.part));
+  }
   for (const field of Object.keys(DocumentSchema.shape)) params.append("fields[]", field);
   return `${API}?${params.toString()}`;
 }
@@ -70,6 +80,7 @@ export async function fetchFederalRegisterRules(opts: FederalRegisterOptions = {
     term: opts.term ?? config.FEDREG_TERM,
     agencies: opts.agencies ?? config.FEDREG_AGENCIES.split(",").map((s) => s.trim()).filter(Boolean),
     perPage: opts.perPage ?? config.FEDREG_PER_PAGE,
+    cfr: opts.cfr,
   });
 
   const search = SearchSchema.parse(await (await fetchWithRetry(fetchImpl, url)).json());

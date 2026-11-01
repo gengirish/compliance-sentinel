@@ -7,6 +7,14 @@ import type { ScrapedRule, SourceDef } from "./diff.js";
 import { ESMA_SOURCE, fetchEsmaRules } from "./esmaNews.js";
 import { EUR_LEX_SOURCE, scrapeEurLex } from "./eurLex.playwright.js";
 import { FCA_SOURCE, fetchFcaRules } from "./fcaPublications.js";
+import {
+  BANKING_SOURCE,
+  CFPB_SOURCE,
+  fetchBankingRules,
+  fetchCfpbRules,
+  fetchHipaaRules,
+  HIPAA_SOURCE,
+} from "./federalAgencies.js";
 import { FEDERAL_REGISTER_SOURCE, fetchFederalRegisterRules } from "./federalRegister.js";
 import { fetchFinraRules, FINRA_SOURCE } from "./finraNotices.js";
 import { MAS_SOURCE, scrapeMasCirculars } from "./masCirculars.playwright.js";
@@ -47,6 +55,30 @@ export const SOURCE_CATALOG: SourceEntry[] = [
     fetch: () => fetchSecRules(),
   },
   {
+    def: CFPB_SOURCE,
+    label: "CFPB",
+    region: "US",
+    description: "CFPB final rules on consumer financial data, privacy and security, via the Federal Register API.",
+    defaultEnabled: (cfg) => cfg.SCRAPE_CFPB,
+    fetch: () => fetchCfpbRules(),
+  },
+  {
+    def: BANKING_SOURCE,
+    label: "US banking agencies",
+    region: "US",
+    description: "Final rules of the OCC, FDIC and Federal Reserve on information security, via the Federal Register API.",
+    defaultEnabled: (cfg) => cfg.SCRAPE_BANKING,
+    fetch: () => fetchBankingRules(),
+  },
+  {
+    def: HIPAA_SOURCE,
+    label: "HIPAA (HHS)",
+    region: "US",
+    description: "HHS final rules amending the HIPAA Privacy, Security and Breach Notification Rules (45 CFR Part 164).",
+    defaultEnabled: (cfg) => cfg.SCRAPE_HIPAA,
+    fetch: () => fetchHipaaRules(),
+  },
+  {
     def: FINRA_SOURCE,
     label: "FINRA",
     region: "US",
@@ -83,7 +115,7 @@ export const SOURCE_CATALOG: SourceEntry[] = [
     def: EUR_LEX_SOURCE,
     label: "EUR-Lex",
     region: "EU",
-    description: "The consolidated text of an EU act (by default the GDPR).",
+    description: "The consolidated text of EU acts: by default the GDPR, DORA, NIS2, the AI Act and MiCA.",
     requires: "Chromium (Playwright)",
     defaultEnabled: (cfg) => cfg.SCRAPE_EURLEX,
     fetch: () => scrapeEurLex(),

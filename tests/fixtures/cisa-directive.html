@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head><title>BOD 26-04: Prioritizing Security Updates Based on Risk | CISA</title></head>
+<body>
+<!-- Trimmed from https://www.cisa.gov/news-events/directives/bod-26-04-prioritizing-security-updates-based-risk -->
+<header><a href="/">CISA</a> Search</header>
+  <main id="main" class="c-main" role="main" tabindex="-1">
+        
+      
+    
+
+
+<div  class="l-content">
+          
+
+
+
+
+
+
+
+  
+  
+    
+
+  
+            
+
+
+
+
+<div  class="c-page-title">
+	<div class="c-page-title__inner l-constrain">
+		<div class="c-page-title__row">
+			<div>
+				<div class="c-page-title__content">
+											<div class="c-page-title__meta">Binding Operational Directives</div>
+										<h1 class="c-page-title__title">
+<span>BOD 26-04: Prioritizing Security Updates Based on Risk</span>
+</h1>
+																<div class="c-page-title__date"><time datetime="2026-06-10T12:00:00Z">June 10, 2026</time>
+</div>
+																																														<div class="c-page-title__topic">
+							<div class="c-topic__label">
+								Related topics:
+							</div>
+							<div class="c-top__topics">
+																																												<a href="/topics/cybersecurity-best-practices">Cybersecurity Best Practices</a>
+																																		</div>
+						</div>
+									</div>
+				<div class="c-page-title__decoration"></div>
+			</div>
+<div  class="l-sidebar has-aside-left">
+  <div class="l-sidebar__row">
+    <aside class="l-sidebar__left"><h2 class="c-block__title"><a href="/news-events">News &amp; Events</a></h2><ul><li><a href="/news-events/directives">Directives</a></li></ul></aside>
+    <div class="l-sidebar__main">
+      
+							
+
+<div  class="l-page-section l-page-section--rich-text">
+      <div class="l-constrain">
+  
+  
+  <div class="l-page-section__content">
+            
+  
+  
+  
+<figure class="c-figure c-figure--large c-figure--image" role="group">
+  
+  <div class="c-figure__media">  <img loading="lazy" src="/sites/default/files/styles/large/public/2026-05/333_BOD_26-04_Carousel_700x394.jpg?itok=WW8MlRr4" width="1024" height="576" alt="BOD 26-04: Carousel">
+
+
+</div>
+  </figure>
+<p>This page contains a web-friendly version of the Cybersecurity and Infrastructure Security Agency’s Binding Operational Directive 26-04: Prioritizing Security Updates Based on Risk.</p>
+<p><em>A Binding Operational Directive is a compulsory direction to federal, executive branch, departments, and agencies for purposes of safeguarding federal information and information systems. 44 U.S.C. § 3552(b)(1). Section 3553(b)(2) of title 44, U.S. Code, authorizes the Secretary of the Department of Homeland Security (DHS) to develop and oversee the implementation of binding operational directives to implement cybersecurity policies, principles, standards, and guidelines issued by the Director of the Office of Management and Budget (OMB). Federal agencies are required to comply with these directives under 44 U.S.C. § 3554(a)(1)(B)(ii). These directives do not apply to statutorily defined “national security systems” or to certain systems operated by the Department of War or the Intelligence Community. 44 U.S.C. § 3553(b), (d), (e)(2), (e)(3). This directive refers to the systems to which it applies as “Federal Civilian Executive Branch” systems, and to agencies operating those systems as “Federal Civilian Executive Branch” agencies.</em></p>
+<h2><strong>Background</strong></h2>
+<p>The United States faces persistent, increasingly sophisticated malicious cyber campaigns that threaten the public sector, private sector, and ultimately the American people’s security and privacy. The federal government must improve its efforts to protect against these campaigns by ensuring the security of information technology assets across the federal enterprise.</p>
+<p>Cyber threat actors exploit unpatched vulnerabilities, and their use of AI may further narrow the time defenders have to react between patch release and possible exploitation. As a result, we must take immediate action to harden American networks and ensure our cybersecurity practices, including our policies for applying patches, address modern and increasingly sophisticated cyber threats. This approach focuses patching efforts on the areas of highest risk rather than treating all vulnerabilities and systems equally.</p>
+<p>Known exploited vulnerabilities are a frequent attack vector for malicious cyber actors, including those backed by nation-states that aim to compromise U.S. critical infrastructure to steal sensitive information, disrupt operations, and undermine national security. These vulnerabilities pose significant risk to agencies and the federal enterprise.</p>
+<p>In 2021 CISA established the <a href="/known-exploited-vulnerabilities-catalog" target="_blank" title="CISA's Known Exploited Vulnerabilities Catalog"><u>Known Exploited Vulnerabilities catalog pursuant to BOD 22-01</u></a>, which directed agencies to aggressively remediate known exploited vulnerabilities (KEVs), protect federal assets, and reduce cyber incidents. This Directive evolves upon CISA’s KEV Catalog and increases mission readiness across the federal government by efficiently prioritizing high-risk vulnerabilities for timely action, while deferring action against low-risk vulnerabilities. The urgency of vulnerability remediation (see Table 1: Remediation Timelines) is determined based on the following variables:</p>
+<ol>
+<li>Asset Exposure: Is the vulnerable asset publicly exposed?</li>
+<li>KEV Status: Is the vulnerability, as identified by a common vulnerabilities and exposures identifier (CVE ID), on CISA’s <a href="/known-exploited-vulnerabilities-catalog" title="CISA's Known Exploited Vulnerabilities Catalog">Known Exploited Vulnerabilities Catalog</a>?</li>
+<li>Exploit Automation: Is an adversary able to automate all the steps necessary to exploit the vulnerability?</li>
+<li>Technical Impact: Does an adversary gain partial control or total control of the vulnerable asset after exploitation of the vulnerability?</li>
+</ol>
+<p>CISA publishes answers to KEV Status, Exploit Automation, and Technical Impact for every CVE ID through services such as the <a href="/news-events/news/unlocking-vulnrichment-enriching-cve-data" title="Unlocking Vulnrichment: Enriching CVE Data">Vulnrichment Program</a>. Agencies should follow&nbsp;<a href="/resources-tools/resources/exposure-reduction" title="Internet Exposure Reduction Guidance">CISA’s Internet Exposure Reduction Guidance</a> to answer Asset Exposure and determine if the vulnerable asset is publicly exposed. Additionally, CISA developed <a href="/news-events/directives/bod-26-04-implementation-guidance-prioritizing-security-updates-based-risk" title="BOD 26-04: Implementation Guidance for Prioritizing Security Updates Based on Risk">Implementation Guidance: <em>Prioritizing Security Updates Based on Risk</em></a> to support agencies in implementing this Directive.</p>
+<p>The requirements in this Directive align with Office of Management and Budget (OMB) Circular A-130:<a href="#Note1"><sup>1</sup></a> <em>Managing Information as a Strategic Resource</em>, which establishes policy for the management of federal information resources. It emphasizes robust vulnerability management practices, continuous monitoring requirements, and coordination with CISA pursuant to the Federal Information Security Modernization Act (FISMA) of 2014.<a href="#Note2"><sup>2</sup></a> This Directive also advances priorities for securing federal government networks set forth in Executive Order (EO) <em>Promoting Advanced Artificial Intelligence Innovation and Security</em><a href="#Note3"><sup>3</sup></a> and the Cyber Strategy for America. The actions outlined in this Directive are critical first steps to more aggressively fortify federal assets and mitigate the risk of cyber incidents. This Directive supersedes and hereby revokes BOD 19-02: <em>Vulnerability Remediation Requirements for Internet-Accessible System</em>s (April 29, 2019), and BOD 22-01: <em>Reducing the Significant Risk of Known Exploited Vulnerabilities</em> (Nov. 3, 2021). This Directive consolidates and clarifies vulnerability remediation guidelines for federal agencies addressing cybersecurity vulnerabilities.</p>
+<h2><strong>Definitions for the purposes of this Directive:</strong></h2>
+<ul type="disc">
+<li><strong>Asset:</strong> Hardware or software items that make up an information system.<a href="#Note4"><sup>4</sup></a></li>
+<li><strong>Publicly exposed:</strong> Any agency-owned or agency-managed IT resource accessible to unauthenticated or untrusted entities via public networks, such as the internet, regardless of its physical or logical location.</li>
+<li><strong>Partial control:</strong><a href="#Note5"><strong><sup>5</sup></strong></a><strong> </strong>One of the following is true: The exploit gives the threat actor limited control over, or information exposure about, the behavior of the software that contains the vulnerability; or the exploit gives the threat actor a low stochastic opportunity for total control. In this context, “low” means that the threat actor cannot reasonably make enough attempts to overcome obstacles, either physical or security-based, to achieve total control. A denial-of-service attack is a form of limited control over the behavior of the vulnerable component.</li>
+<li><strong>Total control:</strong><a href="#Note6"><strong><sup>6</sup></strong></a><strong> </strong>The exploit gives the adversary total control over the behavior of the software, including if the exploit reliably reveals log-in credentials.</li>
+</ul>
+<h2><strong>Scope</strong></h2>
+<p>This Directive applies to agency assets in any “federal information system,” defined in Circular A-130 as an information system—used or operated by an agency or by another entity on behalf of an agency—that collects, processes, stores, transmits, disseminates, or otherwise maintains agency information. Unless directed by the governing procurement contract, this Directive does not apply to contractors, but FCEB agencies must review all contracts to determine what modifications are necessary to&nbsp;comply with the required actions of this Directive, in consultation with the Contracting Officer.</p>
+<p>For federal information systems hosted in third-party environments, including Federal Risk and Authorization Management Program (FedRAMP) certified environments, each agency is responsible for maintaining an inventory of those systems, obtaining status updates pertaining to this Directive, and ensuring compliance with its requirements through collaborative continuous monitoring.</p>
+<p>For FedRAMP certified cloud service offerings, agencies must work through the FedRAMP PMO to ensure compliance with this Directive. For cloud offerings that are not FedRAMP certified agencies must work directly with their Cloud Service Providers (CSPs) to ensure that the supporting CSP infrastructure follows the same requirements from this directive and that all deviations are properly documented and communicated with the customer agency.</p>
+<p>All other provisions specified in this Directive remain applicable.</p>
+<h2><strong>Required Actions</strong></h2>
+<h3><strong>Phase I – Effective immediately, agencies shall:</strong></h3>
+<ol>
+<li>Review and, as appropriate, update agency vulnerability management policies in accordance with this Directive and revise procedures as necessary to implement those updated policies. If requested by CISA, agencies will provide a copy of these policies and procedures. At a minimum, agency policies must:<br>
+</ol>
+      </div>
+      </div>
+  </div>
+<div  class="l-page-section l-page-section--tags l-page-section--rich-text">
+      <div class="l-constrain">
+  
+  
+  <div class="l-page-section__content">
+    					<h3>Tags</h3>
+					  
+        
+  
+        <div class="c-field">
+        <strong>Topics</strong>:
+                                                                                                                                                                                                                                                                                                                                                <a href="/topics/cybersecurity-best-practices">Cybersecurity Best Practices</a>
+                        </div>
+    
+
+				  </div>
+
+  
+      </div>
+  </div>
+			    </div>
+
+      </div>
+
+  </div>
+
+  
+  
+<div class="c-collection"><h2 class="c-collection__title"><span class="c-collection__title-wrap">Related Directives</span></h2>
+<article  class="c-teaser c-teaser--horizontal" role="article">
+  <div class="c-teaser__row">
+        <div class="c-teaser__content">
+              <div class="c-teaser__eyebrow">
+                      <div class="c-teaser__date"><time datetime="2026-06-10T12:00:00Z">Jun 10, 2026</time>
+</div>
+                                <div class="c-teaser__meta">Binding Operational Directive</div>
+                  </div>
+            <h3 class="c-teaser__title">
+        <a href="/news-events/directives/bod-26-04-implementation-guidance-prioritizing-security-updates-based-risk" target="_self">          
+<span>BOD 26-04: Implementation Guidance for Prioritizing Security Updates Based on Risk</span>
+
+        </a>      </h3>
+                    
+                      </div>
+  </div>
+</article>
+
+
+        
+
+
+
+</div>
+</main>
+<footer><p>CISA footer.</p></footer>
+</body>
+</html>

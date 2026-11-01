@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" version="2.0" xml:base="https://www.edpb.europa.eu/home_en">
+  <channel>
+    <title>EDPB Publications</title>
+    <link>https://www.edpb.europa.eu/home_en</link>
+    <description/>
+    <language>en</language>
+    <item>
+  <title>Guidelines 02/2026 on Anonymisation</title>
+  <link>https://www.edpb.europa.eu/documents/guideline/guidelines-022026-on-anonymisation_en</link>
+  <description/>
+  <pubDate>Wed, 08 Jul 2026 12:00:00 +0000</pubDate>
+    <dc:creator>EDPB</dc:creator>
+    <guid isPermaLink="false">5d1c0e43-8d2f-4f3e-9a51-2a6b7c8d9e01</guid>
+    <category>Anonymisation / pseudonymisation</category>
+    </item>
+<item>
+  <title>Opinion 27/2026 on the draft  decision of the Irish Supervisory  Authority regarding the Controller  Binding Corporate Rules of the  HCL Tech Group</title>
+  <link>https://www.edpb.europa.eu/documents/opinion-of-the-board-art-64/opinion-272026-on-the-draft-decision-of-the-irish-supervisory_en</link>
+  <description/>
+  <pubDate>Tue, 13 Oct 2026 12:00:00 +0000</pubDate>
+    <dc:creator>EDPB</dc:creator>
+    <guid isPermaLink="false">d0b732b3-5c3f-461b-bd7d-9f4bc9a93fb1</guid>
+    <category>Binding Corporate Rules</category>
+    <category>Tools for transfers and derogations</category>
+    </item>
+<item>
+  <title>Guidelines 1/2020 on processing personal data in the context of connected vehicles and mobility related applications</title>
+  <link>https://www.edpb.europa.eu/documents/guideline/guidelines-12020-on-processing-personal-data-in-the-context-of-connected_en</link>
+  <description/>
+    <dc:creator>EDPB</dc:creator>
+    <guid isPermaLink="false">0a6c1f20-1b7e-4c55-8f0e-6d2e3a4b5c60</guid>
+    </item>
+  </channel>
+</rss>
