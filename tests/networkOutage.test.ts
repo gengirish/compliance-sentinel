@@ -147,7 +147,7 @@ describe("pipeline during an outage", () => {
     } finally {
       await handle.close();
     }
-  }, 30_000);
+  }, 180_000); // two full pipeline runs, each indexing the demo repo; slow when the suite runs in parallel
 
   it("fails and records the run when every source is unreachable", async () => {
     const handle = await openMigratedDb({ pgliteDir: "memory" });

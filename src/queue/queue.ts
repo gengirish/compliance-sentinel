@@ -59,11 +59,27 @@ export async function enqueueManualAudit(
   return job.id!;
 }
 
+/** A second manual digest inside this window is refused unless forced, so a double click or a retried request does not mail everyone twice. */
+export const MANUAL_DIGEST_WINDOW_MS = 10 * 60 * 1000;
+
+/** `queued: false` means a manual digest was already queued inside the window; `jobId` is that one. */
+export type ManualDigestOutcome = { queued: boolean; jobId: string };
+
 /**
  * Queues a one-off digest delivery now, to the same channels as the weekly run. Its own
- * unique id keeps it apart from the repeatable weekly job's.
+ * unique id keeps it apart from the repeatable weekly job's. BullMQ's deduplication makes the
+ * window check atomic: a duplicate add returns the existing job's id instead of creating one.
  */
-export async function enqueueManualDigest(queue: Queue<AuditJobData>): Promise<string> {
-  const job = await queue.add(MANUAL_DIGEST_JOB, { trigger: "manual", kind: "digest" }, { jobId: `${MANUAL_DIGEST_JOB}-${randomUUID()}` });
-  return job.id!;
+export async function enqueueManualDigest(
+  queue: Queue<AuditJobData>,
+  opts: { force?: boolean } = {},
+): Promise<ManualDigestOutcome> {
+  if (opts.force) await queue.removeDeduplicationKey(MANUAL_DIGEST_JOB);
+  const jobId = `${MANUAL_DIGEST_JOB}-${randomUUID()}`;
+  const job = await queue.add(
+    MANUAL_DIGEST_JOB,
+    { trigger: "manual", kind: "digest" },
+    { jobId, deduplication: { id: MANUAL_DIGEST_JOB, ttl: MANUAL_DIGEST_WINDOW_MS } },
+  );
+  return { queued: job.id === jobId, jobId: job.id! };
 }

@@ -120,6 +120,9 @@ export const SubscriberTokenBody = z.strictObject({ token: z.string().min(16).ma
 /** Look-back window of an operator-built digest; absent means DIGEST_DAYS. */
 const digestDays = z.number().int().min(1).max(90, { message: "days must be between 1 and 90" }).optional();
 
+/** `POST /digest/send`: `force` sends even though another manual send went out moments ago. */
+export const DigestSendBody = z.strictObject({ force: z.boolean().optional() });
+
 /** `POST /digest/preview`: an empty body is fine. */
 export const DigestPreviewBody = z.strictObject({ days: digestDays });
 
