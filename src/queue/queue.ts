@@ -19,6 +19,10 @@ export type AuditJobData = {
   kind?: "audit" | "digest";
   /** Audit this repository of the tenant, cloned with the GitHub App, instead of the configured target. */
   repoId?: number;
+  /** Audit this public repository (shallow clone) instead of the configured target. */
+  repoUrl?: string;
+  /** With `repoUrl`: the branch, tag or sha to audit; absent means its default branch. */
+  repoRef?: string;
   demo?: boolean;
   /** With `demo`: only the bundled rules whose file names start with one of these. Empty: all of them. */
   rulePacks?: string[];

@@ -287,16 +287,16 @@ export function createApp(deps: AppDeps): Hono<Env> {
     return { fullName: repo.fullName, url: `https://github.com/${repo.fullName}` };
   };
 
-  /** Manual trigger. `?demo=1` forces the bundled demo rules through. */
+  /** Manual trigger. `?demo=1` forces the bundled demo rules through; `?repo=` audits a public repository. */
   app.post("/runs", async (c) => {
     const query = parseInput(c, TriggerRunQuery, c.req.query());
     if (!query.ok) return query.response;
     const tenantId = c.get("tenantId");
     if (tenantId === null) return c.json({ error: "no tenant is linked to this account; install the GitHub App first" }, 409);
-    const { demo } = query.data;
-    const jobId = await enqueueManualAudit(deps.getQueue(), { demo, tenantId });
-    log.info("manual audit enqueued", { jobId, demo, tenantId });
-    return c.json({ jobId, demo }, 202);
+    const { demo, repo, ref } = query.data;
+    const jobId = await enqueueManualAudit(deps.getQueue(), { demo, tenantId, ...(repo && { repoUrl: repo, repoRef: ref }) });
+    log.info("manual audit enqueued", { jobId, demo, tenantId, repo, ref });
+    return c.json({ jobId, demo, ...(repo && { repo }) }, 202);
   });
 
   /**

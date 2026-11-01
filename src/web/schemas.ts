@@ -24,7 +24,28 @@ export function commaList<T extends readonly [string, ...string[]]>(allowed: T) 
     .pipe(z.array(z.enum(allowed)));
 }
 
-export const TriggerRunQuery = z.object({ demo: flag });
+/** Public code hosts a manual run may clone from. The server runs `git fetch` on the URL, so it is never a free-form URL. */
+const PUBLIC_REPO_URL = /^https:\/\/(github\.com|gitlab\.com|codeberg\.org|bitbucket\.org)\/[\w.-]+\/[\w.-]+?(\.git)?\/?$/;
+
+/** A branch, tag or commit sha: no leading dash (git would read it as an option) and no `..`. */
+const GIT_REF = /^(?!-)(?!.*\.\.)[\w./-]{1,200}$/;
+
+/**
+ * `?demo=1` runs the bundled rules. `?repo=<url>` audits that public repository (shallow clone)
+ * instead of the configured target, at `?ref=` or its default branch.
+ */
+export const TriggerRunQuery = z
+  .object({
+    demo: flag,
+    repo: z
+      .string()
+      .trim()
+      .regex(PUBLIC_REPO_URL, { message: "expected https://github.com/owner/name (or gitlab.com, codeberg.org, bitbucket.org)" })
+      .transform((url) => url.replace(/\/$/, ""))
+      .optional(),
+    ref: z.string().trim().regex(GIT_REF, { message: "expected a branch, tag or commit sha" }).optional(),
+  })
+  .refine((q) => q.ref === undefined || q.repo !== undefined, { message: "ref needs repo", path: ["ref"] });
 
 export const FINDING_SORTS = ["severity", "status", "rule", "path"] as const;
 export const RUN_SORTS = ["started", "duration", "cost", "violations", "critical"] as const;
