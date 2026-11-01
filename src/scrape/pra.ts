@@ -57,7 +57,7 @@ export type PraDocumentPage = {
   text: string;
   /** The "Effective from" date stated on the page, YYYY-MM-DD, or null. */
   effectiveFrom: string | null;
-  /** The current version's PDF, set only when the page has no HTML document body. */
+  /** The document's PDF, set only for landing pages without an HTML document body. */
   pdfUrl: string | null;
 };
 
@@ -112,22 +112,34 @@ const NOISE =
   `${PAGE_NOISE}, .page-banner, .nav-chapters, .modal, .visually-hidden, .pdf-button, ` +
   ".container-latest, .release, .page-section--last";
 
+/** Below this much page text, a landing page's first PDF is taken to be the document itself (e.g. a Dear CEO letter). */
+const LANDING_PAGE_CHARS = 1_500;
+
 /** Title, document text, stated effective date and (for PDF-only documents) the current PDF of a PRA page. */
 export function parsePraPage(html: string, pageUrl: string): PraDocumentPage {
   const $ = cheerio.load(html);
   const title = $("h1").first().text().replace(/\s+/g, " ").trim();
-  let pdfHref: string | null = null;
-  if ($(".container-publication").length === 0) {
-    // A landing page: the current version is the PDF under the "Current version" heading.
-    const current = $("h2")
-      .filter((_, h) => /current version/i.test($(h).text()))
-      .first()
-      .closest(".page-content");
-    pdfHref = current.find("a[href$='.pdf']").first().attr("href") ?? null;
-  }
+  const isHtmlDocument = $(".container-publication").length > 0;
+  // The metadata blocks above the document ("Effective from 28 October 2026."); the
+  // document body is skipped, as it quotes the effective dates of other instruments.
+  const meta = $(".page-content")
+    .filter((_, el) => $(el).closest(".container-publication").length === 0)
+    .text()
+    .replace(/\s+/g, " ");
+  const effectiveFrom = parsePraDate(meta.match(/Effective from (\d{1,2} [A-Za-z]+ \d{4})/i)?.[1]);
+  // A landing page: the current version is the PDF under the "Current version" heading...
+  const currentPdf = $("h2")
+    .filter((_, h) => /current version/i.test($(h).text()))
+    .first()
+    .closest(".page-content")
+    .find("a[href$='.pdf']")
+    .first()
+    .attr("href");
+  // ...or, on a page that is little more than a download button, its first PDF.
+  const firstPdf = $(".page-content a[href$='.pdf']").first().attr("href");
   $(NOISE).remove();
   const text = blockText($, firstWithText($, ["#main-content", "main"]));
-  const effectiveFrom = parsePraDate(text.match(/Effective from (\d{1,2} [A-Za-z]+ \d{4})/i)?.[1]);
+  const pdfHref = isHtmlDocument ? null : (currentPdf ?? (text.length < LANDING_PAGE_CHARS ? firstPdf : undefined));
   return { title, text, effectiveFrom, pdfUrl: pdfHref ? new URL(pdfHref, pageUrl).toString() : null };
 }
 

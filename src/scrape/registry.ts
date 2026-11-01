@@ -2,8 +2,11 @@ import { eq, sql } from "drizzle-orm";
 import { config, type Config } from "../config.js";
 import type { Db } from "../db/client.js";
 import { sourceSettings } from "../db/schema.js";
+import { APRA_SOURCE, fetchApraRules } from "./apra.js";
 import { ASIC_SOURCE, fetchAsicRules } from "./asicTracker.js";
 import type { ScrapedRule, SourceDef } from "./diff.js";
+import { EBA_SOURCE, fetchEbaRules } from "./eba.js";
+import { EDPB_SOURCE, fetchEdpbRules } from "./edpb.js";
 import { ESMA_SOURCE, fetchEsmaRules } from "./esmaNews.js";
 import { EUR_LEX_SOURCE, scrapeEurLex } from "./eurLex.playwright.js";
 import { FCA_SOURCE, fetchFcaRules } from "./fcaPublications.js";
@@ -103,6 +106,24 @@ export const SOURCE_CATALOG: SourceEntry[] = [
     fetch: () => fetchEsmaRules(),
   },
   {
+    def: EDPB_SOURCE,
+    label: "EDPB",
+    region: "EU",
+    description: "European Data Protection Board guidelines, recommendations and opinions on applying the GDPR, with each document's PDF text.",
+    requires: "pdftotext for the document PDFs",
+    defaultEnabled: (cfg) => cfg.SCRAPE_EDPB,
+    fetch: () => fetchEdpbRules(),
+  },
+  {
+    def: EBA_SOURCE,
+    label: "EBA",
+    region: "EU",
+    description: "European Banking Authority guidelines, draft technical standards and opinions (outsourcing, ICT risk, AML), with each document's PDF text.",
+    requires: "pdftotext for the document PDFs",
+    defaultEnabled: (cfg) => cfg.SCRAPE_EBA,
+    fetch: () => fetchEbaRules(),
+  },
+  {
     def: ASIC_SOURCE,
     label: "ASIC",
     region: "AU",
@@ -110,6 +131,14 @@ export const SOURCE_CATALOG: SourceEntry[] = [
     requires: "pdftotext for the guide PDFs",
     defaultEnabled: (cfg) => cfg.SCRAPE_ASIC,
     fetch: () => fetchAsicRules(),
+  },
+  {
+    def: APRA_SOURCE,
+    label: "APRA",
+    region: "AU",
+    description: "Cross-industry prudential standards and practice guides (CPS 234, CPS 230...) with their full text, plus recent consultations.",
+    defaultEnabled: (cfg) => cfg.SCRAPE_APRA,
+    fetch: () => fetchApraRules(),
   },
   {
     def: EUR_LEX_SOURCE,

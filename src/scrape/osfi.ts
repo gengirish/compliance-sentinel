@@ -95,7 +95,8 @@ export function parseOsfiGuidancePage(html: string): OsfiGuidancePage {
     const note = collapse(cheerio.load($(el).text()).text());
     $(el).replaceWith(note ? ` [${$(el).attr("value") ?? "note"}: ${note}]` : "");
   });
-  $(`${PAGE_NOISE}, .wb-tabs, .print__wrapper, .pagedetails, #wb-lng`).remove();
+  $("br").replaceWith(" ");
+  $(`${PAGE_NOISE}, .print__wrapper, .pagedetails, #wb-lng`).remove();
   const title = collapse($("h1").first().text());
   const root = firstWithText($, ["article.guidance > .content", "article > .content", "main"]);
   return {

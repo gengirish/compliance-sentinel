@@ -2,7 +2,7 @@ import * as cheerio from "cheerio";
 import { config } from "../config.js";
 import { log } from "../log.js";
 import type { ScrapedRule, SourceDef } from "./diff.js";
-import { blockText, firstWithText, PAGE_NOISE, slugOf } from "./html.js";
+import { firstWithText, PAGE_NOISE, slugOf } from "./html.js";
 import { fetchWithRetry } from "./http.js";
 import { pdfToText } from "./pdf.js";
 
@@ -118,11 +118,45 @@ export function parseApraConsultations(html: string): ApraListingItem[] {
       url: new URL(link.attr("href")!, BASE).toString(),
       kind: "consultation",
       date: datetime?.match(/^\d{4}-\d{2}-\d{2}/)?.[0] ?? parseApraDate(row.find(".search-result__date").text()),
-      status: collapse(row.find(".anx-pill__label-first").first().text()) || null,
+      // A split pill: "Closed" | "21 August 2026", or "Open until" | "15 December 2026".
+      status: collapse(row.find(".anx-pill--split").first().text()) || null,
       description: collapse(row.find(".field--name-field-summary").text()),
     });
   });
   return items;
+}
+
+/** Tags that end a line. APRA writes paragraphs as `<div class="para">`, so divs count too. */
+const BLOCK = new Set(["p", "div", "section", "article", "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol", "li", "table", "tr", "td", "th", "dl", "dt", "dd", "blockquote", "br"]);
+
+/**
+ * Readable text of an APRA page: one line per run of inline text between
+ * block boundaries. blockText() reads only p/li/h* leaves and so drops the
+ * `div.para` paragraphs and the lead-in text before a nested list.
+ */
+export function apraText($: cheerio.CheerioAPI, root: ReturnType<cheerio.CheerioAPI>): string {
+  const lines: string[] = [];
+  let buf = "";
+  const flush = () => {
+    // Inline footnote markers leave a space before the punctuation that follows them.
+    const line = collapse(buf).replace(/\s+([,.;:)])/g, "$1");
+    if (line) lines.push(line);
+    buf = "";
+  };
+  const walk = (el: ReturnType<cheerio.CheerioAPI>) => {
+    el.contents().each((_, node) => {
+      if (node.type === "text") buf += ` ${node.data}`;
+      else if (node.type === "tag") {
+        const block = BLOCK.has(node.name);
+        if (block) flush();
+        walk($(node));
+        if (block) flush();
+      }
+    });
+  };
+  walk(root);
+  flush();
+  return lines.join("\n");
 }
 
 /** Title, body text and the PDF link of an APRA standard, guide or consultation page. */
@@ -131,9 +165,9 @@ export function parseApraDocumentPage(html: string, pageUrl: string): ApraDocume
   const pdfHref = $("#download-pdf").attr("href") ?? null;
   // The hero <h1> sits in a <header>, which PAGE_NOISE removes; read it first.
   const title = collapse($("main h1").first().text()) || collapse($("title").text()).replace(/\s*\|\s*APRA$/, "");
-  $(`${PAGE_NOISE}, .anx-tabs, .article-tabs__actions, .anx-mega-menu, .anx-breadcrumb`).remove();
+  $(`${PAGE_NOISE}, .anx-tabs, .article-tabs__actions, .anx-mega-menu, .anx-breadcrumb, #related, .related-resources`).remove();
   const root = firstWithText($, [".fragments", ".node__content", "main"]);
-  return { title, text: blockText($, root), pdfUrl: pdfHref && pdfHref !== "#" ? new URL(pdfHref, pageUrl).toString() : null };
+  return { title, text: apraText($, root), pdfUrl: pdfHref && pdfHref !== "#" ? new URL(pdfHref, pageUrl).toString() : null };
 }
 
 /** Priority codes first in the given order, then newest first; undated items last. */
@@ -147,8 +181,10 @@ function byPriorityThenDate(priority: string[]) {
 
 /** Status suffix for the title, left off for the ordinary "In force" and "Current". */
 function statusNote(item: ApraListingItem): string | null {
-  if (item.kind === "consultation") return item.status ? `consultation, ${item.status.toLowerCase()}` : "consultation";
-  return item.status && !/^(in force|current)$/i.test(item.status) ? item.status.toLowerCase() : null;
+  // Lower-case the first letter only, so "Closed 21 August 2026" keeps its month.
+  const status = item.status ? item.status[0]!.toLowerCase() + item.status.slice(1) : null;
+  if (item.kind === "consultation") return status ? `consultation, ${status}` : "consultation";
+  return status && !/^(in force|current)$/i.test(status) ? status : null;
 }
 
 /** APRA's cross-industry prudential standards and guides, and recent consultations, with their full text. */

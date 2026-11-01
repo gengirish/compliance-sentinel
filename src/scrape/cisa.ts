@@ -73,7 +73,7 @@ export function parseCisaDirectivePage(html: string): CisaDirectivePage {
   const type = collapse($(".c-page-title__meta").first().text()) || null;
   const date = isoDate($(".c-page-title__date time").attr("datetime"));
   // The tag list, the hero image and the related-directives cards are not directive text.
-  $(`${PAGE_NOISE}, .l-page-section--tags, .c-figure, .c-collection, .c-page-title`).remove();
+  $(`${PAGE_NOISE}, .l-page-section--tags, .c-figure, .c-collection`).remove();
   const root = firstWithText($, [".l-sidebar__main", ".l-page-section--rich-text", "main"]);
   return { title, type, date, text: blockText($, root) };
 }
