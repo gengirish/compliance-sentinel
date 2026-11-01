@@ -91,7 +91,7 @@ export default async function RulesPage({ searchParams }: { searchParams: Promis
     <>
       <PageHeader
         title="Tracked rules"
-        description="Regulations collected from the Federal Register, the SEC, FINRA, the FCA, ESMA, ASIC, EUR-Lex and MAS. A rule is re-audited when its text changes."
+        description="Regulations collected from 19 sources across the US, UK, EU, Australia, Canada, Hong Kong and Singapore. A rule is re-audited when its text changes."
       />
       {sources.length === 0 && !filtered ? (
         <EmptyState title="No rules collected yet" />

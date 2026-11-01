@@ -13,7 +13,9 @@ Give it a rule (or let it pick up new and amended rules from eight regulatory so
 | Scrape, change detection, embedding, LangGraph audit, report, alerts | Built and tested (112 tests) |
 | Dashboard (Next.js 16, Clerk) in [web/](web) | Built; 7 Playwright e2e tests against a mock API; verified locally against Neon. Deployed to Vercel at <https://compliance-sentinel-web.vercel.app> with Clerk keys set; signed-in pages not yet checked in production |
 | Federal Register API source | Verified against the live API |
-| EUR-Lex Playwright source | Verified against the live site (GDPR: 99 articles, plus its corrigendum) |
+| EUR-Lex Playwright source | Verified against the live site (GDPR: 99 articles, plus its corrigendum; DORA, NIS2, the AI Act and MiCA, 280k–630k characters each) |
+| CFPB, US banking agencies (OCC, FDIC, Federal Reserve) and HIPAA sources (Federal Register API) | Verified against the live API (5 final rules each; HIPAA is filtered to rules amending 45 CFR Part 164) |
+| NIST, CISA, EDPB, EBA, PRA, APRA, OSFI and HKMA sources | Verified against the live sites (NIST, EDPB, EBA and HKMA with PDF text via pdftotext; CISA, PRA, APRA and OSFI with page text). Two HKMA PDFs are scanned images with no text layer and keep only their metadata |
 | SEC source (Federal Register API filtered to the SEC) | Verified against the live API (fetches SEC final rules with full regulatory text) |
 | FCA publications RSS source | Verified against the live feed (publication pages fetched and reduced to body text) |
 | MAS circulars source (Playwright + pdftotext) | Verified locally against the live site (2 circulars, page text plus PDF text); **not yet run inside the Docker image**. Off by default (`SCRAPE_MAS=true`) |
@@ -53,7 +55,7 @@ flowchart TD
     inbox["#quot;run audit#quot; email to the AgentMail inbox<br/>POST /inbox/agentmail (Svix-signed)"] --> scrape
 
     subgraph ing [Ingest]
-        scrape["Scrape<br/>Federal Register, SEC, FINRA, FCA, ESMA, ASIC (HTTP) + EUR-Lex, MAS (Playwright)"] --> diff{"Content hash<br/>changed?"}
+        scrape["Scrape<br/>19 sources: Federal Register, SEC, CFPB, banking agencies, HIPAA,<br/>NIST, CISA, FINRA, FCA, PRA, ESMA, EDPB, EBA, ASIC, APRA, OSFI, HKMA (HTTP)<br/>+ EUR-Lex, MAS (Playwright)"] --> diff{"Content hash<br/>changed?"}
         diff -- no --> skip["Log and exit<br/>(no model cost)"]
         diff -- yes --> embed["Chunk by section, embed<br/>Neon Postgres + pgvector"]
     end
@@ -118,6 +120,8 @@ To deploy, import the repo into Vercel with **Root Directory** set to `web` ([we
 ## How it works
 
 1. **Scrape.** The Federal Register's JSON API returns recent final rules; the binding regulatory text is separated from the preamble commentary. EUR-Lex is scraped with Playwright because it renders through JavaScript; the base act and the acts that amend or correct it are collected. SEC final rules come from the same Federal Register API filtered to the SEC (EDGAR holds company filings, not rulemaking). FCA policy statements, consultation papers and guidance come from the FCA publications RSS feed, with the text of each publication page. MAS circulars are listed by a JavaScript search page behind a WAF, so Playwright opens the listing and each circular, and the circular's PDF is converted with pdftotext; this source is off by default (`SCRAPE_MAS=true`) because it needs Chromium and poppler-utils, both of which the Docker image has. ESMA news comes from the site-wide RSS feed (the news-page feed URL answers with HTML), FINRA notices from the notices RSS feed with the full notice text from each page, and ASIC documents from the regulatory tracker, a server-rendered table per year of new and reissued regulatory guides, information sheets and reports, with each guide's PDF converted by pdftotext.
+
+   The Federal Register client also serves three more US sources: CFPB final rules, the OCC, FDIC and Federal Reserve together (they issue most rules jointly, so one source avoids storing each rule three times), and HIPAA, which is HHS final rules amending 45 CFR Part 164 (a CFR-part filter, because HHS rulemaking is mostly Medicare). EUR-Lex collects every act in `EURLEX_CELEX`: by default the GDPR, DORA, NIS2, the AI Act and MiCA. NIST final SP 800, FIPS and CSWP publications (CSF 2.0 and the Privacy Framework are CSWPs) come from the CSRC search page, which has no feed, with each PDF converted. CISA's active Binding Operational and Emergency Directives come from the server-rendered directives listing. EDPB guidelines and opinions come from its publications feed with each document's PDF; EBA guidelines, draft technical standards and opinions from its publications listing, one request per document type, because its RSS carries only press releases. The PRA's consultation papers, policy and supervisory statements and Dear CEO letters come from the Bank of England's PRA feed, keyed by document code (`ss2-26`) so a reissued statement is an amendment. APRA's cross-industry prudential standards and guides (CPS 234, CPS 230 first) and consultations come from two listings, OSFI's guidelines and letters from its guidance library, and HKMA circulars and guidelines from its two RSS feeds, with each PDF from the Banking Regulatory Document Repository. The UK ICO is not a source: its site answers every automated request with a Cloudflare challenge.
 2. **Diff.** Rule text is normalised and hashed. Only rules that are new or whose hash changed go further, so a quiet day costs nothing.
 3. **Embed.** Rules are split on article and section headings so each chunk maps to a citable unit, then embedded into pgvector. The target repository is indexed in line windows at a recorded snapshot.
 4. **Extract obligations.** For each rule the model lists the duties software must implement, with the chunk ids that state each one and search keywords for the codebase. Chunk ids the model was not shown are discarded.
@@ -142,7 +146,7 @@ pnpm audit:run --demo         # audit the demo app against the bundled demo rule
 pnpm test
 ```
 
-`pnpm audit:run` (no flag) scrapes the live sources instead; it needs `npx playwright install chromium` once, or `SCRAPE_EURLEX=false`. `SCRAPE_SEC` and `SCRAPE_FCA` default to on and need no browser; `SCRAPE_MAS` defaults to off and needs the browser plus `pdftotext`.
+`pnpm audit:run` (no flag) scrapes the live sources instead; it needs `npx playwright install chromium` once, or `SCRAPE_EURLEX=false`. Every other source defaults to on and needs no browser (NIST, EDPB, EBA and HKMA use `pdftotext` for full text and fall back to page text without it); `SCRAPE_MAS` defaults to off and needs the browser plus `pdftotext`.
 
 Those flags are only defaults. The dashboard's **Settings** page has a switch per source, saved in the `source_settings` table and read at the start of every run, so a change needs no restart; **Reset** hands a source back to its flag. A switched-off source is not fetched, so its rules stop changing and never enter an audit. Demo runs use the bundled rules and ignore the switches. Only the operator (requests without a tenant header) can see or change them: `GET /settings/sources`, `PUT /settings/sources/:name` with `{"enabled": true | false | null}`.
 
@@ -235,7 +239,7 @@ See [.env.example](.env.example) for the full list with defaults. The main ones:
 
 - **Not legal advice.** A "compliant" result means supporting code was found, not that the obligation is fully met.
 - **Code only.** Controls that live in infrastructure, vendor systems or policy documents are invisible to the audit.
-- **Eight sources, narrow queries.** Coverage is whatever the Federal Register and SEC search terms, the configured FCA publication types and FINRA notice kinds, the latest ESMA news, MAS circulars and ASIC tracker entries, and one EUR-Lex act return. ESMA and FINRA items are news and notices, not consolidated rulebooks.
+- **Nineteen sources, narrow queries.** Coverage is whatever the Federal Register search terms, the configured FCA publication types and FINRA notice kinds, the latest items of each feed or listing (about 10 per source), and the EUR-Lex acts in `EURLEX_CELEX` return. ESMA and FINRA items are news and notices, not consolidated rulebooks; OSFI's newest entries are mostly letters, so B-10 and B-13 appear only when revised. Long documents are cut at each source's `*_MAX_CHARS` (80k by default), so the start of a long PDF dominates.
 - **Reports only.** It does not fix code or open pull requests.
 - **Single tenant.** One target repository. Every signed-in dashboard user sees every run; there are no roles.
 - **Citations can go stale.** Findings store rule chunk ids without a foreign key, and re-embedding a rule replaces its chunks, so an older run's citations stop resolving. The dashboard says so; the PDF report keeps the text it was rendered with.
@@ -257,8 +261,9 @@ See [.env.example](.env.example) for the full list with defaults. The main ones:
 
 ```
 src/
-  scrape/     federalRegister.ts, secRules.ts, finraNotices.ts, fcaPublications.ts, esmaNews.ts,
-              asicTracker.ts, eurLex.playwright.ts, masCirculars.playwright.ts, rss.ts, html.ts, pdf.ts, http.ts, diff.ts
+  scrape/     federalRegister.ts, secRules.ts, federalAgencies.ts, nist.ts, cisa.ts, finraNotices.ts,
+              fcaPublications.ts, pra.ts, esmaNews.ts, edpb.ts, eba.ts, asicTracker.ts, apra.ts, osfi.ts,
+              hkma.ts, registry.ts, eurLex.playwright.ts, masCirculars.playwright.ts, rss.ts, html.ts, pdf.ts, http.ts, diff.ts
   digest/     digestRule.ts, weekly.ts, deliver.ts, textDiff.ts   the digest output mode and the weekly round-up
   rag/        chunker.ts, embed.ts, retrieve.ts, indexRepo.ts
   graph/      state.ts, graph.ts, nodes/ (incl. digest.ts), controls.ts, evidence.ts

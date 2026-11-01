@@ -88,7 +88,9 @@ export function parseOsfiLibrary(html: string): OsfiLibraryItem[] {
 export function parseOsfiGuidancePage(html: string): OsfiGuidancePage {
   const $ = cheerio.load(html);
   const field = (name: string) => collapse($(`.field--name-field-${name} .field--item`).first().text()) || null;
-  const number = collapse($(".paragraph--type--custom-fields .field--label:contains('Number')").next(".field--item").text()) || null;
+  // The label is "Number" on some guidelines and "No" on others (B-13).
+  const numberLabel = $(".paragraph--type--custom-fields .field--label").filter((_, el) => /^(number|no\.?)$/i.test(collapse($(el).text())));
+  const number = collapse(numberLabel.first().next(".field--item").text()) || null;
   const time = $(".field--name-field-date time").first();
   // Footnotes are inline <fn> elements whose text is escaped HTML; keep them as "[n: text]".
   $("fn").each((_, el) => {

@@ -26,7 +26,10 @@ describe("source switches", () => {
   it("lists every scraper, defaulting to its SCRAPE_* flag", async () => {
     const cfg = loadConfig({ SCRAPE_MAS: "false", SCRAPE_SEC: "true", SCRAPE_FEDERAL_REGISTER: "0" });
     const states = await sourceStates(handle.db, cfg);
-    expect(states.map((s) => s.entry.def.name)).toEqual(["federal-register", "sec", "finra", "fca", "esma", "asic", "eur-lex", "mas"]);
+    expect(states.map((s) => s.entry.def.name)).toEqual([
+      "federal-register", "sec", "cfpb", "us-banking", "hipaa", "nist", "cisa", "finra", "fca", "pra",
+      "esma", "edpb", "eba", "asic", "apra", "osfi", "hkma", "eur-lex", "mas",
+    ]);
     const byName = Object.fromEntries(states.map((s) => [s.entry.def.name, s]));
     expect(byName["mas"]).toMatchObject({ enabled: false, defaultEnabled: false, overridden: false });
     expect(byName["sec"]).toMatchObject({ enabled: true, overridden: false });

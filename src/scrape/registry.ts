@@ -4,6 +4,7 @@ import type { Db } from "../db/client.js";
 import { sourceSettings } from "../db/schema.js";
 import { APRA_SOURCE, fetchApraRules } from "./apra.js";
 import { ASIC_SOURCE, fetchAsicRules } from "./asicTracker.js";
+import { CISA_SOURCE, fetchCisaRules } from "./cisa.js";
 import type { ScrapedRule, SourceDef } from "./diff.js";
 import { EBA_SOURCE, fetchEbaRules } from "./eba.js";
 import { EDPB_SOURCE, fetchEdpbRules } from "./edpb.js";
@@ -20,7 +21,11 @@ import {
 } from "./federalAgencies.js";
 import { FEDERAL_REGISTER_SOURCE, fetchFederalRegisterRules } from "./federalRegister.js";
 import { fetchFinraRules, FINRA_SOURCE } from "./finraNotices.js";
+import { fetchHkmaRules, HKMA_SOURCE } from "./hkma.js";
 import { MAS_SOURCE, scrapeMasCirculars } from "./masCirculars.playwright.js";
+import { fetchNistRules, NIST_SOURCE } from "./nist.js";
+import { fetchOsfiRules, OSFI_SOURCE } from "./osfi.js";
+import { fetchPraRules, PRA_SOURCE } from "./pra.js";
 import { fetchSecRules, SEC_SOURCE } from "./secRules.js";
 
 /**
@@ -82,6 +87,23 @@ export const SOURCE_CATALOG: SourceEntry[] = [
     fetch: () => fetchHipaaRules(),
   },
   {
+    def: NIST_SOURCE,
+    label: "NIST",
+    region: "US",
+    description: "Final NIST cybersecurity and privacy publications (SP 800 series, FIPS, CSF and Privacy Framework), with abstract and PDF text.",
+    requires: "pdftotext for the publication PDFs",
+    defaultEnabled: (cfg) => cfg.SCRAPE_NIST,
+    fetch: () => fetchNistRules(),
+  },
+  {
+    def: CISA_SOURCE,
+    label: "CISA",
+    region: "US",
+    description: "Active CISA Binding Operational and Emergency Directives, with implementation guidance, as full text.",
+    defaultEnabled: (cfg) => cfg.SCRAPE_CISA,
+    fetch: () => fetchCisaRules(),
+  },
+  {
     def: FINRA_SOURCE,
     label: "FINRA",
     region: "US",
@@ -96,6 +118,14 @@ export const SOURCE_CATALOG: SourceEntry[] = [
     description: "Policy statements, consultation papers and finalised guidance from the FCA publications feed.",
     defaultEnabled: (cfg) => cfg.SCRAPE_FCA,
     fetch: () => fetchFcaRules(),
+  },
+  {
+    def: PRA_SOURCE,
+    label: "Bank of England PRA",
+    region: "UK",
+    description: "PRA consultation papers, policy and supervisory statements and Dear CEO letters (operational resilience, outsourcing), with full document text.",
+    defaultEnabled: (cfg) => cfg.SCRAPE_PRA,
+    fetch: () => fetchPraRules(),
   },
   {
     def: ESMA_SOURCE,
@@ -139,6 +169,23 @@ export const SOURCE_CATALOG: SourceEntry[] = [
     description: "Cross-industry prudential standards and practice guides (CPS 234, CPS 230...) with their full text, plus recent consultations.",
     defaultEnabled: (cfg) => cfg.SCRAPE_APRA,
     fetch: () => fetchApraRules(),
+  },
+  {
+    def: OSFI_SOURCE,
+    label: "OSFI",
+    region: "CA",
+    description: "The OSFI guidance library: guidelines (B-10, B-13, E-21...), advisories and letters to federally regulated financial institutions, with full text.",
+    defaultEnabled: (cfg) => cfg.SCRAPE_OSFI,
+    fetch: () => fetchOsfiRules(),
+  },
+  {
+    def: HKMA_SOURCE,
+    label: "HKMA",
+    region: "HK",
+    description: "Hong Kong Monetary Authority circulars and guidelines to authorized institutions, with each document's PDF text.",
+    requires: "pdftotext for the document PDFs",
+    defaultEnabled: (cfg) => cfg.SCRAPE_HKMA,
+    fetch: () => fetchHkmaRules(),
   },
   {
     def: EUR_LEX_SOURCE,

@@ -159,6 +159,8 @@ export async function fetchHkmaRules(opts: HkmaOptions = {}): Promise<ScrapedRul
           const pdf = Buffer.from(await (await fetchWithRetry(fetchImpl, page.pdfUrl, 3, { timeoutMs: 120_000 })).arrayBuffer());
           const pdfText = await toText(pdf);
           if (pdfText.trim()) text = `${text}\n\n${pdfText}`;
+          // Some documents are scanned images with no text layer; only the metadata is left.
+          else log.warn("hkma document pdf has no text, using the page metadata", { url: page.pdfUrl });
         } catch (err) {
           log.warn("hkma document pdf unavailable, using the page metadata", { url: page.pdfUrl, error: String(err) });
         }

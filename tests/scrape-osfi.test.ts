@@ -52,6 +52,9 @@ describe("OSFI guidance library", () => {
     expect(page.text).not.toContain("Publication type");
     expect(page.text).not.toContain("Generate PDF");
     expect(page.text).not.toContain("Date modified");
+    // B-13's page labels the number "No".
+    const b13 = parseOsfiGuidancePage(fixture("osfi-guideline-page.html").replace('field--label">Number<', 'field--label">No<'));
+    expect(b13.number).toBe("B-10");
   });
 
   it("fetches the listed guidance, filters by type and puts the number in the title", async () => {

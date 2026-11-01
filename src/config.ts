@@ -133,10 +133,6 @@ const EnvSchema = z.object({
   EBA_MAX_ITEMS: z.coerce.number().int().positive().default(10),
   EBA_MAX_CHARS: z.coerce.number().int().positive().default(80_000),
   SCRAPE_EBA: flag("true"),
-  /** UK ICO guidance and news on data protection. */
-  ICO_MAX_ITEMS: z.coerce.number().int().positive().default(10),
-  ICO_MAX_CHARS: z.coerce.number().int().positive().default(80_000),
-  SCRAPE_ICO: flag("true"),
   /** Bank of England Prudential Regulation Authority publications (operational resilience, outsourcing). */
   PRA_MAX_ITEMS: z.coerce.number().int().positive().default(10),
   PRA_MAX_CHARS: z.coerce.number().int().positive().default(80_000),
