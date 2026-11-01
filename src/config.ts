@@ -116,6 +116,42 @@ const EnvSchema = z.object({
   /** Convert the guide's PDF with pdftotext (poppler-utils); off keeps only the guide page text. */
   ASIC_INCLUDE_PDF: flag("true"),
   SCRAPE_ASIC: flag("true"),
+  /** EDPB guidelines, recommendations and opinions on applying the GDPR. */
+  EDPB_MAX_ITEMS: z.coerce.number().int().positive().default(10),
+  EDPB_MAX_CHARS: z.coerce.number().int().positive().default(80_000),
+  SCRAPE_EDPB: flag("true"),
+  /** EBA guidelines and publications (outsourcing, ICT and security risk, AML). */
+  EBA_MAX_ITEMS: z.coerce.number().int().positive().default(10),
+  EBA_MAX_CHARS: z.coerce.number().int().positive().default(80_000),
+  SCRAPE_EBA: flag("true"),
+  /** UK ICO guidance and news on data protection. */
+  ICO_MAX_ITEMS: z.coerce.number().int().positive().default(10),
+  ICO_MAX_CHARS: z.coerce.number().int().positive().default(80_000),
+  SCRAPE_ICO: flag("true"),
+  /** Bank of England Prudential Regulation Authority publications (operational resilience, outsourcing). */
+  PRA_MAX_ITEMS: z.coerce.number().int().positive().default(10),
+  PRA_MAX_CHARS: z.coerce.number().int().positive().default(80_000),
+  SCRAPE_PRA: flag("true"),
+  /** NIST cybersecurity and privacy publications (CSF, SP 800 series). */
+  NIST_MAX_ITEMS: z.coerce.number().int().positive().default(10),
+  NIST_MAX_CHARS: z.coerce.number().int().positive().default(80_000),
+  SCRAPE_NIST: flag("true"),
+  /** CISA directives and advisories. */
+  CISA_MAX_ITEMS: z.coerce.number().int().positive().default(10),
+  CISA_MAX_CHARS: z.coerce.number().int().positive().default(80_000),
+  SCRAPE_CISA: flag("true"),
+  /** APRA prudential standards and guidance (CPS 234, CPS 230). */
+  APRA_MAX_ITEMS: z.coerce.number().int().positive().default(10),
+  APRA_MAX_CHARS: z.coerce.number().int().positive().default(80_000),
+  SCRAPE_APRA: flag("true"),
+  /** OSFI guidelines (B-10 third-party risk, B-13 technology and cyber risk). */
+  OSFI_MAX_ITEMS: z.coerce.number().int().positive().default(10),
+  OSFI_MAX_CHARS: z.coerce.number().int().positive().default(80_000),
+  SCRAPE_OSFI: flag("true"),
+  /** HKMA circulars and guidelines. */
+  HKMA_MAX_ITEMS: z.coerce.number().int().positive().default(10),
+  HKMA_MAX_CHARS: z.coerce.number().int().positive().default(80_000),
+  SCRAPE_HKMA: flag("true"),
 });
 
 export type Config = z.infer<typeof EnvSchema>;
