@@ -29,7 +29,7 @@ import {
 } from "../notify/agentmail.js";
 import { createAnalyst } from "../pipeline/run.js";
 import { failStaleRuns } from "../pipeline/watchdog.js";
-import { createQueue, enqueueManualAudit, enqueueManualDigest, INSTALL_JOB, type AuditJobData } from "../queue/queue.js";
+import { createQueue, enqueueManualAudit, enqueueManualDigest, INSTALL_JOB, MANUAL_DIGEST_WINDOW_MS, type AuditJobData } from "../queue/queue.js";
 import { redactSecrets } from "../redact.js";
 import { signReportUrl } from "../report/upload.js";
 import { findSource, setSourceEnabled, sourceStates } from "../scrape/registry.js";
@@ -37,6 +37,7 @@ import { dayAfter, dayStart, likeContains, likePrefix, orderBy, pageOffset, rank
 import {
   describeIssues,
   DigestPreviewBody,
+  DigestSendBody,
   DigestTestBody,
   FINDING_SORTS,
   FindingsQuery,
@@ -723,12 +724,22 @@ export function createApp(deps: AppDeps): Hono<Env> {
     return c.json({ sentTo: body.data.email, rules: report.records.length, subject });
   });
 
-  /** Queues the digest for delivery now, to the team, subscribers and Slack, as the weekly run does. */
+  /**
+   * Queues the digest for delivery now, to the team, subscribers and Slack, as the weekly run does.
+   * A repeat inside MANUAL_DIGEST_WINDOW_MS answers 409 with the earlier job, unless `force` is set.
+   */
   app.post("/digest/send", async (c) => {
     const denied = operatorOnly(c, "manage the digest");
     if (denied) return denied;
-    const jobId = await enqueueManualDigest(deps.getQueue());
-    log.info("manual digest enqueued", { jobId });
+    const body = parseInput(c, DigestSendBody, (await jsonBody(c)) ?? {});
+    if (!body.ok) return body.response;
+    const { queued, jobId } = await enqueueManualDigest(deps.getQueue(), { force: body.data.force });
+    if (!queued) {
+      log.warn("manual digest refused: one was queued moments ago", { jobId });
+      const minutes = MANUAL_DIGEST_WINDOW_MS / 60_000;
+      return c.json({ error: `A digest was already sent to everyone in the last ${minutes} minutes (job ${jobId}). Send again with force to deliver another copy.`, jobId }, 409);
+    }
+    log.info("manual digest enqueued", { jobId, force: Boolean(body.data.force) });
     return c.json({ jobId }, 202);
   });
 
