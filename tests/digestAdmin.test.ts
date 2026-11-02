@@ -8,7 +8,7 @@ import { TENANT_HEADER } from "../src/db/tenants.js";
 import { OfflineAnalyst } from "../src/llm/offlineAnalyst.js";
 import type { OutgoingMessage } from "../src/notify/agentmail.js";
 import { loadDemoRules } from "../src/pipeline/run.js";
-import { MANUAL_DIGEST_JOB, type AuditJobData } from "../src/queue/queue.js";
+import { MANUAL_DIGEST_JOB, MANUAL_DIGEST_WINDOW_MS, type AuditJobData } from "../src/queue/queue.js";
 import { persistChanges, upsertSource } from "../src/scrape/diff.js";
 import { createApp, type AppDeps } from "../src/web/server.js";
 
@@ -119,19 +119,53 @@ describe("operator digest API", () => {
     expect(((await unconfigured.json()) as any).error).toBeTruthy();
   });
 
+  /** Mimics BullMQ deduplication: inside the window, an add returns the existing job's id. */
+  const dedupingQueue = () => {
+    let current: string | null = null;
+    const add = vi.fn(async (_name: string, _data: AuditJobData, opts: { jobId: string; deduplication: { id: string } }) => {
+      current ??= opts.jobId;
+      return { id: current };
+    });
+    const removeDeduplicationKey = vi.fn(async () => {
+      current = null;
+      return 1;
+    });
+    return { add, removeDeduplicationKey, queue: { add, removeDeduplicationKey } as unknown as Queue<AuditJobData> };
+  };
+
   it("queues an immediate one-off digest delivery", async () => {
-    let n = 0;
-    const add = vi.fn(async (_name: string, _data: AuditJobData, opts: { jobId: string }) => ({ id: opts.jobId, n: ++n }));
-    const a = app({ getQueue: () => ({ add }) as unknown as Queue<AuditJobData> });
+    const { add, queue } = dedupingQueue();
+    const a = app({ getQueue: () => queue });
     const first = await post(a, "/digest/send");
     expect(first.status).toBe(202);
     const { jobId } = (await first.json()) as any;
     expect(typeof jobId).toBe("string");
-    expect(add).toHaveBeenCalledWith(MANUAL_DIGEST_JOB, { trigger: "manual", kind: "digest" }, { jobId });
-
-    // Each send is its own job, never deduplicated against the weekly one or a previous send.
-    const second = (await (await post(a, "/digest/send")).json()) as any;
-    expect(second.jobId).not.toBe(jobId);
     expect(jobId).not.toBe("weekly-digest");
+    expect(add).toHaveBeenCalledWith(
+      MANUAL_DIGEST_JOB,
+      { trigger: "manual", kind: "digest" },
+      { jobId, deduplication: { id: MANUAL_DIGEST_JOB, ttl: MANUAL_DIGEST_WINDOW_MS } },
+    );
+  });
+
+  it("refuses a second send to everyone inside the window unless forced", async () => {
+    const { removeDeduplicationKey, queue } = dedupingQueue();
+    const a = app({ getQueue: () => queue });
+    const { jobId } = (await (await post(a, "/digest/send", {})).json()) as any;
+
+    // A double click or a retried request must not mail everyone twice.
+    const again = await post(a, "/digest/send", {});
+    expect(again.status).toBe(409);
+    const refused = (await again.json()) as any;
+    expect(refused.jobId).toBe(jobId);
+    expect(refused.error).toMatch(/already sent/);
+    expect(removeDeduplicationKey).not.toHaveBeenCalled();
+
+    const forced = await post(a, "/digest/send", { force: true });
+    expect(forced.status).toBe(202);
+    expect(removeDeduplicationKey).toHaveBeenCalledWith(MANUAL_DIGEST_JOB);
+    expect(((await forced.json()) as any).jobId).not.toBe(jobId);
+
+    expect((await post(a, "/digest/send", { force: "yes" })).status).toBe(400);
   });
 });
