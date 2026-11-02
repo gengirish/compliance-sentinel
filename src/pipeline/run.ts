@@ -13,7 +13,7 @@ import { getRepo, getTenant } from "../db/tenants.js";
 import { GitHubApp } from "../github/app.js";
 import type { RuleDigestRecord } from "../digest/digestRule.js";
 import { buildAuditGraph, runAuditGraph } from "../graph/graph.js";
-import type { AuditStateType, GraphDeps } from "../graph/state.js";
+import type { AuditStateType, GraphDeps, NotifyInput } from "../graph/state.js";
 import type { FindingSummary } from "../graph/types.js";
 import { Budget, type Analyst } from "../llm/analyst.js";
 import { CircuitBreakerAnalyst } from "../llm/circuitBreaker.js";
@@ -47,7 +47,10 @@ export type PipelineOptions = {
   deps?: Partial<Pick<GraphDeps, "renderReport" | "notify">>;
   sources?: { def: SourceDef; fetch: () => Promise<ScrapedRule[]> }[];
   repoPath?: string;
-  /** Clone this repository for the run instead of using TARGET_REPO_PATH / TARGET_REPO_URL. */
+  /**
+   * Clone this repository for the run instead of using TARGET_REPO_PATH / TARGET_REPO_URL.
+   * It is someone else's code (a dashboard scan, `audit:real`), so its run sends no alerts.
+   */
   repoUrl?: string;
   /** Commit sha (or branch/tag) to audit when cloning; defaults to the remote's default branch. */
   repoRef?: string;
@@ -135,6 +138,12 @@ async function createCheckpointer(handle: DbHandle): Promise<{ saver: BaseCheckp
   }
   // The embedded dev database has no pg pool for PostgresSaver, so checkpoints stay in memory.
   return { saver: new MemorySaver(), close: async () => undefined };
+}
+
+/** The notifier for an ad-hoc repository scan: findings stay in the report, nothing goes to Slack or email. */
+async function skipAlerts(input: NotifyInput): Promise<string[]> {
+  log.info("alerts skipped for an ad-hoc repository scan", { runId: input.runId });
+  return [];
 }
 
 /** "https://github.com/owner/name(.git)" -> "owner/name"; other URLs -> their last two path segments. */
@@ -340,7 +349,7 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
       analyst,
       budget: new Budget(config.MAX_RUN_COST_USD),
       renderReport: opts.deps?.renderReport ?? ((state) => renderReport(db, { ...state, analyst: analyst.name })),
-      notify: opts.deps?.notify ?? notifyCritical,
+      notify: opts.deps?.notify ?? (opts.repoUrl && opts.repoId === undefined ? skipAlerts : notifyCritical),
     };
     const graph = buildAuditGraph(deps, { checkpointer: checkpointer.saver });
     const state = await runAuditGraph(
