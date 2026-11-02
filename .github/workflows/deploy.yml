@@ -1,0 +1,53 @@
+name: Deploy
+
+# Ships the API and worker to Fly when a pull request is merged into main. It is not run on
+# every push: the auto-commit job pushes work in progress to main, and that must not reach
+# production. The dashboard deploys itself through Vercel's Git integration.
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+  workflow_dispatch:
+
+# One deploy at a time, and never cancel one half way: a newer merge queues behind it.
+concurrency:
+  group: deploy-fly
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The merge commit on main, not the PR branch head.
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+
+  fly:
+    needs: verify
+    runs-on: ubuntu-latest
+    # Add required reviewers to this environment in the repo settings for a manual approval step.
+    environment:
+      name: production
+      url: https://compliance-sentinel-gengirish.fly.dev/health
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha || github.sha }}
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      # Fly's own remote builder; the image build runs `pnpm build`, and release_command runs migrations.
+      - run: flyctl deploy --remote-only --depot=false --wait-timeout 10m
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+      - name: Check the API answers
+        run: curl --fail --silent --show-error --retry 5 --retry-delay 10 --retry-all-errors https://compliance-sentinel-gengirish.fly.dev/health
