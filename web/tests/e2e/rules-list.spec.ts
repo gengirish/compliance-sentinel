@@ -33,6 +33,7 @@ test("rules page pages at 50 and sorts by a column", async ({ page }) => {
 
   // First seen is a sortable column too; the MiCA rule was seen first.
   await page.getByRole("columnheader", { name: "First seen" }).getByRole("link").click();
+  await expect(page).toHaveURL(/sort=first_seen&order=desc/);
   await page.getByRole("columnheader", { name: "First seen" }).getByRole("link").click();
   await expect(page).toHaveURL(/sort=first_seen&order=asc/);
   await expect(rows.first()).toContainText("MiCA crypto-asset guidelines");
