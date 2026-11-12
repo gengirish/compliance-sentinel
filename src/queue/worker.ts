@@ -7,7 +7,7 @@ import { errorMessage, log } from "../log.js";
 import { runPipeline, type PipelineResult } from "../pipeline/run.js";
 import { failStaleRuns } from "../pipeline/watchdog.js";
 import { QUEUE_NAME, createConnection, createQueue, type AuditJobData } from "./queue.js";
-import { registerDailyAudit, registerWeeklyDigest } from "./schedule.js";
+import { registerSchedules } from "./schedule.js";
 
 const SWEEP_INTERVAL_MS = 5 * 60 * 1000;
 
@@ -85,8 +85,7 @@ export function startWorker(connection: ConnectionOptions = createConnection()):
 
 async function main() {
   const queue = createQueue();
-  await registerDailyAudit(queue);
-  await registerWeeklyDigest(queue);
+  await registerSchedules(queue);
 
   // Reap runs orphaned by a previous crash or redeploy, then keep sweeping.
   const handle = await openMigratedDb();

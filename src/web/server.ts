@@ -29,7 +29,17 @@ import {
 } from "../notify/agentmail.js";
 import { createAnalyst } from "../pipeline/run.js";
 import { failStaleRuns } from "../pipeline/watchdog.js";
-import { createQueue, enqueueManualAudit, enqueueManualDigest, INSTALL_JOB, MANUAL_DIGEST_WINDOW_MS, type AuditJobData } from "../queue/queue.js";
+import {
+  createQueue,
+  DAILY_JOB,
+  DIGEST_JOB,
+  enqueueManualAudit,
+  enqueueManualDigest,
+  enqueueScheduledJob,
+  INSTALL_JOB,
+  MANUAL_DIGEST_WINDOW_MS,
+  type AuditJobData,
+} from "../queue/queue.js";
 import { redactSecrets } from "../redact.js";
 import { signReportUrl } from "../report/upload.js";
 import { findSource, setSourceEnabled, sourceStates } from "../scrape/registry.js";
@@ -741,6 +751,20 @@ export function createApp(deps: AppDeps): Hono<Env> {
     }
     log.info("manual digest enqueued", { jobId, force: Boolean(body.data.force) });
     return c.json({ jobId }, 202);
+  });
+
+  /**
+   * GitHub Actions' cron calls this to fire the daily audit or the weekly digest (SCHEDULER=github).
+   * A repeat on the same UTC day answers 200 with the job already queued; a new one answers 202.
+   */
+  app.post("/scheduled/:job", async (c) => {
+    const denied = operatorOnly(c, "trigger scheduled jobs");
+    if (denied) return denied;
+    const job = c.req.param("job");
+    if (job !== DAILY_JOB && job !== DIGEST_JOB) return c.json({ error: `unknown scheduled job "${job}"` }, 404);
+    const { queued, jobId } = await enqueueScheduledJob(deps.getQueue(), job);
+    log.info(queued ? "scheduled job enqueued" : "scheduled job already queued today", { job, jobId });
+    return c.json({ jobId, queued }, queued ? 202 : 200);
   });
 
   /** Redirects to a freshly signed download link, or streams the local file in dev. */
