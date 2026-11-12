@@ -59,6 +59,25 @@ export async function enqueueManualAudit(
   return job.id!;
 }
 
+export type ScheduledJob = typeof DAILY_JOB | typeof DIGEST_JOB;
+
+/**
+ * Queues today's daily audit or weekly digest, with the data the worker's job scheduler would
+ * give it. The UTC date in the id makes a repeat on the same day (a late or doubled GitHub
+ * cron, or a retried request) a no-op that reports the job already queued.
+ */
+export async function enqueueScheduledJob(
+  queue: Queue<AuditJobData>,
+  job: ScheduledJob,
+  now = new Date(),
+): Promise<{ queued: boolean; jobId: string }> {
+  const jobId = `${job}-${now.toISOString().slice(0, 10)}`;
+  if (await queue.getJob(jobId)) return { queued: false, jobId };
+  const data: AuditJobData = job === DIGEST_JOB ? { trigger: "cron", kind: "digest" } : { trigger: "cron" };
+  await queue.add(job, data, { jobId });
+  return { queued: true, jobId };
+}
+
 /** A second manual digest inside this window is refused unless forced, so a double click or a retried request does not mail everyone twice. */
 export const MANUAL_DIGEST_WINDOW_MS = 10 * 60 * 1000;
 

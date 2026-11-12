@@ -58,6 +58,12 @@ const EnvSchema = z.object({
   GITHUB_URL: z.string().default("https://github.com"),
   RUN_TRIGGER_TOKEN: optional,
   PUBLIC_BASE_URL: optional,
+  /**
+   * Who fires the daily audit and the weekly digest: "worker" registers BullMQ job schedulers
+   * from AUDIT_CRON and DIGEST_CRON; "github" leaves it to .github/workflows/schedule.yml,
+   * which calls POST /scheduled/:job.
+   */
+  SCHEDULER: z.enum(["worker", "github"]).default("worker"),
   AUDIT_CRON: z.string().default("0 6 * * *"),
   /** The weekly "what changed" digest: Monday 07:00 UTC, covering the last DIGEST_DAYS days. */
   DIGEST_CRON: z.string().default("0 7 * * 1"),

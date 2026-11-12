@@ -1,0 +1,37 @@
+name: Scheduled runs
+
+# Fires the daily audit and the weekly digest by calling the API, which queues them for the Fly
+# worker. The worker's own job schedulers are off (SCHEDULER=github in fly.toml). Times are UTC
+# and match AUDIT_CRON and DIGEST_CRON. GitHub can start a scheduled run late; the API keys each
+# job by date, so a late, doubled or retried call still queues at most one per day.
+on:
+  schedule:
+    - cron: "0 6 * * *" # daily audit
+    - cron: "0 7 * * 1" # weekly digest, Mondays
+  workflow_dispatch:
+    inputs:
+      job:
+        description: Job to queue now
+        type: choice
+        options: [daily-audit, weekly-digest]
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Queue the job
+        env:
+          EVENT: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule }}
+          INPUT_JOB: ${{ inputs.job }}
+          RUN_TRIGGER_TOKEN: ${{ secrets.RUN_TRIGGER_TOKEN }}
+          API_URL: https://compliance-sentinel-gengirish.fly.dev
+        run: |
+          if [ "$EVENT" = workflow_dispatch ]; then job="$INPUT_JOB"
+          elif [ "$SCHEDULE" = "0 7 * * 1" ]; then job=weekly-digest
+          else job=daily-audit
+          fi
+          echo "Queueing $job"
+          # Retries cover the web machine waking from scale-to-zero; the endpoint is idempotent per day.
+          curl --fail-with-body --silent --show-error --retry 5 --retry-delay 15 --retry-all-errors \
+            -X POST -H "Authorization: Bearer $RUN_TRIGGER_TOKEN" "$API_URL/scheduled/$job"

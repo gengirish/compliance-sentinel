@@ -11,6 +11,8 @@ primary_region = "iad"
 
 [env]
   PORT = "8080"
+  # The daily audit and weekly digest are fired by .github/workflows/schedule.yml, not the worker.
+  SCHEDULER = "github"
   AUDIT_CRON = "0 6 * * *"
   MAX_RUN_COST_USD = "2"
   TARGET_REPO_PATH = "demo-target-app"
