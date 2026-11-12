@@ -78,13 +78,13 @@ test("filters by start date and by repository", async ({ page }) => {
 
   await page.getByRole("link", { name: "Clear" }).click();
   await expect(page).toHaveURL(/\/runs$/);
-  await page.getByLabel("Repository").selectOption({ label: "Repository #7" });
+  await page.getByRole("combobox", { name: "Repository" }).selectOption({ label: "Repository #7" });
   await expect(page).toHaveURL(/repo=7/);
   // The mock's repo 7 runs are the even ids from #40.
   for (const link of await rows(page).locator("td:first-child a").allTextContents()) {
     expect(Number(link.slice(1)) % 2, link).toBe(0);
   }
-  await expect(page.getByLabel("Repository")).toHaveValue("7");
+  await expect(page.getByRole("combobox", { name: "Repository" })).toHaveValue("7");
 });
 
 test("sorts by a column header in both directions", async ({ page }) => {
