@@ -75,6 +75,12 @@ const EnvSchema = z.object({
   ALERT_ATTEMPTS: z.coerce.number().int().positive().default(3),
   /** A run still "running" after this long is presumed orphaned and marked failed. */
   RUN_TIMEOUT_MINUTES: z.coerce.number().int().positive().default(30),
+  /**
+   * How often the worker re-checks for orphaned runs, after the sweep it does at startup.
+   * Keep this above Neon's 5-minute idle timeout: a shorter timer keeps the database awake
+   * around the clock. 0 disables the timer and keeps only the startup sweep.
+   */
+  STALE_SWEEP_INTERVAL_MINUTES: z.coerce.number().int().nonnegative().default(60),
   PORT: z.coerce.number().int().default(8080),
   REPORTS_DIR: z.string().default("reports"),
   PGLITE_DIR: z.string().default(".data/pglite"),
