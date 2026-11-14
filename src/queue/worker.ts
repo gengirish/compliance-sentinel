@@ -9,8 +9,6 @@ import { failStaleRuns } from "../pipeline/watchdog.js";
 import { QUEUE_NAME, createConnection, createQueue, type AuditJobData } from "./queue.js";
 import { registerDailyAudit, registerWeeklyDigest } from "./schedule.js";
 
-const SWEEP_INTERVAL_MS = 5 * 60 * 1000;
-
 export type JobSummary = Pick<PipelineResult, "runId" | "status" | "summary" | "reportUrl" | "costUsd" | "notified"> & {
   /** Rules summarised, for digest jobs (which have no audit run). */
   digested?: number;
@@ -95,7 +93,8 @@ async function main() {
       log.warn("stale run sweep failed", { error: errorMessage(err) }),
     );
   await sweep();
-  const sweeper = setInterval(() => void sweep(), SWEEP_INTERVAL_MS);
+  const sweepEveryMs = config.STALE_SWEEP_INTERVAL_MINUTES * 60 * 1000;
+  const sweeper = sweepEveryMs > 0 ? setInterval(() => void sweep(), sweepEveryMs) : undefined;
 
   const worker = startWorker();
   log.info("worker ready", { queue: QUEUE_NAME });

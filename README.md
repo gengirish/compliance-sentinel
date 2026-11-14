@@ -25,12 +25,12 @@ Give it a rule (or let it pick up new and amended rules from eight regulatory so
 | Full run on live sources, then a second run that correctly skips | Verified locally |
 | Neon Postgres with pgvector, including the Postgres checkpointer | Verified: migrations and a demo audit ran against Neon |
 | Audit with Claude (`claude-sonnet-5-5`, `claude-haiku-5-5`) | Verified: golden eval run three times on each planted set, 28 of 30 found on the ten-violation set, about $0.50 per run (see [Evaluation](#evaluation)) |
-| Voyage `voyage-law-2` embeddings | Verified locally: `pnpm eval:retrieval` with `VOYAGE_API_KEY` set ranks the expected rule section or file first for nine of ten queries (for "logging social security numbers" it ranks `schema.sql` above `signup.js`, which does the logging, and misses `patients.js`). The golden eval above used the local hash embedder; **not yet set on Fly** |
+| Voyage `voyage-law-2` embeddings | Verified locally: `pnpm eval:retrieval` with `VOYAGE_API_KEY` set ranks the expected rule section or file first for nine of ten queries (for "logging social security numbers" it ranks `schema.sql` above `signup.js`, which does the logging, and misses `patients.js`). `VOYAGE_API_KEY` is set on Fly. The golden eval above used the local hash embedder |
 | Audits of real open-source repositories (`pnpm audit:real`) | Run with Claude on three pinned repos for $3.82. Precision is 42% (10 of 24 violations true) on a first-pass label by Claude Code, **not yet confirmed by a person** (see [samples/real](samples/real)) |
 | GitHub Action ([action.yml](action.yml), [docs/github-action.md](docs/github-action.md)) | Audit step, Markdown summary and `--fail-on` exit codes verified locally; **not yet run on GitHub** |
 | PCI DSS v4.0.1 rules (paraphrased) and five planted PCI violations in the demo app | Offline golden test passes on all ten planted violations |
 | Docker image and PDF rendering with WeasyPrint | Verified in CI on every push (image builds, demo report renders to a 17-page PDF) |
-| BullMQ worker and cron | Implemented and typechecked; **not yet run against Redis** |
+| BullMQ worker and cron | Running on Fly against Upstash Redis: the daily audit has fired at 06:00 UTC every day since 2026-10-28 (runs 25 to 32, skipping when no rule changed), and the weekly digest fired on 2026-11-02 and emailed 163 rule changes |
 | Fly.io deployment | Deployed at <https://compliance-sentinel-gengirish.fly.dev> (`/health` returns 200; other routes need the token) |
 | Loom demo | Not recorded yet |
 
